@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
-import { CalendarDays, FolderOpen, Send, Clock, Sparkles, Plus, ChevronLeft, UploadCloud, Edit3, Image as ImageIcon, Filter, PieChart, Info, AlertTriangle, Trash2 } from 'lucide-react';
+import { CalendarDays, FolderOpen, Send, Clock, Sparkles, Plus, ChevronLeft, UploadCloud, Edit3, Image as ImageIcon, Filter, PieChart, Info, AlertTriangle, Trash2, MoreHorizontal, MessageSquare, Share2 } from 'lucide-react';
 import { useState } from 'react';
 import { GeneraBozzaModal } from '@/components/admin/genera-bozza-modal';
 import { CreaPostManualeModal } from '@/components/admin/crea-post-manuale-modal';
@@ -20,6 +20,7 @@ import { ModificaPostModal } from '@/components/admin/modifica-post-modal';
 import { ModificaPianoModal } from '@/components/admin/modifica-piano-modal';
 import { CaricaMaterialeModal } from '@/components/admin/carica-materiale-modal';
 import { Calendar } from '@/components/ui/calendar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -128,7 +129,6 @@ export default function ClienteDettaglio() {
 
   const daysWithPosts = posts?.filter(p => p.data_pubblicazione && typeof p.data_pubblicazione.toDate === 'function').map(p => p.data_pubblicazione.toDate().toDateString()) || [];
 
-  // Calcolo crediti collegato DIRETTAMENTE al calendario (numero di post in collezione)
   const postTotali = client.post_totali || 0;
   const postUsati = posts?.length || 0; 
   const postRimanenti = Math.max(0, postTotali - postUsati);
@@ -198,7 +198,7 @@ export default function ClienteDettaglio() {
                   />
                 </Card>
 
-                <div className="flex-1 space-y-4">
+                <div className="flex-1 space-y-6">
                   <div className="flex justify-between items-center mb-4">
                     <h2 className="text-xl font-headline font-bold">
                       {selectedDate ? `Post per il ${selectedDate.toLocaleDateString('it-IT')}` : 'Tutti i post'}
@@ -207,60 +207,99 @@ export default function ClienteDettaglio() {
                   </div>
 
                   {isPostsLoading ? <Skeleton className="h-48" /> : postsOnSelectedDate.length > 0 ? (
-                    <div className="grid gap-4">
+                    <div className="grid gap-6">
                       {postsOnSelectedDate.map(post => {
                         const materialAssociato = materials?.find(m => m.id === post.materiale_id);
+                        const typeInfo = materialAssociato ? getFileTypeInfo(materialAssociato.nome_file) : null;
+                        
                         return (
-                          <Card key={post.id} className="rounded-xl border-gray-200/50 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-                            <div className="p-6">
-                              <div className="flex justify-between items-start mb-4">
+                          <Card key={post.id} className="rounded-xl border-gray-200/60 overflow-hidden shadow-sm hover:shadow-md transition-shadow bg-white">
+                            {/* Header Post "Social" */}
+                            <div className="p-4 flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                <Avatar className="h-10 w-10 border border-gray-100">
+                                  <AvatarFallback className="bg-indigo-600 text-white font-bold">
+                                    {client.nome_azienda.charAt(0).toUpperCase()}
+                                  </AvatarFallback>
+                                </Avatar>
                                 <div>
-                                  <div className="flex items-center gap-3">
-                                    <h3 className="font-headline font-semibold text-lg">{post.titolo}</h3>
-                                    <div className="flex gap-1">
-                                      <Button variant="ghost" size="icon" className="h-8 w-8 text-indigo-600" onClick={() => setPostDaModificare(post)}>
-                                        <Edit3 className="w-4 h-4" />
-                                      </Button>
-                                      <Button variant="ghost" size="icon" className="h-8 w-8 text-red-400 hover:text-red-600" onClick={() => deletePost(post.id)}>
-                                        <Trash2 className="w-4 h-4" />
-                                      </Button>
-                                    </div>
+                                  <div className="flex items-center gap-2">
+                                    <h3 className="font-bold text-sm text-gray-900">{client.nome_azienda}</h3>
+                                    <Badge className={`${STATO_POST_COLORS[post.stato as StatoPost].bg} ${STATO_POST_COLORS[post.stato as StatoPost].text} border-none font-medium text-[9px] py-0 px-1.5`}>
+                                      {STATO_POST_LABELS[post.stato as StatoPost]}
+                                    </Badge>
                                   </div>
-                                  <div className="flex items-center gap-4 mt-1">
-                                    <div className="flex items-center gap-1">
-                                      <Clock className="w-3 h-3 text-gray-400" />
-                                      <span className="text-xs text-gray-400">
-                                        {post.data_pubblicazione && typeof post.data_pubblicazione.toDate === 'function' ? post.data_pubblicazione.toDate().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) : 'Orario non pianificato'}
-                                      </span>
-                                    </div>
-                                    {materialAssociato && (
-                                      <div className="flex items-center gap-1 text-xs text-indigo-500 font-medium">
-                                        <ImageIcon className="w-3 h-3" /> Asset: {materialAssociato.nome_file}
-                                      </div>
-                                    )}
-                                  </div>
+                                  <p className="text-[10px] text-gray-400 flex items-center gap-1">
+                                    <Clock className="w-2.5 h-2.5" />
+                                    Pianificato per: {post.data_pubblicazione && typeof post.data_pubblicazione.toDate === 'function' ? post.data_pubblicazione.toDate().toLocaleString('it-IT', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'Da definire'}
+                                  </p>
                                 </div>
-                                <Badge className={`${STATO_POST_COLORS[post.stato as StatoPost].bg} ${STATO_POST_COLORS[post.stato as StatoPost].text} border-none font-medium`}>
-                                  {STATO_POST_LABELS[post.stato as StatoPost]}
-                                </Badge>
                               </div>
-                              <p className="text-sm text-gray-600 italic border-l-2 border-indigo-100 pl-4 bg-indigo-50/30 p-2 rounded-r">
-                                "{post.testo}"
+                              <div className="flex gap-1">
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-indigo-600" onClick={() => setPostDaModificare(post)}>
+                                  <Edit3 className="w-4 h-4" />
+                                </Button>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-red-400 hover:text-red-600" onClick={() => deletePost(post.id)}>
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </div>
+
+                            {/* Corpo del Post (Copy) */}
+                            <div className="px-4 pb-3">
+                              <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
+                                {post.testo}
                               </p>
                             </div>
-                            <CardFooter className="bg-gray-50/50 p-4 border-t border-gray-100 flex justify-end gap-2">
-                              {post.stato === 'bozza' && (
-                                <Button size="sm" onClick={() => updatePostState(post.id, 'da_approvare')} className="bg-orange-600 hover:bg-orange-700">
-                                  <Send className="w-3 h-3 mr-2" /> Invia per approvazione
-                                </Button>
-                              )}
-                              {post.stato === 'da_approvare' && (
-                                <Button size="sm" onClick={() => updatePostState(post.id, 'approvato')} className="bg-blue-600 hover:bg-blue-700">Approva</Button>
-                              )}
-                              {post.stato === 'approvato' && (
-                                <Button size="sm" onClick={() => updatePostState(post.id, 'pubblicato')} className="bg-green-600 hover:bg-green-700">Segna pubblicato</Button>
-                              )}
-                            </CardFooter>
+
+                            {/* Media Placeholder (Immagine/Video realistico) */}
+                            {materialAssociato ? (
+                              <div className="relative aspect-video bg-gray-100 border-y border-gray-50 flex flex-col items-center justify-center group">
+                                {typeInfo?.type === 'foto' || typeInfo?.type === 'grafica' ? (
+                                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-50 text-gray-300">
+                                    <ImageIcon className="w-12 h-12 mb-2" />
+                                    <span className="text-xs font-medium px-4 text-center truncate w-full">{materialAssociato.nome_file}</span>
+                                  </div>
+                                ) : (
+                                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900 text-slate-400">
+                                    <typeInfo.icon className="w-12 h-12 mb-2" />
+                                    <span className="text-xs font-medium px-4 text-center truncate w-full">{materialAssociato.nome_file}</span>
+                                  </div>
+                                )}
+                                <div className="absolute top-3 left-3">
+                                   <Badge variant="secondary" className="bg-white/90 backdrop-blur shadow-sm text-[9px] uppercase font-bold">
+                                     {typeInfo?.label}
+                                   </Badge>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="h-px bg-gray-100" />
+                            )}
+
+                            {/* Footer Post con azioni realiste */}
+                            <div className="p-2 px-4 flex items-center justify-between border-t border-gray-50">
+                               <div className="flex gap-4 text-gray-400">
+                                  <div className="flex items-center gap-1 text-[10px] font-bold uppercase"><MessageSquare className="w-3.5 h-3.5" /> Commenti</div>
+                                  <div className="flex items-center gap-1 text-[10px] font-bold uppercase"><Share2 className="w-3.5 h-3.5" /> Condividi</div>
+                               </div>
+                               <div className="flex gap-2">
+                                  {post.stato === 'bozza' && (
+                                    <Button size="sm" onClick={() => updatePostState(post.id, 'da_approvare')} className="h-8 text-[10px] font-bold bg-orange-600 hover:bg-orange-700 uppercase tracking-tighter">
+                                      Invia per approvazione
+                                    </Button>
+                                  )}
+                                  {post.stato === 'da_approvare' && (
+                                    <Button size="sm" onClick={() => updatePostState(post.id, 'approvato')} className="h-8 text-[10px] font-bold bg-blue-600 hover:bg-blue-700 uppercase tracking-tighter">
+                                      Approva Post
+                                    </Button>
+                                  )}
+                                  {post.stato === 'approvato' && (
+                                    <Button size="sm" onClick={() => updatePostState(post.id, 'pubblicato')} className="h-8 text-[10px] font-bold bg-green-600 hover:bg-green-700 uppercase tracking-tighter">
+                                      Segna pubblicato
+                                    </Button>
+                                  )}
+                               </div>
+                            </div>
                           </Card>
                         );
                       })}

@@ -10,7 +10,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
-import { Upload, ArrowUpRight, Check, Loader2, UploadCloud, X, FileIcon, CalendarDays, Clock, Filter, PieChart, Info, Send } from 'lucide-react';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Upload, ArrowUpRight, Check, Loader2, UploadCloud, X, FileIcon, CalendarDays, Clock, Filter, PieChart, Info, Send, MessageSquare, Share2, Image as ImageIcon } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -133,7 +134,6 @@ export default function ClienteDashboard() {
   if (!client) return <div className="p-8">Errore caricamento dati cliente.</div>;
 
   const postTotali = client.post_totali || 0;
-  // Collegamento al numero REALE di post in collezione
   const postUsati = posts?.length || 0;
   const postRimanenti = Math.max(0, postTotali - postUsati);
   const usagePercent = postTotali > 0 ? (postUsati / postTotali) * 100 : 0;
@@ -329,33 +329,85 @@ export default function ClienteDashboard() {
             </div>
 
             {isPostsLoading ? <Skeleton className="h-48" /> : postsOnSelectedDate.length > 0 ? (
-              <div className="space-y-4">
-                {postsOnSelectedDate.map((post: any) => (
-                  <Card key={post.id} className="rounded-xl border-gray-200/50 shadow-sm transition-all hover:border-indigo-200">
-                    <CardHeader className="pb-3 flex flex-row justify-between items-start space-y-0">
-                      <div>
-                        <CardTitle className="text-lg font-headline font-semibold">{post.titolo}</CardTitle>
-                        <CardDescription className="text-xs flex items-center gap-1">
-                          <Clock className="w-3 h-3" />
-                          {post.data_pubblicazione && typeof post.data_pubblicazione.toDate === 'function' ? post.data_pubblicazione.toDate().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) : 'Orario non pianificato'}
-                        </CardDescription>
-                      </div>
-                      <Badge className={`${STATO_POST_COLORS[post.stato as StatoPost].bg} ${STATO_POST_COLORS[post.stato as StatoPost].text} border-none font-medium text-[10px]`}>
-                        {STATO_POST_LABELS[post.stato as StatoPost]}
-                      </Badge>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-sm text-gray-600 italic bg-gray-50 p-4 rounded-lg border-l-4 border-indigo-600">"{post.testo}"</p>
-                    </CardContent>
-                    {post.stato === 'da_approvare' && (
-                      <CardFooter className="pt-0 flex justify-end">
-                        <Button className="bg-emerald-600 hover:bg-emerald-700 gap-2" onClick={() => approvePost(post.id)}>
-                          <Check className="w-4 h-4" /> Approva Post
+              <div className="space-y-6">
+                {postsOnSelectedDate.map((post: any) => {
+                  const materialAssociato = materials?.find(m => m.id === post.materiale_id);
+                  const typeInfo = materialAssociato ? getFileTypeInfo(materialAssociato.nome_file) : null;
+
+                  return (
+                    <Card key={post.id} className="rounded-xl border-gray-200/60 overflow-hidden shadow-sm hover:shadow-md transition-shadow bg-white">
+                      {/* Social Header */}
+                      <div className="p-4 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <Avatar className="h-10 w-10 border border-gray-100">
+                            <AvatarFallback className="bg-indigo-600 text-white font-bold">
+                              {client.nome_azienda.charAt(0).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h3 className="font-bold text-sm text-gray-900">{client.nome_azienda}</h3>
+                              <Badge className={`${STATO_POST_COLORS[post.stato as StatoPost].bg} ${STATO_POST_COLORS[post.stato as StatoPost].text} border-none font-medium text-[9px] py-0 px-1.5`}>
+                                {STATO_POST_LABELS[post.stato as StatoPost]}
+                              </Badge>
+                            </div>
+                            <p className="text-[10px] text-gray-400 flex items-center gap-1">
+                              <Clock className="w-2.5 h-2.5" />
+                              Pianificato: {post.data_pubblicazione && typeof post.data_pubblicazione.toDate === 'function' ? post.data_pubblicazione.toDate().toLocaleString('it-IT', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'Orario non pianificato'}
+                            </p>
+                          </div>
+                        </div>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-300">
+                           <MoreHorizontal className="w-5 h-5" />
                         </Button>
-                      </CardFooter>
-                    )}
-                  </Card>
-                ))}
+                      </div>
+
+                      {/* Social Copy */}
+                      <div className="px-4 pb-3">
+                        <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
+                          {post.testo}
+                        </p>
+                      </div>
+
+                      {/* Social Media Area */}
+                      {materialAssociato ? (
+                        <div className="relative aspect-video bg-gray-100 border-y border-gray-50 flex flex-col items-center justify-center overflow-hidden">
+                           {typeInfo?.type === 'foto' || typeInfo?.type === 'grafica' ? (
+                              <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-50 text-gray-300">
+                                <ImageIcon className="w-12 h-12 mb-2" />
+                                <span className="text-[10px] font-medium px-4 text-center truncate w-full">{materialAssociato.nome_file}</span>
+                              </div>
+                            ) : (
+                              <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900 text-slate-400">
+                                <typeInfo?.icon className="w-12 h-12 mb-2" />
+                                <span className="text-[10px] font-medium px-4 text-center truncate w-full">{materialAssociato.nome_file}</span>
+                              </div>
+                            )}
+                            <div className="absolute top-3 left-3">
+                               <Badge variant="secondary" className="bg-white/90 backdrop-blur shadow-sm text-[9px] uppercase font-bold">
+                                 {typeInfo?.label}
+                               </Badge>
+                            </div>
+                        </div>
+                      ) : (
+                        <div className="h-px bg-gray-100" />
+                      )}
+
+                      {/* Social Actions */}
+                      <div className="p-2 px-4 flex items-center justify-between border-t border-gray-50">
+                          <div className="flex gap-4 text-gray-400">
+                             <div className="flex items-center gap-1 text-[10px] font-bold uppercase"><MessageSquare className="w-3.5 h-3.5" /> Commenti</div>
+                             <div className="flex items-center gap-1 text-[10px] font-bold uppercase"><Share2 className="w-3.5 h-3.5" /> Condividi</div>
+                          </div>
+                          {post.stato === 'da_approvare' && (
+                            <Button className="h-8 text-[10px] font-bold bg-emerald-600 hover:bg-emerald-700 uppercase tracking-tighter gap-2" onClick={() => approvePost(post.id)}>
+                              <Check className="w-4 h-4" /> Approva Post
+                            </Button>
+                          )}
+                      </div>
+                    </Card>
+                  );
+                })}
               </div>
             ) : (
               <div className="text-center py-10 bg-gray-50/50 rounded-xl border-2 border-dashed">
