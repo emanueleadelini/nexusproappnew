@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useRef } from 'react';
@@ -11,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useFirestore, useUser } from '@/firebase';
 import { collection, addDoc, serverTimestamp, Timestamp, doc, updateDoc, increment } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, FilePlus2, Calendar, UploadCloud, X, FileIcon, ImageIcon } from 'lucide-react';
+import { Loader2, FilePlus2, Calendar, UploadCloud, X, FileIcon, ImageIcon, AlertCircle } from 'lucide-react';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { DestinazioneAsset } from '@/types/material';
@@ -21,6 +20,8 @@ interface Props {
   onClose: () => void;
   clienteId: string;
 }
+
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 
 export function CreaPostManualeModal({ isOpen, onClose, clienteId }: Props) {
   const { user } = useUser();
@@ -40,7 +41,17 @@ export function CreaPostManualeModal({ isOpen, onClose, clienteId }: Props) {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setSelectedFile(e.target.files[0]);
+      const file = e.target.files[0];
+      if (file.size > MAX_FILE_SIZE) {
+        toast({
+          variant: 'destructive',
+          title: 'File troppo grande',
+          description: 'Il limite per il caricamento diretto è di 50MB. Per file più grandi, caricalo prima nell\'Archivio Asset usando un link (Drive/WeTransfer).',
+        });
+        if (fileInputRef.current) fileInputRef.current.value = '';
+        return;
+      }
+      setSelectedFile(file);
     }
   };
 
@@ -55,7 +66,6 @@ export function CreaPostManualeModal({ isOpen, onClose, clienteId }: Props) {
     try {
       let materialeId = null;
 
-      // 1. Se c'è un file, caricalo prima nell'archivio materiali
       if (selectedFile) {
         const matData = {
           nome_file: selectedFile.name,
@@ -70,7 +80,6 @@ export function CreaPostManualeModal({ isOpen, onClose, clienteId }: Props) {
         materialeId = matRef.id;
       }
 
-      // 2. Crea il post collegandolo al materiale (se presente)
       const postColRef = collection(db, 'clienti', clienteId, 'post');
       const clientRef = doc(db, 'clienti', clienteId);
       
@@ -86,7 +95,6 @@ export function CreaPostManualeModal({ isOpen, onClose, clienteId }: Props) {
 
       await addDoc(postColRef, postData);
 
-      // 3. Incrementa il contatore post_usati
       await updateDoc(clientRef, {
         post_usati: increment(1)
       });
@@ -121,7 +129,7 @@ export function CreaPostManualeModal({ isOpen, onClose, clienteId }: Props) {
           <DialogTitle className="flex items-center gap-2">
             <FilePlus2 className="w-5 h-5 text-indigo-600" /> Nuovo Post Completo
           </DialogTitle>
-          <DialogDescription>Inserisci testo e carica il contenuto multimediale (foto o video).</DialogDescription>
+          <DialogDescription>Inserisci testo e carica il contenuto multimediale (max 50MB).</DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSave} className="space-y-6 py-4">
@@ -157,7 +165,10 @@ export function CreaPostManualeModal({ isOpen, onClose, clienteId }: Props) {
               ) : (
                 <>
                   <UploadCloud className="w-8 h-8 text-gray-300" />
-                  <p className="text-xs font-medium text-gray-500 text-center">Trascina o clicca per caricare il contenuto del post</p>
+                  <div className="text-center">
+                    <p className="text-xs font-medium text-gray-500">Trascina o clicca per caricare</p>
+                    <p className="text-[10px] text-gray-400 mt-1">Limite 50MB. Per file più grandi usa un link nell'archivio.</p>
+                  </div>
                 </>
               )}
             </div>

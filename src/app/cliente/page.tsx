@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Upload, ArrowUpRight, Check, Loader2, UploadCloud, X, FileIcon, CalendarDays, Clock, Filter, PieChart, Info, Send, MessageSquare, Share2, Image as ImageIcon, Link as LinkIcon, ExternalLink, Plus } from 'lucide-react';
+import { Upload, ArrowUpRight, Check, Loader2, UploadCloud, X, FileIcon, CalendarDays, Clock, Filter, PieChart, Info, Send, MessageSquare, Share2, Image as ImageIcon, Link as LinkIcon, ExternalLink, Plus, AlertCircle } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -21,6 +21,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 
 export default function ClienteDashboard() {
   const { user } = useUser();
@@ -75,7 +77,20 @@ export default function ClienteDashboard() {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
-      setSelectedFiles(Array.from(e.target.files));
+      const files = Array.from(e.target.files);
+      const oversizedFiles = files.filter(f => f.size > MAX_FILE_SIZE);
+      
+      if (oversizedFiles.length > 0) {
+        toast({
+          variant: 'destructive',
+          title: 'File troppo grande',
+          description: `Uno o più file superano il limite di 50MB. Per favore, usa l'opzione "Link" per questi file.`,
+        });
+        const validFiles = files.filter(f => f.size <= MAX_FILE_SIZE);
+        setSelectedFiles(prev => [...prev, ...validFiles]);
+      } else {
+        setSelectedFiles(prev => [...prev, ...files]);
+      }
     }
   };
 
@@ -211,7 +226,7 @@ export default function ClienteDashboard() {
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle>Invia materiale all'agenzia</DialogTitle>
-              <DialogDescription>Invia file multipli o link per video pesanti.</DialogDescription>
+              <DialogDescription>Invia file multipli (max 50MB) o link per video pesanti.</DialogDescription>
             </DialogHeader>
             <div className="space-y-6 py-4">
               <Tabs value={uploadType} onValueChange={(v: any) => setUploadType(v)}>
@@ -235,7 +250,13 @@ export default function ClienteDashboard() {
                         ))}
                       </div>
                     ) : (
-                      <><UploadCloud className="w-8 h-8 text-gray-300" /><p className="text-xs font-medium text-gray-500">Trascina i tuoi file qui</p></>
+                      <>
+                        <UploadCloud className="w-8 h-8 text-gray-300" />
+                        <div className="text-center">
+                          <p className="text-xs font-medium text-gray-500">Trascina i tuoi file qui</p>
+                          <p className="text-[10px] text-gray-400 mt-1">Limite 50MB per file.</p>
+                        </div>
+                      </>
                     )}
                   </div>
                 </TabsContent>
@@ -243,7 +264,10 @@ export default function ClienteDashboard() {
                   <div className="space-y-2">
                     <Label>Link WeTransfer/Drive</Label>
                     <Input value={externalLink} onChange={(e) => setExternalLink(e.target.value)} placeholder="https://..." />
-                    <p className="text-[10px] text-muted-foreground">Obbligatorio per video &gt; 100MB.</p>
+                    <div className="flex items-start gap-2 bg-amber-50 p-2 rounded border border-amber-100">
+                      <AlertCircle className="w-3.5 h-3.5 text-amber-600 mt-0.5 shrink-0" />
+                      <p className="text-[10px] text-amber-700 leading-tight">Obbligatorio per video &gt; 50MB o file pesanti per non sovraccaricare la piattaforma.</p>
+                    </div>
                   </div>
                 </TabsContent>
               </Tabs>

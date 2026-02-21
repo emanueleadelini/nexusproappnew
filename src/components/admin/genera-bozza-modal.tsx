@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useRef } from 'react';
@@ -33,6 +32,8 @@ const TONI = [
   { id: 'info', label: 'Informativo', descrizione: 'chiaro, educativo, basato sui fatti' },
 ];
 
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+
 interface Props {
   isOpen: boolean;
   onClose: () => void;
@@ -60,7 +61,17 @@ export function GeneraBozzaModal({ isOpen, onClose, clienteId, clienteNome, clie
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setSelectedFile(e.target.files[0]);
+      const file = e.target.files[0];
+      if (file.size > MAX_FILE_SIZE) {
+        toast({
+          variant: 'destructive',
+          title: 'File troppo grande',
+          description: 'Il limite per il caricamento diretto è di 50MB. Per file più grandi, usa un link (Drive/WeTransfer) nell\'Archivio Asset.',
+        });
+        if (fileInputRef.current) fileInputRef.current.value = '';
+        return;
+      }
+      setSelectedFile(file);
     }
   };
 
@@ -91,7 +102,6 @@ export function GeneraBozzaModal({ isOpen, onClose, clienteId, clienteNome, clie
     try {
       let materialeId = null;
 
-      // 1. Carica il materiale se selezionato
       if (selectedFile) {
         const matRef = await addDoc(collection(db, 'clienti', clienteId, 'materiali'), {
           nome_file: selectedFile.name,
@@ -105,7 +115,6 @@ export function GeneraBozzaModal({ isOpen, onClose, clienteId, clienteNome, clie
         materialeId = matRef.id;
       }
 
-      // 2. Salva il post
       const postColRef = collection(db, 'clienti', clienteId, 'post');
       const clientRef = doc(db, 'clienti', clienteId);
       
@@ -121,7 +130,6 @@ export function GeneraBozzaModal({ isOpen, onClose, clienteId, clienteNome, clie
 
       await addDoc(postColRef, postData);
 
-      // 3. Incrementa crediti
       await updateDoc(clientRef, {
         post_usati: increment(1)
       });
@@ -152,7 +160,7 @@ export function GeneraBozzaModal({ isOpen, onClose, clienteId, clienteNome, clie
           <DialogTitle className="flex items-center gap-2 text-violet-600">
             <Sparkles className="w-5 h-5" /> Genera Bozza con IA
           </DialogTitle>
-          <DialogDescription>Gemini creerà una bozza personalizzata e potrai aggiungere i contenuti multimediali.</DialogDescription>
+          <DialogDescription>Gemini creerà una bozza personalizzata e potrai aggiungere i contenuti multimediali (max 50MB).</DialogDescription>
         </DialogHeader>
 
         {step === 1 ? (
@@ -230,7 +238,10 @@ export function GeneraBozzaModal({ isOpen, onClose, clienteId, clienteNome, clie
                   ) : (
                     <>
                       <UploadCloud className="w-8 h-8 text-gray-300" />
-                      <p className="text-xs font-medium text-gray-500 text-center">Carica la grafica o il video per questo post</p>
+                      <div className="text-center">
+                        <p className="text-xs font-medium text-gray-500">Trascina o clicca per caricare</p>
+                        <p className="text-[10px] text-gray-400 mt-1">Limite 50MB. Per file più grandi usa un link nell'archivio.</p>
+                      </div>
                     </>
                   )}
                 </div>

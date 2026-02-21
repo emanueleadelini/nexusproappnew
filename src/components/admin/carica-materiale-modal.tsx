@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useFirestore, useUser } from '@/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, UploadCloud, FileIcon, X, Link as LinkIcon, Plus } from 'lucide-react';
+import { Loader2, UploadCloud, FileIcon, X, Link as LinkIcon, Plus, AlertCircle } from 'lucide-react';
 import { DestinazioneAsset } from '@/types/material';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
@@ -18,6 +18,8 @@ interface Props {
   onClose: () => void;
   clienteId: string;
 }
+
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 
 export function CaricaMaterialeModal({ isOpen, onClose, clienteId }: Props) {
   const { user } = useUser();
@@ -32,7 +34,21 @@ export function CaricaMaterialeModal({ isOpen, onClose, clienteId }: Props) {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
-      setSelectedFiles(Array.from(e.target.files));
+      const files = Array.from(e.target.files);
+      const oversizedFiles = files.filter(f => f.size > MAX_FILE_SIZE);
+      
+      if (oversizedFiles.length > 0) {
+        toast({
+          variant: 'destructive',
+          title: 'File troppo grande',
+          description: `Uno o più file superano il limite di 50MB. Per favore, usa l'opzione "Link" per questi file.`,
+        });
+        // Filtriamo i file validi
+        const validFiles = files.filter(f => f.size <= MAX_FILE_SIZE);
+        setSelectedFiles(prev => [...prev, ...validFiles]);
+      } else {
+        setSelectedFiles(prev => [...prev, ...files]);
+      }
     }
   };
 
@@ -108,7 +124,7 @@ export function CaricaMaterialeModal({ isOpen, onClose, clienteId }: Props) {
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">Invia Materiale al Cliente</DialogTitle>
-          <DialogDescription>Puoi inviare file multipli o link per file pesanti.</DialogDescription>
+          <DialogDescription>Puoi inviare file multipli (max 50MB cad.) o link per file pesanti.</DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSave} className="space-y-6 py-4">
@@ -141,7 +157,10 @@ export function CaricaMaterialeModal({ isOpen, onClose, clienteId }: Props) {
                 ) : (
                   <>
                     <UploadCloud className="w-10 h-10 text-gray-300" />
-                    <p className="text-sm font-medium text-gray-600 text-center">Trascina o clicca per selezionare i file</p>
+                    <div className="text-center space-y-1">
+                      <p className="text-sm font-medium text-gray-600">Trascina o clicca per caricare</p>
+                      <p className="text-[10px] text-gray-400">Limite 50MB per file. Per file più grandi usa "Link".</p>
+                    </div>
                   </>
                 )}
               </div>
@@ -154,7 +173,10 @@ export function CaricaMaterialeModal({ isOpen, onClose, clienteId }: Props) {
                   <LinkIcon className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
                   <Input id="link" value={externalLink} onChange={(e) => setExternalLink(e.target.value)} placeholder="https://we.tl/..." className="pl-10" />
                 </div>
-                <p className="text-[10px] text-muted-foreground">Usa questa opzione per video &gt; 100MB o cartelle Drive/Dropbox.</p>
+                <div className="flex items-start gap-2 bg-indigo-50 p-2 rounded border border-indigo-100">
+                  <AlertCircle className="w-3.5 h-3.5 text-indigo-600 mt-0.5 shrink-0" />
+                  <p className="text-[10px] text-indigo-700 leading-tight">Usa questa opzione per video &gt; 50MB, cartelle Drive o link WeTransfer per non sovraccaricare la piattaforma.</p>
+                </div>
               </div>
             </TabsContent>
           </Tabs>
