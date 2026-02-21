@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -10,6 +11,8 @@ import { useFirestore } from '@/firebase';
 import { collection, addDoc, serverTimestamp, Timestamp, doc, updateDoc, increment } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, FilePlus2, Calendar } from 'lucide-react';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 interface Props {
   isOpen: boolean;
@@ -27,7 +30,7 @@ export function CreaPostManualeModal({ isOpen, onClose, clienteId }: Props) {
   const db = useFirestore();
   const { toast } = useToast();
 
-  const handleSave = async (e: React.FormEvent) => {
+  const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.titolo || !formData.testo) {
       toast({ variant: 'destructive', title: 'Errore', description: 'Titolo e Testo sono obbligatori.' });
@@ -35,33 +38,38 @@ export function CreaPostManualeModal({ isOpen, onClose, clienteId }: Props) {
     }
 
     setLoading(true);
-    try {
-      const postData = {
-        titolo: formData.titolo,
-        testo: formData.testo,
-        stato: 'bozza',
-        data_pubblicazione: formData.data_pubblicazione ? Timestamp.fromDate(new Date(formData.data_pubblicazione)) : null,
-        creato_il: serverTimestamp(),
-        aggiornato_il: serverTimestamp(),
-      };
+    const postColRef = collection(db, 'clienti', clienteId, 'post');
+    const clientRef = doc(db, 'clienti', clienteId);
+    
+    const postData = {
+      titolo: formData.titolo,
+      testo: formData.testo,
+      stato: 'bozza',
+      data_pubblicazione: formData.data_pubblicazione ? Timestamp.fromDate(new Date(formData.data_pubblicazione)) : null,
+      creato_il: serverTimestamp(),
+      aggiornato_il: serverTimestamp(),
+    };
 
-      // 1. Crea il post nella sotto-collezione
-      await addDoc(collection(db, 'clienti', clienteId, 'post'), postData);
+    // 1. Crea il post nella sotto-collezione
+    addDoc(postColRef, postData)
+      .then(() => {
+        // 2. Incrementa il contatore post_usati nel documento cliente
+        updateDoc(clientRef, {
+          post_usati: increment(1)
+        }).catch(e => {
+          errorEmitter.emit('permission-error', new FirestorePermissionError({ path: clientRef.path, operation: 'update' }));
+        });
 
-      // 2. Incrementa il contatore post_usati nel documento cliente
-      const clientRef = doc(db, 'clienti', clienteId);
-      await updateDoc(clientRef, {
-        post_usati: increment(1)
+        toast({ title: 'Post creato!', description: 'La bozza è stata aggiunta al PED e i crediti aggiornati.' });
+        setFormData({ titolo: '', testo: '', data_pubblicazione: '' });
+        onClose();
+      })
+      .catch(e => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({ path: postColRef.path, operation: 'create', requestResourceData: postData }));
+      })
+      .finally(() => {
+        setLoading(false);
       });
-
-      toast({ title: 'Post creato!', description: 'La bozza è stata aggiunta al PED e i crediti aggiornati.' });
-      setFormData({ titolo: '', testo: '', data_pubblicazione: '' });
-      onClose();
-    } catch (error) {
-      toast({ variant: 'destructive', title: 'Errore', description: 'Impossibile creare il post.' });
-    } finally {
-      setLoading(false);
-    }
   };
 
   return (

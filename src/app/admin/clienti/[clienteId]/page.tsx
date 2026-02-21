@@ -1,8 +1,9 @@
+
 'use client';
 
 import { useParams } from 'next/navigation';
 import { useFirestore, useMemoFirebase, useCollection, useDoc } from '@/firebase';
-import { collection, doc, query, orderBy, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, query, orderBy, updateDoc, serverTimestamp, deleteDoc, increment } from 'firebase/firestore';
 import { StatoPost, STATO_POST_LABELS, STATO_POST_COLORS, Post } from '@/types/post';
 import { StatoValidazione, STATO_VALIDAZIONE_LABELS, STATO_VALIDAZIONE_COLORS, getFileTypeInfo, Material, DestinazioneAsset, DESTINAZIONE_LABELS, DESTINAZIONE_ICONS } from '@/types/material';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -11,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
-import { CalendarDays, FolderOpen, Send, Clock, Sparkles, Plus, ChevronLeft, UploadCloud, Edit3, Image as ImageIcon, Filter, PieChart, Info, AlertTriangle } from 'lucide-react';
+import { CalendarDays, FolderOpen, Send, Clock, Sparkles, Plus, ChevronLeft, UploadCloud, Edit3, Image as ImageIcon, Filter, PieChart, Info, AlertTriangle, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { GeneraBozzaModal } from '@/components/admin/genera-bozza-modal';
 import { CreaPostManualeModal } from '@/components/admin/crea-post-manuale-modal';
@@ -22,6 +23,8 @@ import { Calendar } from '@/components/ui/calendar';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 export default function ClienteDettaglio() {
   const { clienteId } = useParams() as { clienteId: string };
@@ -50,16 +53,37 @@ export default function ClienteDettaglio() {
   }, [db, clienteId]);
   const { data: materials, isLoading: isMaterialsLoading } = useCollection<Material>(materialsQuery);
 
-  const updatePostState = async (postId: string, newState: string) => {
+  const updatePostState = (postId: string, newState: string) => {
     const ref = doc(db, 'clienti', clienteId, 'post', postId);
     updateDoc(ref, { 
       stato: newState, 
       aggiornato_il: serverTimestamp() 
+    }).catch(e => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({ path: ref.path, operation: 'update' }));
     });
     toast({ title: "Stato aggiornato", description: `Il post è ora in stato: ${newState}` });
   };
 
-  const validateMaterial = async (materialId: string, status: 'validato' | 'rifiutato') => {
+  const deletePost = (postId: string) => {
+    if (!window.confirm("Sei sicuro di voler eliminare questo post? Il credito verrà riaccreditato.")) return;
+    
+    const postRef = doc(db, 'clienti', clienteId, 'post', postId);
+    const clientRef = doc(db, 'clienti', clienteId);
+
+    deleteDoc(postRef).catch(e => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({ path: postRef.path, operation: 'delete' }));
+    });
+
+    updateDoc(clientRef, {
+      post_usati: increment(-1)
+    }).catch(e => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({ path: clientRef.path, operation: 'update' }));
+    });
+
+    toast({ title: "Post eliminato", description: "Calendario e crediti aggiornati." });
+  };
+
+  const validateMaterial = (materialId: string, status: 'validato' | 'rifiutato') => {
     const ref = doc(db, 'clienti', clienteId, 'materiali', materialId);
     let notes = null;
     if (status === 'rifiutato') {
@@ -70,6 +94,8 @@ export default function ClienteDettaglio() {
       stato_validazione: status, 
       note_rifiuto: notes,
       aggiornato_il: serverTimestamp()
+    }).catch(e => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({ path: ref.path, operation: 'update' }));
     });
     toast({ title: "Materiale aggiornato", description: `Stato: ${status}` });
   };
@@ -102,8 +128,9 @@ export default function ClienteDettaglio() {
 
   const daysWithPosts = posts?.filter(p => p.data_pubblicazione && typeof p.data_pubblicazione.toDate === 'function').map(p => p.data_pubblicazione.toDate().toDateString()) || [];
 
+  // Calcolo crediti collegato DIRETTAMENTE al calendario (numero di post in collezione)
   const postTotali = client.post_totali || 0;
-  const postUsati = client.post_usati || 0;
+  const postUsati = posts?.length || 0; 
   const postRimanenti = Math.max(0, postTotali - postUsati);
   const usagePercent = postTotali > 0 ? (postUsati / postTotali) * 100 : 0;
 
@@ -190,9 +217,14 @@ export default function ClienteDettaglio() {
                                 <div>
                                   <div className="flex items-center gap-3">
                                     <h3 className="font-headline font-semibold text-lg">{post.titolo}</h3>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-indigo-600" onClick={() => setPostDaModificare(post)}>
-                                      <Edit3 className="w-4 h-4" />
-                                    </Button>
+                                    <div className="flex gap-1">
+                                      <Button variant="ghost" size="icon" className="h-8 w-8 text-indigo-600" onClick={() => setPostDaModificare(post)}>
+                                        <Edit3 className="w-4 h-4" />
+                                      </Button>
+                                      <Button variant="ghost" size="icon" className="h-8 w-8 text-red-400 hover:text-red-600" onClick={() => deletePost(post.id)}>
+                                        <Trash2 className="w-4 h-4" />
+                                      </Button>
+                                    </div>
                                   </div>
                                   <div className="flex items-center gap-4 mt-1">
                                     <div className="flex items-center gap-1">
@@ -356,9 +388,9 @@ export default function ClienteDettaglio() {
 
               <div className="space-y-2">
                 <div className="flex justify-between text-xs font-bold uppercase tracking-tighter">
-                  <span className="text-gray-400">Utilizzo Crediti</span>
+                  <span className="text-gray-400">Utilizzo Calendario</span>
                   <span className={usagePercent > 80 ? 'text-red-600' : 'text-indigo-600'}>
-                    {Math.round(usagePercent)}%
+                    {postUsati} / {postTotali}
                   </span>
                 </div>
                 <Progress 
@@ -370,7 +402,7 @@ export default function ClienteDettaglio() {
               <div className="bg-indigo-50/50 p-4 rounded-lg border border-indigo-100 flex gap-3 items-start">
                 <Info className="w-4 h-4 text-indigo-500 mt-0.5" />
                 <p className="text-[10px] text-indigo-700 leading-relaxed">
-                  I crediti vengono scalati automaticamente ogni volta che crei un nuovo post per il cliente.
+                  I crediti sono collegati direttamente al numero di post inseriti nel Calendario Editoriale.
                 </p>
               </div>
             </CardContent>

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useUser, useFirestore, useMemoFirebase, useCollection, useDoc } from '@/firebase';
@@ -16,9 +17,11 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from '@/components/ui/label';
 import { Calendar } from '@/components/ui/calendar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 export default function ClienteDashboard() {
-  const { user } = userUser();
+  const { user } = useUser();
   const db = useFirestore();
   const { toast } = useToast();
   const [clienteId, setClienteId] = useState<string | null>(null);
@@ -54,12 +57,14 @@ export default function ClienteDashboard() {
   }, [db, clienteId]);
   const { data: materials, isLoading: isMaterialsLoading } = useCollection<Material>(materialsQuery);
 
-  const approvePost = async (postId: string) => {
+  const approvePost = (postId: string) => {
     if (!clienteId) return;
     const ref = doc(db, 'clienti', clienteId, 'post', postId);
     updateDoc(ref, { 
       stato: 'approvato', 
       aggiornato_il: serverTimestamp() 
+    }).catch(e => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({ path: ref.path, operation: 'update' }));
     });
     toast({ title: "Post approvato!", description: "L'agenzia procederà alla pubblicazione." });
   };
@@ -70,43 +75,52 @@ export default function ClienteDashboard() {
     }
   };
 
-  const handleUpload = async () => {
+  const handleUpload = () => {
     if (!clienteId || !selectedFile || !user) return;
     setIsUploading(true);
-    try {
-      // La data viene inserita automaticamente tramite serverTimestamp()
-      await addDoc(collection(db, 'clienti', clienteId, 'materiali'), {
-        nome_file: selectedFile.name,
-        url_storage: null,
-        caricato_da: user.uid,
-        destinazione: destinazione,
-        stato_validazione: 'in_attesa',
-        note_rifiuto: null,
-        creato_il: serverTimestamp()
+    
+    const matColRef = collection(db, 'clienti', clienteId, 'materiali');
+    const matData = {
+      nome_file: selectedFile.name,
+      url_storage: null,
+      caricato_da: user.uid,
+      destinazione: destinazione,
+      stato_validazione: 'in_attesa',
+      note_rifiuto: null,
+      creato_il: serverTimestamp()
+    };
+
+    addDoc(matColRef, matData)
+      .then(() => {
+        resetUploadForm();
+        toast({ title: "Materiale inviato!", description: "Il team Nexus lo validerà a breve." });
+      })
+      .catch(e => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({ path: matColRef.path, operation: 'create', requestResourceData: matData }));
+      })
+      .finally(() => {
+        setIsUploading(false);
       });
-      resetUploadForm();
-      toast({ title: "Materiale inviato!", description: "Il team Nexus lo validerà a breve. La data è stata registrata." });
-    } finally {
-      setIsUploading(false);
-    }
   };
 
-  const handleUpgradeRequest = async () => {
+  const handleUpgradeRequest = () => {
     if (!clienteId) return;
     setIsRequestingUpgrade(true);
-    try {
-      const ref = doc(db, 'clienti', clienteId);
-      await updateDoc(ref, { 
-        richiesta_upgrade: true,
-        aggiornato_il: serverTimestamp()
-      });
-      toast({ 
-        title: "Richiesta inviata!", 
-        description: "L'agenzia è stata notificata. Verrai contattato a breve per l'upgrade." 
-      });
-    } finally {
+    
+    const clientRef = doc(db, 'clienti', clienteId);
+    updateDoc(clientRef, { 
+      richiesta_upgrade: true,
+      aggiornato_il: serverTimestamp()
+    })
+    .then(() => {
+      toast({ title: "Richiesta inviata!", description: "L'agenzia è stata notificata." });
+    })
+    .catch(e => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({ path: clientRef.path, operation: 'update' }));
+    })
+    .finally(() => {
       setIsRequestingUpgrade(false);
-    }
+    });
   };
 
   const resetUploadForm = () => {
@@ -119,7 +133,8 @@ export default function ClienteDashboard() {
   if (!client) return <div className="p-8">Errore caricamento dati cliente.</div>;
 
   const postTotali = client.post_totali || 0;
-  const postUsati = client.post_usati || 0;
+  // Collegamento al numero REALE di post in collezione
+  const postUsati = posts?.length || 0;
   const postRimanenti = Math.max(0, postTotali - postUsati);
   const usagePercent = postTotali > 0 ? (postUsati / postTotali) * 100 : 0;
 
@@ -240,7 +255,7 @@ export default function ClienteDashboard() {
 
               <div className="space-y-2">
                 <div className="flex justify-between text-xs font-bold uppercase tracking-tighter">
-                  <span className="text-gray-400">Post Utilizzati</span>
+                  <span className="text-gray-400">Utilizzo Calendario</span>
                   <span className={usagePercent > 80 ? 'text-red-600' : 'text-indigo-600'}>
                     {postUsati} / {postTotali}
                   </span>
@@ -254,7 +269,7 @@ export default function ClienteDashboard() {
               <div className="bg-indigo-50/50 p-4 rounded-lg border border-indigo-100 flex gap-3 items-start">
                 <Info className="w-4 h-4 text-indigo-500 mt-0.5" />
                 <p className="text-[10px] text-indigo-700 leading-relaxed">
-                  I crediti si riferiscono al numero di post pianificati dall'agenzia nel calendario editoriale. Quando arrivi a zero, contatta il tuo referente.
+                  I crediti sono calcolati in tempo reale in base ai post inseriti nel calendario editoriale.
                 </p>
               </div>
 
@@ -429,9 +444,4 @@ export default function ClienteDashboard() {
       </div>
     </div>
   );
-}
-
-function userUser() {
-  const { user, isUserLoading, userError } = useFirebase();
-  return { user, isUserLoading, userError };
 }

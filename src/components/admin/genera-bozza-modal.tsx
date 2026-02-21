@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -11,6 +12,8 @@ import { generateSocialPost, GeneratePostOutput } from '@/ai/flows/generate-post
 import { useFirestore } from '@/firebase';
 import { collection, addDoc, serverTimestamp, doc, updateDoc, increment } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 const PIATTAFORME = [
   { id: 'insta', label: 'Instagram', istruzioni: 'caption coinvolgente con emoji e hashtag, max 2200 caratteri' },
@@ -67,31 +70,39 @@ export function GeneraBozzaModal({ isOpen, onClose, clienteId, clienteNome, clie
     }
   };
 
-  const handleSalva = async () => {
+  const handleSalva = () => {
     if (!result) return;
     setLoading(true);
-    try {
-      // 1. Crea il post
-      await addDoc(collection(db, 'clienti', clienteId, 'post'), {
-        titolo: result.titolo,
-        testo: result.testo,
-        stato: 'bozza',
-        data_pubblicazione: null,
-        creato_il: serverTimestamp(),
-        aggiornato_il: serverTimestamp()
-      });
+    
+    const postColRef = collection(db, 'clienti', clienteId, 'post');
+    const clientRef = doc(db, 'clienti', clienteId);
+    
+    const postData = {
+      titolo: result.titolo,
+      testo: result.testo,
+      stato: 'bozza',
+      data_pubblicazione: null,
+      creato_il: serverTimestamp(),
+      aggiornato_il: serverTimestamp()
+    };
 
-      // 2. Incrementa crediti
-      const clientRef = doc(db, 'clienti', clienteId);
-      await updateDoc(clientRef, {
-        post_usati: increment(1)
-      });
+    addDoc(postColRef, postData)
+      .then(() => {
+        updateDoc(clientRef, {
+          post_usati: increment(1)
+        }).catch(e => {
+          errorEmitter.emit('permission-error', new FirestorePermissionError({ path: clientRef.path, operation: 'update' }));
+        });
 
-      toast({ title: 'Bozza salvata!', description: 'Il post è stato aggiunto al calendario e i crediti aggiornati.' });
-      handleClose();
-    } finally {
-      setLoading(false);
-    }
+        toast({ title: 'Bozza salvata!', description: 'Il post è stato aggiunto al calendario e i crediti aggiornati.' });
+        handleClose();
+      })
+      .catch(e => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({ path: postColRef.path, operation: 'create', requestResourceData: postData }));
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   };
 
   const handleClose = () => {
