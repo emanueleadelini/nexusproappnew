@@ -9,11 +9,10 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
-import { CalendarCheck, Upload, HelpCircle, ArrowUpRight, Check, FileText, Info, Loader2, User, ShieldCheck, Share2, Globe, Printer } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { CalendarCheck, Upload, HelpCircle, ArrowUpRight, Check, FileText, Info, Loader2, User, ShieldCheck, Share2, Globe, Printer, UploadCloud, X, FileIcon } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
@@ -22,9 +21,10 @@ export default function ClienteDashboard() {
   const db = useFirestore();
   const { toast } = useToast();
   const [clienteId, setClienteId] = useState<string | null>(null);
-  const [newFileName, setNewFileName] = useState('');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [destinazione, setDestinazione] = useState<DestinazioneMateriale>('social');
   const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (user) {
@@ -56,12 +56,18 @@ export default function ClienteDashboard() {
     toast({ title: "Post approvato!", description: "L'agenzia procederà alla pubblicazione." });
   };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setSelectedFile(e.target.files[0]);
+    }
+  };
+
   const handleUpload = async () => {
-    if (!clienteId || !newFileName || !user) return;
+    if (!clienteId || !selectedFile || !user) return;
     setIsUploading(true);
     try {
       await addDoc(collection(db, 'clienti', clienteId, 'materiali'), {
-        nome_file: newFileName,
+        nome_file: selectedFile.name,
         url_storage: null,
         caricato_da: user.uid,
         ruolo_caricatore: 'cliente',
@@ -69,11 +75,17 @@ export default function ClienteDashboard() {
         destinazione: destinazione,
         creato_il: new Date().toISOString()
       });
-      setNewFileName('');
+      resetUploadForm();
       toast({ title: "Materiale inviato!", description: "Il team Nexus lo validerà a breve." });
     } finally {
       setIsUploading(false);
     }
+  };
+
+  const resetUploadForm = () => {
+    setSelectedFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    setDestinazione('social');
   };
 
   if (isClientLoading || !clienteId) return <div className="space-y-6 p-8"><Skeleton className="h-32 w-full" /><Skeleton className="h-64" /></div>;
@@ -81,7 +93,6 @@ export default function ClienteDashboard() {
 
   const usagePercent = client.post_totali > 0 ? (client.post_usati / client.post_totali) * 100 : 0;
 
-  // Raggruppamento materiali per data per visualizzazione a calendario
   const groupedMaterials = materials?.reduce((acc: any, mat: any) => {
     const date = new Date(mat.creato_il).toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' });
     if (!acc[date]) acc[date] = [];
@@ -96,7 +107,7 @@ export default function ClienteDashboard() {
           <h1 className="text-3xl font-headline font-bold text-gray-900">Ciao, {client.nome_azienda}</h1>
           <p className="text-muted-foreground">Ecco la situazione aggiornata delle tue attività.</p>
         </div>
-        <Dialog>
+        <Dialog onOpenChange={(open) => { if (!open) resetUploadForm(); }}>
           <DialogTrigger asChild>
             <Button className="bg-indigo-600 hover:bg-indigo-700 shadow-md gap-2 w-full md:w-auto h-12">
               <Upload className="w-4 h-4" /> Invia Asset
@@ -105,12 +116,47 @@ export default function ClienteDashboard() {
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Invia materiale all'agenzia</DialogTitle>
-              <DialogDescription>Specifica il tipo di file e la sua destinazione d'uso.</DialogDescription>
+              <DialogDescription>Seleziona il file e specifica la sua destinazione d'uso.</DialogDescription>
             </DialogHeader>
-            <div className="space-y-4 py-4">
+            <div className="space-y-6 py-4">
               <div className="space-y-2">
-                <Label htmlFor="fileName">Nome File / Descrizione</Label>
-                <Input id="fileName" value={newFileName} onChange={(e) => setNewFileName(e.target.value)} placeholder="es. Foto evento Natale.jpg" />
+                <Label>File da caricare</Label>
+                <div 
+                  onClick={() => fileInputRef.current?.click()}
+                  className={`border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center gap-3 cursor-pointer transition-colors ${selectedFile ? 'border-indigo-400 bg-indigo-50/50' : 'border-gray-200 hover:border-indigo-300 hover:bg-gray-50'}`}
+                >
+                  <input 
+                    type="file" 
+                    ref={fileInputRef} 
+                    onChange={handleFileChange} 
+                    className="hidden" 
+                  />
+                  {selectedFile ? (
+                    <div className="flex flex-col items-center text-center">
+                      <div className="bg-indigo-600 p-2 rounded-lg mb-2">
+                        <FileIcon className="w-6 h-6 text-white" />
+                      </div>
+                      <span className="text-sm font-semibold text-gray-900 truncate max-w-[250px]">{selectedFile.name}</span>
+                      <Button 
+                        type="button" 
+                        variant="ghost" 
+                        size="sm" 
+                        className="mt-2 text-red-500 hover:text-red-600 h-7"
+                        onClick={(e) => { e.stopPropagation(); setSelectedFile(null); }}
+                      >
+                        <X className="w-3 h-3 mr-1" /> Rimuovi
+                      </Button>
+                    </div>
+                  ) : (
+                    <>
+                      <UploadCloud className="w-10 h-10 text-gray-300" />
+                      <div className="text-center">
+                        <p className="text-sm font-medium text-gray-600">Seleziona o trascina un file</p>
+                        <p className="text-xs text-gray-400">Foto, video o documenti</p>
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
               <div className="space-y-2">
                 <Label>Destinazione d'uso</Label>
@@ -127,7 +173,7 @@ export default function ClienteDashboard() {
               </div>
             </div>
             <DialogFooter>
-              <Button onClick={handleUpload} disabled={!newFileName || isUploading} className="w-full">
+              <Button onClick={handleUpload} disabled={!selectedFile || isUploading} className="w-full bg-indigo-600 h-11">
                 {isUploading ? <Loader2 className="animate-spin" /> : 'Invia ora'}
               </Button>
             </DialogFooter>

@@ -1,15 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useFirestore, useUser } from '@/firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, UploadCloud, Share2, Globe, Printer } from 'lucide-react';
+import { Loader2, UploadCloud, Share2, Globe, Printer, FileIcon, X } from 'lucide-react';
 import { DestinazioneMateriale } from '@/types/material';
 
 interface Props {
@@ -21,29 +21,40 @@ interface Props {
 export function CaricaMaterialeModal({ isOpen, onClose, clienteId }: Props) {
   const { user } = useUser();
   const [loading, setLoading] = useState(false);
-  const [nomeFile, setNomeFile] = useState('');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [destinazione, setDestinazione] = useState<DestinazioneMateriale>('social');
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const db = useFirestore();
   const { toast } = useToast();
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setSelectedFile(e.target.files[0]);
+    }
+  };
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!nomeFile || !user) return;
+    if (!selectedFile || !user) {
+      toast({ variant: 'destructive', title: 'Errore', description: 'Seleziona un file prima di continuare.' });
+      return;
+    }
 
     setLoading(true);
     try {
+      // Per ora simuliamo l'upload salvando il nome del file e i metadati su Firestore
       await addDoc(collection(db, 'clienti', clienteId, 'materiali'), {
-        nome_file: nomeFile,
-        url_storage: null,
+        nome_file: selectedFile.name,
+        url_storage: null, // Verrà implementato con Firebase Storage
         caricato_da: user.uid,
         ruolo_caricatore: 'admin',
-        stato_validazione: 'validato', // Gli admin caricano file già validati
+        stato_validazione: 'validato',
         destinazione: destinazione,
         creato_il: new Date().toISOString()
       });
 
-      toast({ title: 'Materiale aggiunto!', description: 'Il file è stato caricato correttamente.' });
-      setNomeFile('');
+      toast({ title: 'Materiale caricato!', description: `Il file ${selectedFile.name} è stato aggiunto correttamente.` });
+      resetForm();
       onClose();
     } catch (error) {
       toast({ variant: 'destructive', title: 'Errore', description: 'Impossibile caricare il materiale.' });
@@ -52,30 +63,66 @@ export function CaricaMaterialeModal({ isOpen, onClose, clienteId }: Props) {
     }
   };
 
+  const resetForm = () => {
+    setSelectedFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    setDestinazione('social');
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={(open) => { if (!open) resetForm(); onClose(); }}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <UploadCloud className="w-5 h-5 text-indigo-600" /> Carica Asset Agenzia
           </DialogTitle>
-          <DialogDescription>Aggiungi un nuovo file per il cliente.</DialogDescription>
+          <DialogDescription>Seleziona un file da condividere con il cliente.</DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSave} className="space-y-4 py-4">
+        <form onSubmit={handleSave} className="space-y-6 py-4">
           <div className="space-y-2">
-            <Label htmlFor="nome">Nome File / Descrizione</Label>
-            <Input 
-              id="nome" 
-              value={nomeFile} 
-              onChange={(e) => setNomeFile(e.target.value)} 
-              placeholder="es. Banner Sito Promo.png"
-              required
-            />
+            <Label>Seleziona File</Label>
+            <div 
+              onClick={() => fileInputRef.current?.click()}
+              className={`border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center gap-3 cursor-pointer transition-colors ${selectedFile ? 'border-indigo-400 bg-indigo-50/50' : 'border-gray-200 hover:border-indigo-300 hover:bg-gray-50'}`}
+            >
+              <input 
+                type="file" 
+                ref={fileInputRef} 
+                onChange={handleFileChange} 
+                className="hidden" 
+              />
+              {selectedFile ? (
+                <div className="flex flex-col items-center text-center">
+                  <div className="bg-indigo-600 p-2 rounded-lg mb-2">
+                    <FileIcon className="w-6 h-6 text-white" />
+                  </div>
+                  <span className="text-sm font-semibold text-gray-900 truncate max-w-[250px]">{selectedFile.name}</span>
+                  <span className="text-[10px] text-gray-400 uppercase">{(selectedFile.size / 1024 / 1024).toFixed(2)} MB</span>
+                  <Button 
+                    type="button" 
+                    variant="ghost" 
+                    size="sm" 
+                    className="mt-2 text-red-500 hover:text-red-600 h-7"
+                    onClick={(e) => { e.stopPropagation(); setSelectedFile(null); }}
+                  >
+                    <X className="w-3 h-3 mr-1" /> Rimuovi
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  <UploadCloud className="w-10 h-10 text-gray-300" />
+                  <div className="text-center">
+                    <p className="text-sm font-medium text-gray-600">Clicca per sfogliare</p>
+                    <p className="text-xs text-gray-400">Supporta immagini, video, PDF e documenti</p>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
 
           <div className="space-y-2">
-            <Label>Destinazione</Label>
+            <Label>Destinazione d'uso</Label>
             <Select value={destinazione} onValueChange={(v: DestinazioneMateriale) => setDestinazione(v)}>
               <SelectTrigger>
                 <SelectValue placeholder="Seleziona destinazione" />
@@ -94,9 +141,9 @@ export function CaricaMaterialeModal({ isOpen, onClose, clienteId }: Props) {
             </Select>
           </div>
 
-          <DialogFooter className="pt-4">
+          <DialogFooter className="pt-2">
             <Button type="button" variant="ghost" onClick={onClose} disabled={loading}>Annulla</Button>
-            <Button type="submit" disabled={loading} className="bg-indigo-600 hover:bg-indigo-700">
+            <Button type="submit" disabled={loading || !selectedFile} className="bg-indigo-600 hover:bg-indigo-700">
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Carica Ora'}
             </Button>
           </DialogFooter>
