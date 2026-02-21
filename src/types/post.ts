@@ -24,4 +24,5 @@ export interface Post {
   data_pubblicazione: Timestamp | null;
   creato_il: Timestamp;
   aggiornato_il: Timestamp;
+  materiale_id?: string | null; // ID del materiale associato
 }

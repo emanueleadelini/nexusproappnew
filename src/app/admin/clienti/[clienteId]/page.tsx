@@ -3,17 +3,18 @@
 import { useParams } from 'next/navigation';
 import { useFirestore, useMemoFirebase, useCollection, useDoc } from '@/firebase';
 import { collection, doc, query, orderBy, updateDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
-import { StatoPost, STATO_POST_LABELS, STATO_POST_COLORS } from '@/types/post';
-import { StatoValidazione, STATO_VALIDAZIONE_LABELS, STATO_VALIDAZIONE_COLORS, getFileTypeInfo } from '@/types/material';
+import { StatoPost, STATO_POST_LABELS, STATO_POST_COLORS, Post } from '@/types/post';
+import { StatoValidazione, STATO_VALIDAZIONE_LABELS, STATO_VALIDAZIONE_COLORS, getFileTypeInfo, Material } from '@/types/material';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { CalendarDays, FolderOpen, Send, Clock, Sparkles, Plus, ChevronLeft, User, UploadCloud } from 'lucide-react';
+import { CalendarDays, FolderOpen, Send, Clock, Sparkles, Plus, ChevronLeft, User, UploadCloud, Edit3, Image as ImageIcon } from 'lucide-react';
 import { useState } from 'react';
 import { GeneraBozzaModal } from '@/components/admin/genera-bozza-modal';
 import { CreaPostManualeModal } from '@/components/admin/crea-post-manuale-modal';
+import { ModificaPostModal } from '@/components/admin/modifica-post-modal';
 import { CaricaMaterialeModal } from '@/components/admin/carica-materiale-modal';
 import { Calendar } from '@/components/ui/calendar';
 import Link from 'next/link';
@@ -27,6 +28,7 @@ export default function ClienteDettaglio() {
   const [isGeneraOpen, setIsGeneraOpen] = useState(false);
   const [isManualeOpen, setIsManualeOpen] = useState(false);
   const [isUploadOpen, setIsUploadOpen] = useState(false);
+  const [postDaModificare, setPostDaModificare] = useState<Post | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
 
   const clientDocRef = useMemoFirebase(() => doc(db, 'clienti', clienteId), [db, clienteId]);
@@ -35,12 +37,12 @@ export default function ClienteDettaglio() {
   const postsQuery = useMemoFirebase(() => {
     return query(collection(db, 'clienti', clienteId, 'post'), orderBy('creato_il', 'desc'));
   }, [db, clienteId]);
-  const { data: posts, isLoading: isPostsLoading } = useCollection<any>(postsQuery);
+  const { data: posts, isLoading: isPostsLoading } = useCollection<Post>(postsQuery);
 
   const materialsQuery = useMemoFirebase(() => {
     return query(collection(db, 'clienti', clienteId, 'materiali'), orderBy('creato_il', 'desc'));
   }, [db, clienteId]);
-  const { data: materials, isLoading: isMaterialsLoading } = useCollection<any>(materialsQuery);
+  const { data: materials, isLoading: isMaterialsLoading } = useCollection<Material>(materialsQuery);
 
   const updatePostState = async (postId: string, newState: string) => {
     const ref = doc(db, 'clienti', clienteId, 'post', postId);
@@ -78,14 +80,12 @@ export default function ClienteDettaglio() {
     return acc;
   }, {});
 
-  // Filtra i post per la data selezionata nel calendario
   const postsOnSelectedDate = posts?.filter(post => {
     if (!post.data_pubblicazione || !selectedDate || typeof post.data_pubblicazione.toDate !== 'function') return false;
     const pubDate = post.data_pubblicazione.toDate();
     return pubDate.toDateString() === selectedDate.toDateString();
   }) || [];
 
-  // Date che hanno dei post programmati (per evidenziarle nel calendario)
   const daysWithPosts = posts?.filter(p => p.data_pubblicazione && typeof p.data_pubblicazione.toDate === 'function').map(p => p.data_pubblicazione.toDate().toDateString()) || [];
 
   return (
@@ -148,42 +148,57 @@ export default function ClienteDettaglio() {
 
               {isPostsLoading ? <Skeleton className="h-48" /> : postsOnSelectedDate.length > 0 ? (
                 <div className="grid gap-4">
-                  {postsOnSelectedDate.map(post => (
-                    <Card key={post.id} className="rounded-xl border-gray-200/50 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-                      <div className="p-6">
-                        <div className="flex justify-between items-start mb-4">
-                          <div>
-                            <h3 className="font-headline font-semibold text-lg">{post.titolo}</h3>
-                            <div className="flex items-center gap-2 mt-1">
-                               <Clock className="w-3 h-3 text-gray-400" />
-                               <span className="text-xs text-gray-400">
-                                 {post.data_pubblicazione && typeof post.data_pubblicazione.toDate === 'function' ? post.data_pubblicazione.toDate().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) : 'Orario non pianificato'}
-                               </span>
+                  {postsOnSelectedDate.map(post => {
+                    const materialAssociato = materials?.find(m => m.id === post.materiale_id);
+                    return (
+                      <Card key={post.id} className="rounded-xl border-gray-200/50 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                        <div className="p-6">
+                          <div className="flex justify-between items-start mb-4">
+                            <div>
+                              <div className="flex items-center gap-3">
+                                <h3 className="font-headline font-semibold text-lg">{post.titolo}</h3>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-indigo-600" onClick={() => setPostDaModificare(post)}>
+                                  <Edit3 className="w-4 h-4" />
+                                </Button>
+                              </div>
+                              <div className="flex items-center gap-4 mt-1">
+                                <div className="flex items-center gap-1">
+                                  <Clock className="w-3 h-3 text-gray-400" />
+                                  <span className="text-xs text-gray-400">
+                                    {post.data_pubblicazione && typeof post.data_pubblicazione.toDate === 'function' ? post.data_pubblicazione.toDate().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) : 'Orario non pianificato'}
+                                  </span>
+                                </div>
+                                {materialAssociato && (
+                                  <div className="flex items-center gap-1 text-xs text-indigo-500 font-medium">
+                                    <ImageIcon className="w-3 h-3" /> Asset: {materialAssociato.nome_file}
+                                  </div>
+                                )}
+                              </div>
                             </div>
+                            <Badge className={`${STATO_POST_COLORS[post.stato as StatoPost].bg} ${STATO_POST_COLORS[post.stato as StatoPost].text} border-none font-medium`}>
+                              {STATO_POST_LABELS[post.stato as StatoPost]}
+                            </Badge>
                           </div>
-                          <Badge className={`${STATO_POST_COLORS[post.stato as StatoPost].bg} ${STATO_POST_COLORS[post.stato as StatoPost].text} border-none font-medium`}>
-                            {STATO_POST_LABELS[post.stato as StatoPost]}
-                          </Badge>
+                          <p className="text-sm text-gray-600 italic border-l-2 border-indigo-100 pl-4 bg-indigo-50/30 p-2 rounded-r">
+                            "{post.testo}"
+                          </p>
                         </div>
-                        <p className="text-sm text-gray-600 italic border-l-2 border-indigo-100 pl-4 bg-indigo-50/30 p-2 rounded-r">
-                          "{post.testo}"
-                        </p>
-                      </div>
-                      <CardFooter className="bg-gray-50/50 p-4 border-t border-gray-100 flex justify-end gap-2">
-                        {post.stato === 'bozza' && (
-                          <Button size="sm" onClick={() => updatePostState(post.id, 'da_approvare')} className="bg-orange-600 hover:bg-orange-700">
-                            <Send className="w-3 h-3 mr-2" /> Invia per approvazione
-                          </Button>
-                        )}
-                        {post.stato === 'da_approvare' && (
-                          <Button size="sm" onClick={() => updatePostState(post.id, 'approvato')} className="bg-blue-600 hover:bg-blue-700">Approva</Button>
-                        )}
-                        {post.stato === 'approvato' && (
-                          <Button size="sm" onClick={() => updatePostState(post.id, 'pubblicato')} className="bg-green-600 hover:bg-green-700">Segna pubblicato</Button>
-                        )}
-                      </CardFooter>
-                    </Card>
-                  ))}
+                        <CardFooter className="bg-gray-50/50 p-4 border-t border-gray-100 flex justify-end gap-2">
+                          {post.stato === 'bozza' && (
+                            <Button size="sm" onClick={() => updatePostState(post.id, 'da_approvare')} className="bg-orange-600 hover:bg-orange-700">
+                              <Send className="w-3 h-3 mr-2" /> Invia per approvazione
+                            </Button>
+                          )}
+                          {post.stato === 'da_approvare' && (
+                            <Button size="sm" onClick={() => updatePostState(post.id, 'approvato')} className="bg-blue-600 hover:bg-blue-700">Approva</Button>
+                          )}
+                          {post.stato === 'approvato' && (
+                            <Button size="sm" onClick={() => updatePostState(post.id, 'pubblicato')} className="bg-green-600 hover:bg-green-700">Segna pubblicato</Button>
+                          )}
+                        </CardFooter>
+                      </Card>
+                    );
+                  })}
                 </div>
               ) : (
                 <div className="text-center py-20 bg-white rounded-xl border-2 border-dashed border-gray-100">
@@ -247,6 +262,7 @@ export default function ClienteDettaglio() {
 
       <GeneraBozzaModal isOpen={isGeneraOpen} onClose={() => setIsGeneraOpen(false)} clienteId={clienteId} clienteNome={client.nome_azienda} clienteSettore={client.settore || ''} />
       <CreaPostManualeModal isOpen={isManualeOpen} onClose={() => setIsManualeOpen(false)} clienteId={clienteId} />
+      <ModificaPostModal isOpen={!!postDaModificare} onClose={() => setPostDaModificare(null)} clienteId={clienteId} post={postDaModificare} />
       <CaricaMaterialeModal isOpen={isUploadOpen} onClose={() => setIsUploadOpen(false)} clienteId={clienteId} />
     </div>
   );
