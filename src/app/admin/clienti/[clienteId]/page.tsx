@@ -2,15 +2,15 @@
 
 import { useParams } from 'next/navigation';
 import { useFirestore, useMemoFirebase, useCollection, useDoc } from '@/firebase';
-import { collection, doc, query, orderBy, updateDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
+import { collection, doc, query, orderBy, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { StatoPost, STATO_POST_LABELS, STATO_POST_COLORS, Post } from '@/types/post';
-import { StatoValidazione, STATO_VALIDAZIONE_LABELS, STATO_VALIDAZIONE_COLORS, getFileTypeInfo, Material } from '@/types/material';
+import { StatoValidazione, STATO_VALIDAZIONE_LABELS, STATO_VALIDAZIONE_COLORS, getFileTypeInfo, Material, DestinazioneAsset, DESTINAZIONE_LABELS, DESTINAZIONE_ICONS, TipoAsset } from '@/types/material';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { CalendarDays, FolderOpen, Send, Clock, Sparkles, Plus, ChevronLeft, User, UploadCloud, Edit3, Image as ImageIcon } from 'lucide-react';
+import { CalendarDays, FolderOpen, Send, Clock, Sparkles, Plus, ChevronLeft, User, UploadCloud, Edit3, Image as ImageIcon, Filter, CheckCircle2, XCircle } from 'lucide-react';
 import { useState } from 'react';
 import { GeneraBozzaModal } from '@/components/admin/genera-bozza-modal';
 import { CreaPostManualeModal } from '@/components/admin/crea-post-manuale-modal';
@@ -20,6 +20,7 @@ import { Calendar } from '@/components/ui/calendar';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export default function ClienteDettaglio() {
   const { clienteId } = useParams() as { clienteId: string };
@@ -30,6 +31,10 @@ export default function ClienteDettaglio() {
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [postDaModificare, setPostDaModificare] = useState<Post | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
+  
+  // Filtri Asset
+  const [tipoFilter, setTipoFilter] = useState<string>('all');
+  const [destFilter, setDestFilter] = useState<string>('all');
 
   const clientDocRef = useMemoFirebase(() => doc(db, 'clienti', clienteId), [db, clienteId]);
   const { data: client, isLoading: isClientLoading } = useDoc<any>(clientDocRef);
@@ -70,7 +75,15 @@ export default function ClienteDettaglio() {
   if (isClientLoading) return <div className="space-y-4 p-8"><Skeleton className="h-12 w-1/3" /><Skeleton className="h-64" /></div>;
   if (!client) return <div className="p-8 text-center">Cliente non trovato.</div>;
 
-  const groupedMaterials = materials?.reduce((acc: any, mat: any) => {
+  // Logica di filtraggio Asset
+  const filteredMaterials = materials?.filter(mat => {
+    const typeInfo = getFileTypeInfo(mat.nome_file);
+    const matchesTipo = tipoFilter === 'all' || typeInfo.type === tipoFilter;
+    const matchesDest = destFilter === 'all' || mat.destinazione === destFilter;
+    return matchesTipo && matchesDest;
+  }) || [];
+
+  const groupedMaterials = filteredMaterials.reduce((acc: any, mat: any) => {
     let date = 'Data non disponibile';
     if (mat.creato_il && typeof mat.creato_il.toDate === 'function') {
       date = mat.creato_il.toDate().toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' });
@@ -211,8 +224,45 @@ export default function ClienteDettaglio() {
           </div>
         </TabsContent>
 
-        <TabsContent value="materials" className="space-y-8">
-          {isMaterialsLoading ? <Skeleton className="h-64" /> : groupedMaterials && Object.keys(groupedMaterials).length > 0 ? (
+        <TabsContent value="materials" className="space-y-6">
+          {/* Submenu Filtri Asset */}
+          <div className="flex flex-wrap gap-4 items-center bg-gray-50 p-4 rounded-xl border border-gray-100">
+            <div className="flex items-center gap-2">
+              <Filter className="w-4 h-4 text-gray-400" />
+              <span className="text-sm font-bold text-gray-500 uppercase tracking-tight">Filtra per:</span>
+            </div>
+            
+            <Select value={tipoFilter} onValueChange={setTipoFilter}>
+              <SelectTrigger className="w-[180px] bg-white">
+                <SelectValue placeholder="Tipologia" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tutti i tipi</SelectItem>
+                <SelectItem value="grafica">🎨 Grafiche</SelectItem>
+                <SelectItem value="foto">📸 Foto</SelectItem>
+                <SelectItem value="video">🎥 Video</SelectItem>
+                <SelectItem value="documento">📄 Documenti</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={destFilter} onValueChange={setDestFilter}>
+              <SelectTrigger className="w-[180px] bg-white">
+                <SelectValue placeholder="Destinazione" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tutte le destinazioni</SelectItem>
+                <SelectItem value="social">📱 Social Media</SelectItem>
+                <SelectItem value="sito">🌐 Sito Web</SelectItem>
+                <SelectItem value="offline">🖨️ Grafiche Offline</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Button variant="ghost" size="sm" onClick={() => {setTipoFilter('all'); setDestFilter('all');}} className="text-xs text-gray-400 hover:text-indigo-600">
+              Reset Filtri
+            </Button>
+          </div>
+
+          {isMaterialsLoading ? <Skeleton className="h-64" /> : Object.keys(groupedMaterials).length > 0 ? (
             Object.keys(groupedMaterials).map(date => (
               <div key={date} className="space-y-4">
                 <div className="flex items-center gap-4">
@@ -220,8 +270,9 @@ export default function ClienteDettaglio() {
                   <div className="h-px bg-gray-100 flex-1" />
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {groupedMaterials[date].map((mat: any) => {
+                  {groupedMaterials[date].map((mat: Material) => {
                     const typeInfo = getFileTypeInfo(mat.nome_file);
+                    const DestIcon = DESTINAZIONE_ICONS[mat.destinazione] || FolderOpen;
                     return (
                       <Card key={mat.id} className="rounded-xl border-gray-200/50 shadow-sm overflow-hidden flex flex-col hover:border-indigo-300 transition-colors">
                         <div className="p-4 flex-1">
@@ -229,19 +280,22 @@ export default function ClienteDettaglio() {
                             <div className={`p-3 ${typeInfo.bg} rounded-xl`}>
                               <typeInfo.icon className={`w-6 h-6 ${typeInfo.color}`} />
                             </div>
+                            <div className="flex flex-col items-end gap-1">
+                              <Badge variant="outline" className="text-[9px] font-bold uppercase py-0 px-2 flex gap-1 items-center bg-gray-50">
+                                <DestIcon className="w-2 h-2" /> {DESTINAZIONE_LABELS[mat.destinazione]}
+                              </Badge>
+                              <MaterialeStatoChip stato={mat.stato_validazione} />
+                            </div>
                           </div>
                           <p className="font-semibold text-sm truncate" title={mat.nome_file}>{mat.nome_file}</p>
                           <div className="flex items-center gap-2 mt-2">
                             <User className="w-3 h-3 text-indigo-500" />
-                            <span className="text-[10px] text-gray-400 font-medium">Caricato da UID: {mat.caricato_da?.substring(0, 8)}...</span>
+                            <span className="text-[10px] text-gray-400 font-medium">UID: {mat.caricato_da?.substring(0, 8)}...</span>
                           </div>
-                          <Badge className={`${STATO_VALIDAZIONE_COLORS[mat.stato_validazione as StatoValidazione].bg} ${STATO_VALIDAZIONE_COLORS[mat.stato_validazione as StatoValidazione].text} border-none text-[10px] mt-3`}>
-                            {STATO_VALIDAZIONE_LABELS[mat.stato_validazione as StatoValidazione]}
-                          </Badge>
                         </div>
                         {mat.stato_validazione === 'in_attesa' && (
                           <div className="p-3 bg-gray-50 border-t flex gap-2">
-                            <Button size="sm" variant="outline" className="flex-1 text-red-600" onClick={() => validateMaterial(mat.id, 'rifiutato')}>Rifiuta</Button>
+                            <Button size="sm" variant="outline" className="flex-1 text-red-600 border-red-100" onClick={() => validateMaterial(mat.id, 'rifiutato')}>Rifiuta</Button>
                             <Button size="sm" className="flex-1 bg-green-600" onClick={() => validateMaterial(mat.id, 'validato')}>Valida</Button>
                           </div>
                         )}
@@ -252,9 +306,10 @@ export default function ClienteDettaglio() {
               </div>
             ))
           ) : (
-            <div className="text-center py-20 bg-white rounded-xl border-2 border-dashed">
+            <div className="text-center py-20 bg-white rounded-xl border-2 border-dashed border-gray-100">
               <FolderOpen className="w-10 h-10 text-gray-200 mx-auto mb-2" />
-              <p className="text-muted-foreground">Nessun asset caricato ancora.</p>
+              <p className="text-muted-foreground">Nessun asset trovato con i filtri selezionati.</p>
+              <Button variant="link" onClick={() => {setTipoFilter('all'); setDestFilter('all');}} className="text-indigo-600 mt-2">Pulisci i filtri</Button>
             </div>
           )}
         </TabsContent>
@@ -265,5 +320,13 @@ export default function ClienteDettaglio() {
       <ModificaPostModal isOpen={!!postDaModificare} onClose={() => setPostDaModificare(null)} clienteId={clienteId} post={postDaModificare} />
       <CaricaMaterialeModal isOpen={isUploadOpen} onClose={() => setIsUploadOpen(false)} clienteId={clienteId} />
     </div>
+  );
+}
+
+function MaterialeStatoChip({ stato }: { stato: StatoValidazione }) {
+  return (
+    <Badge className={`${STATO_VALIDAZIONE_COLORS[stato].bg} ${STATO_VALIDAZIONE_COLORS[stato].text} border-none text-[9px] py-0`}>
+      {STATO_VALIDAZIONE_LABELS[stato]}
+    </Badge>
   );
 }

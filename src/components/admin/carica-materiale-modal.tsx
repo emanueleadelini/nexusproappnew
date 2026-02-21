@@ -4,10 +4,12 @@ import { useState, useRef } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useFirestore, useUser } from '@/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, UploadCloud, FileIcon, X } from 'lucide-react';
+import { Loader2, UploadCloud, FileIcon, X, Share2, Globe, Printer } from 'lucide-react';
+import { DestinazioneAsset } from '@/types/material';
 
 interface Props {
   isOpen: boolean;
@@ -19,6 +21,7 @@ export function CaricaMaterialeModal({ isOpen, onClose, clienteId }: Props) {
   const { user } = useUser();
   const [loading, setLoading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [destinazione, setDestinazione] = useState<DestinazioneAsset>('social');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const db = useFirestore();
   const { toast } = useToast();
@@ -42,6 +45,7 @@ export function CaricaMaterialeModal({ isOpen, onClose, clienteId }: Props) {
         nome_file: selectedFile.name,
         url_storage: null,
         caricato_da: user.uid,
+        destinazione: destinazione,
         stato_validazione: 'validato',
         note_rifiuto: null,
         creato_il: serverTimestamp()
@@ -59,6 +63,7 @@ export function CaricaMaterialeModal({ isOpen, onClose, clienteId }: Props) {
 
   const resetForm = () => {
     setSelectedFile(null);
+    setDestinazione('social');
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -67,7 +72,7 @@ export function CaricaMaterialeModal({ isOpen, onClose, clienteId }: Props) {
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">Carica Asset</DialogTitle>
-          <DialogDescription>Seleziona un file da condividere nel piano del cliente.</DialogDescription>
+          <DialogDescription>Seleziona un file e specifica la sua destinazione d'uso.</DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSave} className="space-y-6 py-4">
@@ -93,6 +98,20 @@ export function CaricaMaterialeModal({ isOpen, onClose, clienteId }: Props) {
                 </>
               )}
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Destinazione d'uso</Label>
+            <Select value={destinazione} onValueChange={(val: DestinazioneAsset) => setDestinazione(val)}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Seleziona destinazione" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="social">📱 Social Media</SelectItem>
+                <SelectItem value="sito">🌐 Sito Web</SelectItem>
+                <SelectItem value="offline">🖨️ Grafiche Offline</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <DialogFooter className="pt-2">

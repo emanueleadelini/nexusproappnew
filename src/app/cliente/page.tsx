@@ -3,18 +3,19 @@
 import { useUser, useFirestore, useMemoFirebase, useCollection, useDoc } from '@/firebase';
 import { collection, doc, query, orderBy, updateDoc, addDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { StatoPost, STATO_POST_LABELS, STATO_POST_COLORS } from '@/types/post';
-import { StatoValidazione, STATO_VALIDAZIONE_LABELS, STATO_VALIDAZIONE_COLORS, getFileTypeInfo } from '@/types/material';
+import { StatoValidazione, STATO_VALIDAZIONE_LABELS, STATO_VALIDAZIONE_COLORS, getFileTypeInfo, Material, DestinazioneAsset, DESTINAZIONE_LABELS, DESTINAZIONE_ICONS } from '@/types/material';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
-import { CalendarCheck, Upload, ArrowUpRight, Check, Loader2, User, UploadCloud, X, FileIcon, CalendarDays, Clock } from 'lucide-react';
+import { CalendarCheck, Upload, ArrowUpRight, Check, Loader2, User, UploadCloud, X, FileIcon, CalendarDays, Clock, Filter, Share2, Globe, Printer } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Calendar } from '@/components/ui/calendar';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export default function ClienteDashboard() {
   const { user } = useUser();
@@ -22,8 +23,11 @@ export default function ClienteDashboard() {
   const { toast } = useToast();
   const [clienteId, setClienteId] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [destinazione, setDestinazione] = useState<DestinazioneAsset>('social');
   const [isUploading, setIsUploading] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
+  const [tipoFilter, setTipoFilter] = useState<string>('all');
+  const [destFilter, setDestFilter] = useState<string>('all');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -47,7 +51,7 @@ export default function ClienteDashboard() {
   const materialsQuery = useMemoFirebase(() => {
     return clienteId ? query(collection(db, 'clienti', clienteId, 'materiali'), orderBy('creato_il', 'desc')) : null;
   }, [db, clienteId]);
-  const { data: materials, isLoading: isMaterialsLoading } = useCollection<any>(materialsQuery);
+  const { data: materials, isLoading: isMaterialsLoading } = useCollection<Material>(materialsQuery);
 
   const approvePost = async (postId: string) => {
     if (!clienteId) return;
@@ -73,6 +77,7 @@ export default function ClienteDashboard() {
         nome_file: selectedFile.name,
         url_storage: null,
         caricato_da: user.uid,
+        destinazione: destinazione,
         stato_validazione: 'in_attesa',
         note_rifiuto: null,
         creato_il: serverTimestamp()
@@ -86,6 +91,7 @@ export default function ClienteDashboard() {
 
   const resetUploadForm = () => {
     setSelectedFile(null);
+    setDestinazione('social');
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -94,15 +100,23 @@ export default function ClienteDashboard() {
 
   const usagePercent = client.post_totali > 0 ? (client.post_usati / client.post_totali) * 100 : 0;
 
-  const postsOnSelectedDate = posts?.filter(post => {
+  const postsOnSelectedDate = posts?.filter((post: any) => {
     if (!post.data_pubblicazione || !selectedDate || typeof post.data_pubblicazione.toDate !== 'function') return false;
     const pubDate = post.data_pubblicazione.toDate();
     return pubDate.toDateString() === selectedDate.toDateString();
   }) || [];
 
-  const daysWithPosts = posts?.filter(p => p.data_pubblicazione && typeof p.data_pubblicazione.toDate === 'function').map(p => p.data_pubblicazione.toDate().toDateString()) || [];
+  const daysWithPosts = posts?.filter((p: any) => p.data_pubblicazione && typeof p.data_pubblicazione.toDate === 'function').map((p: any) => p.data_pubblicazione.toDate().toDateString()) || [];
 
-  const groupedMaterials = materials?.reduce((acc: any, mat: any) => {
+  // Logica di filtraggio Asset
+  const filteredMaterials = materials?.filter(mat => {
+    const typeInfo = getFileTypeInfo(mat.nome_file);
+    const matchesTipo = tipoFilter === 'all' || typeInfo.type === tipoFilter;
+    const matchesDest = destFilter === 'all' || mat.destinazione === destFilter;
+    return matchesTipo && matchesDest;
+  }) || [];
+
+  const groupedMaterials = filteredMaterials.reduce((acc: any, mat: Material) => {
     let date = 'Data non disponibile';
     if (mat.creato_il && typeof mat.creato_il.toDate === 'function') {
       date = mat.creato_il.toDate().toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' });
@@ -128,7 +142,7 @@ export default function ClienteDashboard() {
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Invia materiale all'agenzia</DialogTitle>
-              <DialogDescription>Seleziona il file da caricare nel tuo archivio.</DialogDescription>
+              <DialogDescription>Seleziona il file e la destinazione d'uso.</DialogDescription>
             </DialogHeader>
             <div className="space-y-6 py-4">
               <div className="space-y-2">
@@ -155,6 +169,20 @@ export default function ClienteDashboard() {
                     </>
                   )}
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Destinazione d'uso</Label>
+                <Select value={destinazione} onValueChange={(val: DestinazioneAsset) => setDestinazione(val)}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Seleziona destinazione" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="social">📱 Social Media</SelectItem>
+                    <SelectItem value="sito">🌐 Sito Web</SelectItem>
+                    <SelectItem value="offline">🖨️ Grafiche Offline</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
             <DialogFooter>
@@ -224,7 +252,7 @@ export default function ClienteDashboard() {
 
             {isPostsLoading ? <Skeleton className="h-48" /> : postsOnSelectedDate.length > 0 ? (
               <div className="space-y-4">
-                {postsOnSelectedDate.map(post => (
+                {postsOnSelectedDate.map((post: any) => (
                   <Card key={post.id} className="rounded-xl border-gray-200/50 shadow-sm transition-all hover:border-indigo-200">
                     <CardHeader className="pb-3 flex flex-row justify-between items-start space-y-0">
                       <div>
@@ -260,7 +288,41 @@ export default function ClienteDashboard() {
 
           <div className="space-y-6">
             <h2 className="text-xl font-headline font-bold flex items-center gap-2">Archivio Asset</h2>
-            {isMaterialsLoading ? <Skeleton className="h-64" /> : groupedMaterials && Object.keys(groupedMaterials).length > 0 ? (
+            
+            {/* Submenu Filtri Cliente */}
+            <div className="flex flex-wrap gap-4 items-center bg-gray-50 p-4 rounded-xl border border-gray-100 mb-6">
+              <div className="flex items-center gap-2">
+                <Filter className="w-4 h-4 text-gray-400" />
+                <span className="text-sm font-bold text-gray-500 uppercase tracking-tight">Filtra per:</span>
+              </div>
+              
+              <Select value={tipoFilter} onValueChange={setTipoFilter}>
+                <SelectTrigger className="w-[180px] bg-white">
+                  <SelectValue placeholder="Tipologia" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tutti i tipi</SelectItem>
+                  <SelectItem value="grafica">🎨 Grafiche</SelectItem>
+                  <SelectItem value="foto">📸 Foto</SelectItem>
+                  <SelectItem value="video">🎥 Video</SelectItem>
+                  <SelectItem value="documento">📄 Documenti</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select value={destFilter} onValueChange={setDestFilter}>
+                <SelectTrigger className="w-[180px] bg-white">
+                  <SelectValue placeholder="Destinazione" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tutte le destinazioni</SelectItem>
+                  <SelectItem value="social">📱 Social Media</SelectItem>
+                  <SelectItem value="sito">🌐 Sito Web</SelectItem>
+                  <SelectItem value="offline">🖨️ Grafiche Offline</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {isMaterialsLoading ? <Skeleton className="h-64" /> : Object.keys(groupedMaterials).length > 0 ? (
               Object.keys(groupedMaterials).map(date => (
                 <div key={date} className="space-y-4">
                   <div className="flex items-center gap-4">
@@ -268,13 +330,22 @@ export default function ClienteDashboard() {
                     <div className="h-px bg-gray-100 flex-1" />
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {groupedMaterials[date].map((mat: any) => {
+                    {groupedMaterials[date].map((mat: Material) => {
                       const typeInfo = getFileTypeInfo(mat.nome_file);
+                      const DestIcon = DESTINAZIONE_ICONS[mat.destinazione] || FolderOpen;
                       return (
                         <Card key={mat.id} className="rounded-xl border-gray-200/50 shadow-sm hover:border-indigo-200 transition-colors">
                           <CardContent className="p-4">
                             <div className="flex items-start justify-between mb-3">
                               <div className={`p-2 ${typeInfo.bg} rounded-lg`}><typeInfo.icon className={`w-5 h-5 ${typeInfo.color}`} /></div>
+                              <div className="flex flex-col items-end gap-1">
+                                <Badge variant="outline" className="text-[8px] font-bold uppercase py-0 px-2 flex gap-1 items-center bg-gray-50">
+                                  <DestIcon className="w-2 h-2" /> {DESTINAZIONE_LABELS[mat.destinazione]}
+                                </Badge>
+                                <Badge className={`${STATO_VALIDAZIONE_COLORS[mat.stato_validazione].bg} ${STATO_VALIDAZIONE_COLORS[mat.stato_validazione].text} border-none text-[9px] py-0`}>
+                                  {STATO_VALIDAZIONE_LABELS[mat.stato_validazione]}
+                                </Badge>
+                              </div>
                             </div>
                             <p className="font-semibold text-sm truncate" title={mat.nome_file}>{mat.nome_file}</p>
                             <div className="flex items-center gap-2 mt-1">
@@ -282,11 +353,6 @@ export default function ClienteDashboard() {
                               <span className="text-[9px] text-gray-400 uppercase font-bold tracking-tighter">
                                 UID Caricatore: {mat.caricato_da?.substring(0, 8)}...
                               </span>
-                            </div>
-                            <div className="mt-3 flex items-center justify-between">
-                              <Badge className={`${STATO_VALIDAZIONE_COLORS[mat.stato_validazione as StatoValidazione].bg} ${STATO_VALIDAZIONE_COLORS[mat.stato_validazione as StatoValidazione].text} border-none text-[10px]`}>
-                                {STATO_VALIDAZIONE_LABELS[mat.stato_validazione as StatoValidazione]}
-                              </Badge>
                             </div>
                             {mat.stato_validazione === 'rifiutato' && mat.note_rifiuto && (
                               <div className="mt-2 text-[10px] text-red-600 bg-red-50 p-2 rounded border border-red-100">
@@ -302,7 +368,7 @@ export default function ClienteDashboard() {
               ))
             ) : (
               <div className="text-center py-10 bg-gray-50/50 rounded-xl border-2 border-dashed">
-                <p className="text-muted-foreground text-sm">Nessun materiale condiviso.</p>
+                <p className="text-muted-foreground text-sm">Nessun materiale trovato.</p>
               </div>
             )}
           </div>
