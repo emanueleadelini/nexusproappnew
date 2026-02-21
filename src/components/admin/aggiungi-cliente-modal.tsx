@@ -6,9 +6,13 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { useFirestore } from '@/firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { firebaseConfig } from '@/firebase/config';
+import { initializeApp, deleteApp } from 'firebase/app';
+import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Building2 } from 'lucide-react';
+import { Loader2, Building2, UserPlus, KeyRound } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
 
 interface Props {
   isOpen: boolean;
@@ -21,21 +25,46 @@ export function AggiungiClienteModal({ isOpen, onClose }: Props) {
     nome_azienda: '',
     settore: '',
     email_riferimento: '',
-    post_totali: 6
+    post_totali: 6,
+    // Credenziali Accesso
+    user_email: '',
+    user_password: ''
   });
+  
   const db = useFirestore();
   const { toast } = useToast();
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.nome_azienda) {
-      toast({ variant: 'destructive', title: 'Errore', description: 'Il nome azienda è obbligatorio.' });
+    
+    if (!formData.nome_azienda || !formData.user_email || !formData.user_password) {
+      toast({ 
+        variant: 'destructive', 
+        title: 'Campi mancanti', 
+        description: 'Nome azienda, email login e password sono obbligatori.' 
+      });
+      return;
+    }
+
+    if (formData.user_password.length < 6) {
+      toast({ 
+        variant: 'destructive', 
+        title: 'Password troppo breve', 
+        description: 'La password deve contenere almeno 6 caratteri.' 
+      });
       return;
     }
 
     setLoading(true);
+    
+    // Inizializziamo un'app Firebase secondaria per creare l'utente senza disconnettere l'admin
+    const secondaryAppName = `SecondaryAuth-${Date.now()}`;
+    const secondaryApp = initializeApp(firebaseConfig, secondaryAppName);
+    const secondaryAuth = getAuth(secondaryApp);
+
     try {
-      await addDoc(collection(db, 'clienti'), {
+      // 1. Creiamo il documento Cliente per ottenere il clienteId
+      const clientRef = await addDoc(collection(db, 'clienti'), {
         nome_azienda: formData.nome_azienda,
         settore: formData.settore,
         email_riferimento: formData.email_riferimento,
@@ -44,74 +73,162 @@ export function AggiungiClienteModal({ isOpen, onClose }: Props) {
         creato_il: serverTimestamp()
       });
 
-      toast({ title: 'Cliente aggiunto!', description: `${formData.nome_azienda} è stato creato correttamente.` });
-      setFormData({ nome_azienda: '', settore: '', email_riferimento: '', post_totali: 6 });
+      const clienteId = clientRef.id;
+
+      // 2. Creiamo l'utente in Firebase Authentication (tramite app secondaria)
+      const userCredential = await createUserWithEmailAndPassword(
+        secondaryAuth, 
+        formData.user_email, 
+        formData.user_password
+      );
+      
+      const newUid = userCredential.user.uid;
+
+      // 3. Creiamo il profilo utente in Firestore users/{uid}
+      await setDoc(doc(db, 'users', newUid), {
+        email: formData.user_email,
+        ruolo: 'cliente',
+        cliente_id: clienteId,
+        nomeAzienda: formData.nome_azienda,
+        creatoIl: serverTimestamp()
+      });
+
+      toast({ 
+        title: 'Cliente creato con successo!', 
+        description: `L'azienda ${formData.nome_azienda} e l'utente ${formData.user_email} sono pronti.` 
+      });
+      
+      setFormData({ 
+        nome_azienda: '', 
+        settore: '', 
+        email_riferimento: '', 
+        post_totali: 6,
+        user_email: '',
+        user_password: ''
+      });
       onClose();
-    } catch (error) {
-      toast({ variant: 'destructive', title: 'Errore', description: 'Impossibile salvare il cliente.' });
+    } catch (error: any) {
+      console.error(error);
+      let errorMsg = 'Impossibile completare la registrazione.';
+      if (error.code === 'auth/email-already-in-use') errorMsg = 'Questa email è già associata a un account.';
+      
+      toast({ 
+        variant: 'destructive', 
+        title: 'Errore durante la creazione', 
+        description: errorMsg 
+      });
     } finally {
+      // Pulizia app secondaria
+      await deleteApp(secondaryApp);
       setLoading(false);
     }
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Building2 className="w-5 h-5 text-indigo-600" /> Nuovo Cliente
+          <DialogTitle className="flex items-center gap-2 text-indigo-600">
+            <Building2 className="w-5 h-5" /> Nuovo Cliente & Account
           </DialogTitle>
-          <DialogDescription>Inserisci i dati dell'azienda per iniziare a gestire il piano editoriale.</DialogDescription>
+          <DialogDescription>
+            Configura l'azienda e le credenziali di accesso per il cliente.
+          </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSave} className="space-y-4 py-4">
-          <div className="space-y-2">
-            <Label htmlFor="nome">Nome Azienda *</Label>
-            <Input 
-              id="nome" 
-              value={formData.nome_azienda} 
-              onChange={(e) => setFormData({...formData, nome_azienda: e.target.value})} 
-              placeholder="es. Nexus S.r.l."
-              required
-            />
+        <form onSubmit={handleSave} className="space-y-6 py-4">
+          {/* Sezione Azienda */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 text-sm font-bold text-gray-500 uppercase tracking-wider">
+              <Building2 className="w-4 h-4" /> Dati Aziendali
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2 col-span-2">
+                <Label htmlFor="nome">Nome Azienda *</Label>
+                <Input 
+                  id="nome" 
+                  value={formData.nome_azienda} 
+                  onChange={(e) => setFormData({...formData, nome_azienda: e.target.value})} 
+                  placeholder="es. Nexus S.r.l."
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="settore">Settore</Label>
+                <Input 
+                  id="settore" 
+                  value={formData.settore} 
+                  onChange={(e) => setFormData({...formData, settore: e.target.value})} 
+                  placeholder="es. Ristorazione"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="post">Post Totali (Piano)</Label>
+                <Input 
+                  id="post" 
+                  type="number"
+                  min="1"
+                  value={formData.post_totali} 
+                  onChange={(e) => setFormData({...formData, post_totali: Number(e.target.value)})} 
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="email-rif">Email Riferimento (Contatto)</Label>
+              <Input 
+                id="email-rif" 
+                type="email"
+                value={formData.email_riferimento} 
+                onChange={(e) => setFormData({...formData, email_riferimento: e.target.value})} 
+                placeholder="marketing@azienda.it"
+              />
+            </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="settore">Settore</Label>
-            <Input 
-              id="settore" 
-              value={formData.settore} 
-              onChange={(e) => setFormData({...formData, settore: e.target.value})} 
-              placeholder="es. Ristorazione, Tech, Fashion..."
-            />
+          <Separator />
+
+          {/* Sezione Credenziali */}
+          <div className="space-y-4 bg-indigo-50/50 p-4 rounded-xl border border-indigo-100">
+            <div className="flex items-center gap-2 text-sm font-bold text-indigo-600 uppercase tracking-wider">
+              <KeyRound className="w-4 h-4" /> Credenziali di Accesso
+            </div>
+            <p className="text-[10px] text-indigo-400">Queste saranno le credenziali che il cliente userà per entrare nell'area riservata.</p>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="user-email">Email Login *</Label>
+                <Input 
+                  id="user-email" 
+                  type="email"
+                  value={formData.user_email} 
+                  onChange={(e) => setFormData({...formData, user_email: e.target.value})} 
+                  placeholder="cliente@email.it"
+                  required
+                  className="bg-white"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="user-pass">Password Login *</Label>
+                <Input 
+                  id="user-pass" 
+                  type="password"
+                  value={formData.user_password} 
+                  onChange={(e) => setFormData({...formData, user_password: e.target.value})} 
+                  placeholder="Minimo 6 caratteri"
+                  required
+                  className="bg-white"
+                />
+              </div>
+            </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="email">Email Riferimento</Label>
-            <Input 
-              id="email" 
-              type="email"
-              value={formData.email_riferimento} 
-              onChange={(e) => setFormData({...formData, email_riferimento: e.target.value})} 
-              placeholder="marketing@azienda.it"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="post">Post Totali (Piano)</Label>
-            <Input 
-              id="post" 
-              type="number"
-              min="1"
-              value={formData.post_totali} 
-              onChange={(e) => setFormData({...formData, post_totali: Number(e.target.value)})} 
-            />
-          </div>
-
-          <DialogFooter className="pt-4">
+          <DialogFooter className="pt-4 gap-2">
             <Button type="button" variant="ghost" onClick={onClose} disabled={loading}>Annulla</Button>
-            <Button type="submit" disabled={loading} className="bg-indigo-600 hover:bg-indigo-700">
-              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Crea Cliente'}
+            <Button type="submit" disabled={loading} className="bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-100 flex-1">
+              {loading ? (
+                <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Creazione in corso...</>
+              ) : (
+                <><UserPlus className="w-4 h-4 mr-2" /> Crea Cliente e Account</>
+              )}
             </Button>
           </DialogFooter>
         </form>

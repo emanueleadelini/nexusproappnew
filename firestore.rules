@@ -5,7 +5,7 @@ rules_version = '2';
  * 
  * Core Philosophy:
  * This ruleset implements a strict multi-tenant authorization model.
- * Updated to allow initial profile creation for bootstrapping purposes.
+ * Updated to allow Admins to create user profiles for new clients.
  */
 
 service cloud.firestore {
@@ -38,8 +38,8 @@ service cloud.firestore {
     match /users/{uid} {
       allow get: if isOwner(uid) || isAdmin();
       allow list: if isAdmin();
-      // Permettiamo la creazione del proprio profilo per il bootstrap iniziale e l'assegnazione del ruolo
-      allow create: if isOwner(uid); 
+      // Permettiamo la creazione del proprio profilo (bootstrap) o da parte di un admin (creazione clienti)
+      allow create: if isOwner(uid) || isAdmin(); 
       allow update, delete: if isAdmin();
     }
 
@@ -49,8 +49,9 @@ service cloud.firestore {
 
       match /post/{postId} {
         allow get, list: if isAdmin() || isClientOf(clienteId);
-        allow create, delete: if isAdmin();
-        allow update: if isAdmin() || (isClientOf(clienteId) && request.resource.data.stato == 'approvato' && resource != null);
+        allow create, update, delete: if isAdmin();
+        // Permettiamo al cliente solo l'approvazione del post
+        allow update: if isClientOf(clienteId) && request.resource.data.stato == 'approvato';
       }
 
       match /materiali/{materialId} {
