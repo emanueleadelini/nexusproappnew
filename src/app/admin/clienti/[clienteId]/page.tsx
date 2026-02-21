@@ -1,11 +1,10 @@
 'use client';
 
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { useFirestore, useMemoFirebase, useCollection, useDoc } from '@/firebase';
-import { collection, doc, query, orderBy, updateDoc, deleteDoc } from 'firebase/firestore';
-import { Client } from '@/types/client';
-import { Post, STATO_POST_LABELS, STATO_POST_COLORS } from '@/types/post';
-import { Material, STATO_VALIDAZIONE_LABELS, STATO_VALIDAZIONE_COLORS } from '@/types/material';
+import { collection, doc, query, orderBy, updateDoc } from 'firebase/firestore';
+import { StatoPost, STATO_POST_LABELS, STATO_POST_COLORS } from '@/types/post';
+import { StatoValidazione, STATO_VALIDAZIONE_LABELS, STATO_VALIDAZIONE_COLORS } from '@/types/material';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -14,6 +13,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { CalendarDays, FolderOpen, Send, CheckCircle, XCircle, Clock, Sparkles, Plus, ChevronLeft, RotateCcw } from 'lucide-react';
 import { useState } from 'react';
 import { GeneraBozzaModal } from '@/components/admin/genera-bozza-modal';
+import { CreaPostManualeModal } from '@/components/admin/crea-post-manuale-modal';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 
@@ -22,6 +22,7 @@ export default function ClienteDettaglio() {
   const db = useFirestore();
   const { toast } = useToast();
   const [isGeneraOpen, setIsGeneraOpen] = useState(false);
+  const [isManualeOpen, setIsManualeOpen] = useState(false);
 
   // Data Fetching
   const clientDocRef = useMemoFirebase(() => doc(db, 'clienti', clienteId), [db, clienteId]);
@@ -70,10 +71,17 @@ export default function ClienteDettaglio() {
           <p className="text-muted-foreground">{client.settore || 'Settore non specificato'} • {client.email_riferimento}</p>
         </div>
         <div className="flex gap-2 w-full md:w-auto">
-          <Button variant="outline" className="flex-1 md:flex-none gap-2 border-indigo-200 text-indigo-700">
+          <Button 
+            onClick={() => setIsManualeOpen(true)}
+            variant="outline" 
+            className="flex-1 md:flex-none gap-2 border-indigo-200 text-indigo-700"
+          >
             <Plus className="w-4 h-4" /> Crea Manualmente
           </Button>
-          <Button onClick={() => setIsGeneraOpen(true)} className="flex-1 md:flex-none gap-2 bg-violet-600 hover:bg-violet-700 shadow-lg shadow-violet-200">
+          <Button 
+            onClick={() => setIsGeneraOpen(true)} 
+            className="flex-1 md:flex-none gap-2 bg-violet-600 hover:bg-violet-700 shadow-lg shadow-violet-200"
+          >
             <Sparkles className="w-4 h-4" /> Genera con AI
           </Button>
         </div>
@@ -193,6 +201,12 @@ export default function ClienteDettaglio() {
         clienteId={clienteId}
         clienteNome={client.nome_azienda}
         clienteSettore={client.settore || ''}
+      />
+
+      <CreaPostManualeModal
+        isOpen={isManualeOpen}
+        onClose={() => setIsManualeOpen(false)}
+        clienteId={clienteId}
       />
     </div>
   );
