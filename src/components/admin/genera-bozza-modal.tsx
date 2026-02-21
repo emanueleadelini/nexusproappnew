@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Sparkles, Loader2, RotateCcw, Check } from 'lucide-react';
 import { generateSocialPost, GeneratePostOutput } from '@/ai/flows/generate-post-ai-flow';
 import { useFirestore } from '@/firebase';
-import { collection, addDoc } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 
 const PIATTAFORME = [
@@ -75,8 +75,9 @@ export function GeneraBozzaModal({ isOpen, onClose, clienteId, clienteNome, clie
         titolo: result.titolo,
         testo: result.testo,
         stato: 'bozza',
-        creato_il: new Date().toISOString(),
-        aggiornato_il: new Date().toISOString()
+        data_pubblicazione: null,
+        creato_il: serverTimestamp(),
+        aggiornato_il: serverTimestamp()
       });
       toast({ title: 'Bozza salvata!', description: 'Il post è stato aggiunto al calendario.' });
       handleClose();
@@ -100,7 +101,7 @@ export function GeneraBozzaModal({ isOpen, onClose, clienteId, clienteNome, clie
           <DialogTitle className="flex items-center gap-2 text-violet-600">
             <Sparkles className="w-5 h-5" /> Genera Bozza con IA
           </DialogTitle>
-          <DialogDescription>Gemini creerà una bozza personalizzata per {clienteNome}.</DialogDescription>
+          <DialogDescription>Gemini creerà una bozza personalizzata.</DialogDescription>
         </DialogHeader>
 
         {step === 1 ? (
@@ -128,24 +129,24 @@ export function GeneraBozzaModal({ isOpen, onClose, clienteId, clienteNome, clie
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="arg">Argomento del Post (Obbligatorio)</Label>
-              <Input id="arg" value={argomento} onChange={(e) => setArgomento(e.target.value)} placeholder="es. Lancio menu estivo con focus sui cocktail" />
+              <Label htmlFor="arg">Argomento del Post *</Label>
+              <Input id="arg" value={argomento} onChange={(e) => setArgomento(e.target.value)} placeholder="es. Lancio menu estivo" />
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="note">Note Aggiuntive</Label>
-              <Textarea id="note" value={note} onChange={(e) => setNote(e.target.value)} placeholder="es. Menzionare lo sconto del 20% il venerdì" />
+              <Textarea id="note" value={note} onChange={(e) => setNote(e.target.value)} placeholder="es. Sconto del 20%" />
             </div>
 
             <Button onClick={handleGenera} disabled={!argomento || loading} className="w-full bg-violet-600 hover:bg-violet-700 h-12">
-              {loading ? <Loader2 className="animate-spin" /> : <><Sparkles className="w-4 h-4 mr-2" /> Genera Ora</>}
+              {loading ? <Loader2 className="animate-spin" /> : 'Genera Ora'}
             </Button>
           </div>
         ) : (
           <div className="space-y-6 py-4">
             <div className="p-4 bg-indigo-50 rounded-lg flex items-center justify-between">
                <span className="text-xs font-bold uppercase text-indigo-600">Reminder: {PIATTAFORME.find(p => p.id === platId)?.label} / {TONI.find(t => t.id === tonoId)?.label}</span>
-               <Button variant="ghost" size="sm" onClick={() => setStep(1)} className="text-indigo-600"><RotateCcw className="w-3 h-3 mr-1"/> Modifica Input</Button>
+               <Button variant="ghost" size="sm" onClick={() => setStep(1)} className="text-indigo-600"><RotateCcw className="w-3 h-3 mr-1"/> Modifica</Button>
             </div>
             
             <div className="space-y-4">
@@ -162,7 +163,7 @@ export function GeneraBozzaModal({ isOpen, onClose, clienteId, clienteNome, clie
             <div className="flex gap-3">
               <Button variant="outline" className="flex-1" onClick={handleGenera} disabled={loading}>Rigenera</Button>
               <Button className="flex-1 bg-green-600 hover:bg-green-700" onClick={handleSalva} disabled={loading}>
-                {loading ? <Loader2 className="animate-spin" /> : <><Check className="w-4 h-4 mr-2" /> Salva come Bozza</>}
+                {loading ? <Loader2 className="animate-spin" /> : 'Salva come Bozza'}
               </Button>
             </div>
           </div>

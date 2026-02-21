@@ -1,20 +1,19 @@
 'use client';
 
 import { useUser, useFirestore, useMemoFirebase, useCollection, useDoc } from '@/firebase';
-import { collection, doc, query, orderBy, updateDoc, addDoc, getDoc } from 'firebase/firestore';
+import { collection, doc, query, orderBy, updateDoc, addDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { StatoPost, STATO_POST_LABELS, STATO_POST_COLORS } from '@/types/post';
-import { StatoValidazione, STATO_VALIDAZIONE_LABELS, STATO_VALIDAZIONE_COLORS, getFileTypeInfo, DESTINAZIONE_LABELS, DESTINAZIONE_ICONS, DestinazioneMateriale } from '@/types/material';
+import { StatoValidazione, STATO_VALIDAZIONE_LABELS, STATO_VALIDAZIONE_COLORS, getFileTypeInfo } from '@/types/material';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
-import { CalendarCheck, Upload, HelpCircle, ArrowUpRight, Check, FileText, Info, Loader2, User, ShieldCheck, Share2, Globe, Printer, UploadCloud, X, FileIcon } from 'lucide-react';
+import { CalendarCheck, Upload, ArrowUpRight, Check, Loader2, User, UploadCloud, X, FileIcon } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export default function ClienteDashboard() {
   const { user } = useUser();
@@ -22,7 +21,6 @@ export default function ClienteDashboard() {
   const { toast } = useToast();
   const [clienteId, setClienteId] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [destinazione, setDestinazione] = useState<DestinazioneMateriale>('social');
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -52,7 +50,10 @@ export default function ClienteDashboard() {
   const approvePost = async (postId: string) => {
     if (!clienteId) return;
     const ref = doc(db, 'clienti', clienteId, 'post', postId);
-    await updateDoc(ref, { stato: 'approvato', aggiornato_il: new Date().toISOString() });
+    await updateDoc(ref, { 
+      stato: 'approvato', 
+      aggiornato_il: serverTimestamp() 
+    });
     toast({ title: "Post approvato!", description: "L'agenzia procederà alla pubblicazione." });
   };
 
@@ -70,10 +71,9 @@ export default function ClienteDashboard() {
         nome_file: selectedFile.name,
         url_storage: null,
         caricato_da: user.uid,
-        ruolo_caricatore: 'cliente',
         stato_validazione: 'in_attesa',
-        destinazione: destinazione,
-        creato_il: new Date().toISOString()
+        note_rifiuto: null,
+        creato_il: serverTimestamp()
       });
       resetUploadForm();
       toast({ title: "Materiale inviato!", description: "Il team Nexus lo validerà a breve." });
@@ -85,7 +85,6 @@ export default function ClienteDashboard() {
   const resetUploadForm = () => {
     setSelectedFile(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
-    setDestinazione('social');
   };
 
   if (isClientLoading || !clienteId) return <div className="space-y-6 p-8"><Skeleton className="h-32 w-full" /><Skeleton className="h-64" /></div>;
@@ -94,7 +93,7 @@ export default function ClienteDashboard() {
   const usagePercent = client.post_totali > 0 ? (client.post_usati / client.post_totali) * 100 : 0;
 
   const groupedMaterials = materials?.reduce((acc: any, mat: any) => {
-    const date = new Date(mat.creato_il).toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' });
+    const date = mat.creato_il?.toDate().toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' }) || 'Data non disponibile';
     if (!acc[date]) acc[date] = [];
     acc[date].push(mat);
     return acc;
@@ -116,7 +115,7 @@ export default function ClienteDashboard() {
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Invia materiale all'agenzia</DialogTitle>
-              <DialogDescription>Seleziona il file e specifica la sua destinazione d'uso.</DialogDescription>
+              <DialogDescription>Seleziona il file da caricare nel tuo archivio.</DialogDescription>
             </DialogHeader>
             <div className="space-y-6 py-4">
               <div className="space-y-2">
@@ -125,25 +124,12 @@ export default function ClienteDashboard() {
                   onClick={() => fileInputRef.current?.click()}
                   className={`border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center gap-3 cursor-pointer transition-colors ${selectedFile ? 'border-indigo-400 bg-indigo-50/50' : 'border-gray-200 hover:border-indigo-300 hover:bg-gray-50'}`}
                 >
-                  <input 
-                    type="file" 
-                    ref={fileInputRef} 
-                    onChange={handleFileChange} 
-                    className="hidden" 
-                  />
+                  <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" />
                   {selectedFile ? (
                     <div className="flex flex-col items-center text-center">
-                      <div className="bg-indigo-600 p-2 rounded-lg mb-2">
-                        <FileIcon className="w-6 h-6 text-white" />
-                      </div>
+                      <div className="bg-indigo-600 p-2 rounded-lg mb-2"><FileIcon className="w-6 h-6 text-white" /></div>
                       <span className="text-sm font-semibold text-gray-900 truncate max-w-[250px]">{selectedFile.name}</span>
-                      <Button 
-                        type="button" 
-                        variant="ghost" 
-                        size="sm" 
-                        className="mt-2 text-red-500 hover:text-red-600 h-7"
-                        onClick={(e) => { e.stopPropagation(); setSelectedFile(null); }}
-                      >
+                      <Button type="button" variant="ghost" size="sm" className="mt-2 text-red-500 hover:text-red-600 h-7" onClick={(e) => { e.stopPropagation(); setSelectedFile(null); }}>
                         <X className="w-3 h-3 mr-1" /> Rimuovi
                       </Button>
                     </div>
@@ -152,24 +138,10 @@ export default function ClienteDashboard() {
                       <UploadCloud className="w-10 h-10 text-gray-300" />
                       <div className="text-center">
                         <p className="text-sm font-medium text-gray-600">Seleziona o trascina un file</p>
-                        <p className="text-xs text-gray-400">Foto, video o documenti</p>
                       </div>
                     </>
                   )}
                 </div>
-              </div>
-              <div className="space-y-2">
-                <Label>Destinazione d'uso</Label>
-                <Select value={destinazione} onValueChange={(v: DestinazioneMateriale) => setDestinazione(v)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleziona destinazione" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="social">Social Media</SelectItem>
-                    <SelectItem value="sito">Sito Web</SelectItem>
-                    <SelectItem value="offline">Grafica Offline</SelectItem>
-                  </SelectContent>
-                </Select>
               </div>
             </div>
             <DialogFooter>
@@ -185,10 +157,7 @@ export default function ClienteDashboard() {
         <div className="space-y-6">
           <Card className="rounded-xl border-gray-200/50 shadow-md overflow-hidden">
             <CardHeader className="bg-indigo-600 text-white">
-              <CardTitle className="text-xl font-headline flex items-center gap-2">
-                <CalendarCheck className="w-5 h-5" /> Crediti Post
-              </CardTitle>
-              <CardDescription className="text-indigo-100">Post disponibili nel piano</CardDescription>
+              <CardTitle className="text-xl font-headline flex items-center gap-2">Crediti Post</CardTitle>
             </CardHeader>
             <CardContent className="pt-6 space-y-4">
               <div className="flex items-center justify-between">
@@ -204,11 +173,8 @@ export default function ClienteDashboard() {
         </div>
 
         <div className="lg:col-span-2 space-y-12">
-          {/* Calendario PED */}
           <div className="space-y-4">
-            <h2 className="text-xl font-headline font-bold flex items-center gap-2">
-              <CalendarCheck className="w-5 h-5 text-indigo-500" /> Piano Editoriale (PED)
-            </h2>
+            <h2 className="text-xl font-headline font-bold flex items-center gap-2">Piano Editoriale (PED)</h2>
             {isPostsLoading ? <Skeleton className="h-48" /> : posts && posts.length > 0 ? (
               <div className="space-y-4">
                 {posts.map(post => (
@@ -216,7 +182,7 @@ export default function ClienteDashboard() {
                     <CardHeader className="pb-3 flex flex-row justify-between items-start space-y-0">
                       <div>
                         <CardTitle className="text-lg font-headline font-semibold">{post.titolo}</CardTitle>
-                        <CardDescription className="text-xs">Programmato per il {post.data_pubblicazione ? new Date(post.data_pubblicazione).toLocaleDateString() : 'Prossimamente'}</CardDescription>
+                        <CardDescription className="text-xs">Programmato per il {post.data_pubblicazione ? post.data_pubblicazione.toDate().toLocaleDateString() : 'Prossimamente'}</CardDescription>
                       </div>
                       <Badge className={`${STATO_POST_COLORS[post.stato as StatoPost].bg} ${STATO_POST_COLORS[post.stato as StatoPost].text} border-none font-medium text-[10px]`}>
                         {STATO_POST_LABELS[post.stato as StatoPost]}
@@ -240,11 +206,8 @@ export default function ClienteDashboard() {
             )}
           </div>
 
-          {/* Calendario Asset */}
           <div className="space-y-6">
-            <h2 className="text-xl font-headline font-bold flex items-center gap-2">
-              <FolderOpen className="w-5 h-5 text-indigo-500" /> Archivio Asset Giornaliero
-            </h2>
+            <h2 className="text-xl font-headline font-bold flex items-center gap-2">Archivio Asset</h2>
             {isMaterialsLoading ? <Skeleton className="h-64" /> : groupedMaterials && Object.keys(groupedMaterials).length > 0 ? (
               Object.keys(groupedMaterials).map(date => (
                 <div key={date} className="space-y-4">
@@ -255,23 +218,17 @@ export default function ClienteDashboard() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {groupedMaterials[date].map((mat: any) => {
                       const typeInfo = getFileTypeInfo(mat.nome_file);
-                      const DestIcon = DESTINAZIONE_ICONS[mat.destinazione as keyof typeof DESTINAZIONE_ICONS] || FileText;
                       return (
                         <Card key={mat.id} className="rounded-xl border-gray-200/50 shadow-sm hover:border-indigo-200 transition-colors">
                           <CardContent className="p-4">
                             <div className="flex items-start justify-between mb-3">
-                              <div className={`p-2 ${typeInfo.bg} rounded-lg`}>
-                                <typeInfo.icon className={`w-5 h-5 ${typeInfo.color}`} />
-                              </div>
-                              <Badge variant="outline" className="text-[10px] bg-indigo-50 text-indigo-600 gap-1 border-indigo-100">
-                                <DestIcon className="w-3 h-3" /> {DESTINAZIONE_LABELS[mat.destinazione as keyof typeof DESTINAZIONE_LABELS]}
-                              </Badge>
+                              <div className={`p-2 ${typeInfo.bg} rounded-lg`}><typeInfo.icon className={`w-5 h-5 ${typeInfo.color}`} /></div>
                             </div>
                             <p className="font-semibold text-sm truncate" title={mat.nome_file}>{mat.nome_file}</p>
                             <div className="flex items-center gap-2 mt-1">
-                              {mat.ruolo_caricatore === 'admin' ? <ShieldCheck className="w-3 h-3 text-violet-500" /> : <User className="w-3 h-3 text-indigo-500" />}
+                              <User className="w-3 h-3 text-indigo-500" />
                               <span className="text-[9px] text-gray-400 uppercase font-bold tracking-tighter">
-                                {mat.ruolo_caricatore === 'admin' ? 'Nexus Agency' : 'Caricato da te'}
+                                UID Caricatore: {mat.caricato_da?.substring(0, 8)}...
                               </span>
                             </div>
                             <div className="mt-3 flex items-center justify-between">

@@ -2,15 +2,15 @@
 
 import { useParams } from 'next/navigation';
 import { useFirestore, useMemoFirebase, useCollection, useDoc } from '@/firebase';
-import { collection, doc, query, orderBy, updateDoc } from 'firebase/firestore';
+import { collection, doc, query, orderBy, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { StatoPost, STATO_POST_LABELS, STATO_POST_COLORS } from '@/types/post';
-import { StatoValidazione, STATO_VALIDAZIONE_LABELS, STATO_VALIDAZIONE_COLORS, getFileTypeInfo, DESTINAZIONE_LABELS, DESTINAZIONE_ICONS } from '@/types/material';
+import { StatoValidazione, STATO_VALIDAZIONE_LABELS, STATO_VALIDAZIONE_COLORS, getFileTypeInfo } from '@/types/material';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { CalendarDays, FolderOpen, Send, CheckCircle, XCircle, Clock, Sparkles, Plus, ChevronLeft, RotateCcw, User, ShieldCheck, UploadCloud } from 'lucide-react';
+import { CalendarDays, FolderOpen, Send, Clock, Sparkles, Plus, ChevronLeft, User, ShieldCheck, UploadCloud } from 'lucide-react';
 import { useState } from 'react';
 import { GeneraBozzaModal } from '@/components/admin/genera-bozza-modal';
 import { CreaPostManualeModal } from '@/components/admin/crea-post-manuale-modal';
@@ -41,7 +41,10 @@ export default function ClienteDettaglio() {
 
   const updatePostState = async (postId: string, newState: string) => {
     const ref = doc(db, 'clienti', clienteId, 'post', postId);
-    await updateDoc(ref, { stato: newState, aggiornato_il: new Date().toISOString() });
+    await updateDoc(ref, { 
+      stato: newState, 
+      aggiornato_il: serverTimestamp() 
+    });
     toast({ title: "Stato aggiornato", description: `Il post è ora in stato: ${newState}` });
   };
 
@@ -52,16 +55,18 @@ export default function ClienteDettaglio() {
       notes = window.prompt("Motivo del rifiuto:");
       if (notes === null) return;
     }
-    await updateDoc(ref, { stato_validazione: status, note_rifiuto: notes });
+    await updateDoc(ref, { 
+      stato_validazione: status, 
+      note_rifiuto: notes 
+    });
     toast({ title: "Materiale aggiornato", description: `Stato: ${status}` });
   };
 
   if (isClientLoading) return <div className="space-y-4 p-8"><Skeleton className="h-12 w-1/3" /><Skeleton className="h-64" /></div>;
   if (!client) return <div className="p-8 text-center">Cliente non trovato.</div>;
 
-  // Raggruppamento materiali per data (Calendario attività)
   const groupedMaterials = materials?.reduce((acc: any, mat: any) => {
-    const date = new Date(mat.creato_il).toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' });
+    const date = mat.creato_il?.toDate().toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' }) || 'Data non disponibile';
     if (!acc[date]) acc[date] = [];
     acc[date].push(mat);
     return acc;
@@ -112,7 +117,7 @@ export default function ClienteDettaglio() {
                         <div className="flex items-center gap-2 mt-1">
                            <Clock className="w-3 h-3 text-gray-400" />
                            <span className="text-xs text-gray-400">
-                             {post.data_pubblicazione ? new Date(post.data_pubblicazione).toLocaleDateString('it-IT') : 'Data non pianificata'}
+                             {post.data_pubblicazione ? post.data_pubblicazione.toDate().toLocaleDateString('it-IT') : 'Data non pianificata'}
                            </span>
                         </div>
                       </div>
@@ -159,7 +164,6 @@ export default function ClienteDettaglio() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {groupedMaterials[date].map((mat: any) => {
                     const typeInfo = getFileTypeInfo(mat.nome_file);
-                    const DestIcon = DESTINAZIONE_ICONS[mat.destinazione as keyof typeof DESTINAZIONE_ICONS] || FolderOpen;
                     return (
                       <Card key={mat.id} className="rounded-xl border-gray-200/50 shadow-sm overflow-hidden flex flex-col hover:border-indigo-300 transition-colors">
                         <div className="p-4 flex-1">
@@ -167,20 +171,17 @@ export default function ClienteDettaglio() {
                             <div className={`p-3 ${typeInfo.bg} rounded-xl`}>
                               <typeInfo.icon className={`w-6 h-6 ${typeInfo.color}`} />
                             </div>
-                            <Badge variant="outline" className="text-[10px] bg-gray-50 text-gray-500 gap-1">
-                              <DestIcon className="w-3 h-3" /> {DESTINAZIONE_LABELS[mat.destinazione as keyof typeof DESTINAZIONE_LABELS]}
-                            </Badge>
                           </div>
                           <p className="font-semibold text-sm truncate" title={mat.nome_file}>{mat.nome_file}</p>
                           <div className="flex items-center gap-2 mt-2">
-                            {mat.ruolo_caricatore === 'admin' ? <ShieldCheck className="w-3 h-3 text-violet-500" /> : <User className="w-3 h-3 text-indigo-500" />}
-                            <span className="text-[10px] text-gray-400 font-medium">Caricato da {mat.ruolo_caricatore === 'admin' ? 'Nexus' : 'Cliente'}</span>
+                            <User className="w-3 h-3 text-indigo-500" />
+                            <span className="text-[10px] text-gray-400 font-medium">Caricato da UID: {mat.caricato_da?.substring(0, 8)}...</span>
                           </div>
                           <Badge className={`${STATO_VALIDAZIONE_COLORS[mat.stato_validazione as StatoValidazione].bg} ${STATO_VALIDAZIONE_COLORS[mat.stato_validazione as StatoValidazione].text} border-none text-[10px] mt-3`}>
                             {STATO_VALIDAZIONE_LABELS[mat.stato_validazione as StatoValidazione]}
                           </Badge>
                         </div>
-                        {mat.ruolo_caricatore === 'cliente' && mat.stato_validazione === 'in_attesa' && (
+                        {mat.stato_validazione === 'in_attesa' && (
                           <div className="p-3 bg-gray-50 border-t flex gap-2">
                             <Button size="sm" variant="outline" className="flex-1 text-red-600" onClick={() => validateMaterial(mat.id, 'rifiutato')}>Rifiuta</Button>
                             <Button size="sm" className="flex-1 bg-green-600" onClick={() => validateMaterial(mat.id, 'validato')}>Valida</Button>

@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useFirestore } from '@/firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, FilePlus2, Calendar } from 'lucide-react';
 
@@ -40,7 +40,7 @@ export function CreaPostManualeModal({ isOpen, onClose, clienteId }: Props) {
         titolo: formData.titolo,
         testo: formData.testo,
         stato: 'bozza',
-        data_pubblicazione: formData.data_pubblicazione ? new Date(formData.data_pubblicazione).toISOString() : null,
+        data_pubblicazione: formData.data_pubblicazione ? Timestamp.fromDate(new Date(formData.data_pubblicazione)) : null,
         creato_il: serverTimestamp(),
         aggiornato_il: serverTimestamp(),
       };
@@ -70,37 +70,19 @@ export function CreaPostManualeModal({ isOpen, onClose, clienteId }: Props) {
         <form onSubmit={handleSave} className="space-y-4 py-4">
           <div className="space-y-2">
             <Label htmlFor="titolo">Titolo del Post *</Label>
-            <Input 
-              id="titolo" 
-              value={formData.titolo} 
-              onChange={(e) => setFormData({...formData, titolo: e.target.value})} 
-              placeholder="es. Promo Natale - 2024"
-              required
-            />
+            <Input id="titolo" value={formData.titolo} onChange={(e) => setFormData({...formData, titolo: e.target.value})} placeholder="es. Promo Natale - 2024" required />
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="testo">Contenuto (Copy) *</Label>
-            <Textarea 
-              id="testo" 
-              value={formData.testo} 
-              onChange={(e) => setFormData({...formData, testo: e.target.value})} 
-              placeholder="Scrivi qui il testo del post, inclusi emoji e hashtag..."
-              className="min-h-[150px]"
-              required
-            />
+            <Textarea id="testo" value={formData.testo} onChange={(e) => setFormData({...formData, testo: e.target.value})} placeholder="Scrivi qui il testo del post..." className="min-h-[150px]" required />
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="data" className="flex items-center gap-1">
               <Calendar className="w-3 h-3" /> Data Pubblicazione (Opzionale)
             </Label>
-            <Input 
-              id="data" 
-              type="datetime-local"
-              value={formData.data_pubblicazione} 
-              onChange={(e) => setFormData({...formData, data_pubblicazione: e.target.value})} 
-            />
+            <Input id="data" type="datetime-local" value={formData.data_pubblicazione} onChange={(e) => setFormData({...formData, data_pubblicazione: e.target.value})} />
           </div>
 
           <DialogFooter className="pt-4">

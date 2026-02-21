@@ -1,7 +1,7 @@
-import { FileText, Image as ImageIcon, Video, File as FileIcon, Globe, Share2, Printer } from 'lucide-react';
+import { Timestamp } from 'firebase/firestore';
+import { FileText, Image as ImageIcon, Video } from 'lucide-react';
 
 export type StatoValidazione = 'in_attesa' | 'validato' | 'rifiutato';
-export type DestinazioneMateriale = 'social' | 'sito' | 'offline';
 
 export const STATO_VALIDAZIONE_LABELS: Record<StatoValidazione, string> = {
   in_attesa: 'In attesa',
@@ -15,28 +15,14 @@ export const STATO_VALIDAZIONE_COLORS: Record<StatoValidazione, { bg: string; te
   rifiutato: { bg: 'bg-red-100', text: 'text-red-800' },
 };
 
-export const DESTINAZIONE_LABELS: Record<DestinazioneMateriale, string> = {
-  social: 'Social Media',
-  sito: 'Sito Web',
-  offline: 'Grafica Offline',
-};
-
-export const DESTINAZIONE_ICONS: Record<DestinazioneMateriale, any> = {
-  social: Share2,
-  sito: Globe,
-  offline: Printer,
-};
-
 export interface Material {
   id: string;
   nome_file: string;
-  url_storage?: string | null;
-  caricato_da: string;
-  ruolo_caricatore: 'admin' | 'cliente';
+  url_storage: string | null;
+  caricato_da: string; // UID utente
   stato_validazione: StatoValidazione;
-  destinazione: DestinazioneMateriale;
-  note_rifiuto?: string | null;
-  creato_il: string;
+  note_rifiuto: string | null;
+  creato_il: Timestamp;
 }
 
 export function getFileTypeInfo(fileName: string) {
@@ -47,9 +33,6 @@ export function getFileTypeInfo(fileName: string) {
   }
   if (['mp4', 'mov', 'avi', 'mkv'].includes(extension || '')) {
     return { label: 'Video', icon: Video, color: 'text-purple-500', bg: 'bg-purple-50' };
-  }
-  if (['pdf'].includes(extension || '')) {
-    return { label: 'PDF', icon: FileText, color: 'text-red-500', bg: 'bg-red-50' };
   }
   return { label: 'Documento', icon: FileText, color: 'text-indigo-500', bg: 'bg-indigo-50' };
 }

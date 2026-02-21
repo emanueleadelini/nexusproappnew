@@ -28,7 +28,6 @@ export default function LoginPage() {
 
     try {
       const { user } = await signInWithEmailAndPassword(auth, email, password);
-      
       const userDoc = await getDoc(doc(db, 'users', user.uid));
       
       if (userDoc.exists()) {
@@ -50,12 +49,29 @@ export default function LoginPage() {
       }
     } catch (error: any) {
       let message = 'Errore imprevisto. Riprova più tardi.';
-      if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
-        message = 'Credenziali non valide. Controlla email e password.';
-      } else if (error.code === 'auth/too-many-requests') {
-        message = 'Troppi tentativi falliti. Riprova tra qualche minuto.';
-      } else if (error.message) {
-        message = error.message;
+      
+      switch (error.code) {
+        case 'auth/user-not-found':
+          message = "Nessun account associato a questa email.";
+          break;
+        case 'auth/wrong-password':
+          message = "Password errata. Riprova.";
+          break;
+        case 'auth/invalid-credential':
+          message = "Credenziali non valide. Controlla email e password.";
+          break;
+        case 'auth/invalid-email':
+          message = "Il formato dell'email non è valido.";
+          break;
+        case 'auth/user-disabled':
+          message = "Questo account è stato disabilitato. Contatta l'agenzia.";
+          break;
+        case 'auth/too-many-requests':
+          message = "Troppi tentativi. Riprova tra qualche minuto.";
+          break;
+        case 'auth/network-request-failed':
+          message = "Errore di rete. Controlla la connessione.";
+          break;
       }
       
       toast({ 
@@ -120,8 +136,6 @@ export default function LoginPage() {
             </form>
           </CardContent>
         </Card>
-        
-        {/* Helper Link for Initial Setup */}
         <div className="text-center">
           <Link href="/setup-admin" className="text-xs text-gray-400 hover:text-indigo-600 flex items-center justify-center gap-1 transition-colors">
             <Settings className="w-3 h-3" /> Prima volta? Configura l'admin qui.

@@ -4,13 +4,10 @@ import { useState, useRef } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useFirestore, useUser } from '@/firebase';
-import { collection, addDoc } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, UploadCloud, Share2, Globe, Printer, FileIcon, X } from 'lucide-react';
-import { DestinazioneMateriale } from '@/types/material';
+import { Loader2, UploadCloud, FileIcon, X } from 'lucide-react';
 
 interface Props {
   isOpen: boolean;
@@ -22,7 +19,6 @@ export function CaricaMaterialeModal({ isOpen, onClose, clienteId }: Props) {
   const { user } = useUser();
   const [loading, setLoading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [destinazione, setDestinazione] = useState<DestinazioneMateriale>('social');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const db = useFirestore();
   const { toast } = useToast();
@@ -42,15 +38,13 @@ export function CaricaMaterialeModal({ isOpen, onClose, clienteId }: Props) {
 
     setLoading(true);
     try {
-      // Per ora simuliamo l'upload salvando il nome del file e i metadati su Firestore
       await addDoc(collection(db, 'clienti', clienteId, 'materiali'), {
         nome_file: selectedFile.name,
-        url_storage: null, // Verrà implementato con Firebase Storage
+        url_storage: null,
         caricato_da: user.uid,
-        ruolo_caricatore: 'admin',
         stato_validazione: 'validato',
-        destinazione: destinazione,
-        creato_il: new Date().toISOString()
+        note_rifiuto: null,
+        creato_il: serverTimestamp()
       });
 
       toast({ title: 'Materiale caricato!', description: `Il file ${selectedFile.name} è stato aggiunto correttamente.` });
@@ -66,17 +60,14 @@ export function CaricaMaterialeModal({ isOpen, onClose, clienteId }: Props) {
   const resetForm = () => {
     setSelectedFile(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
-    setDestinazione('social');
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => { if (!open) resetForm(); onClose(); }}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <UploadCloud className="w-5 h-5 text-indigo-600" /> Carica Asset Agenzia
-          </DialogTitle>
-          <DialogDescription>Seleziona un file da condividere con il cliente.</DialogDescription>
+          <DialogTitle className="flex items-center gap-2">Carica Asset</DialogTitle>
+          <DialogDescription>Seleziona un file da condividere nel piano del cliente.</DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSave} className="space-y-6 py-4">
@@ -86,59 +77,22 @@ export function CaricaMaterialeModal({ isOpen, onClose, clienteId }: Props) {
               onClick={() => fileInputRef.current?.click()}
               className={`border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center gap-3 cursor-pointer transition-colors ${selectedFile ? 'border-indigo-400 bg-indigo-50/50' : 'border-gray-200 hover:border-indigo-300 hover:bg-gray-50'}`}
             >
-              <input 
-                type="file" 
-                ref={fileInputRef} 
-                onChange={handleFileChange} 
-                className="hidden" 
-              />
+              <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" />
               {selectedFile ? (
                 <div className="flex flex-col items-center text-center">
-                  <div className="bg-indigo-600 p-2 rounded-lg mb-2">
-                    <FileIcon className="w-6 h-6 text-white" />
-                  </div>
+                  <div className="bg-indigo-600 p-2 rounded-lg mb-2"><FileIcon className="w-6 h-6 text-white" /></div>
                   <span className="text-sm font-semibold text-gray-900 truncate max-w-[250px]">{selectedFile.name}</span>
-                  <span className="text-[10px] text-gray-400 uppercase">{(selectedFile.size / 1024 / 1024).toFixed(2)} MB</span>
-                  <Button 
-                    type="button" 
-                    variant="ghost" 
-                    size="sm" 
-                    className="mt-2 text-red-500 hover:text-red-600 h-7"
-                    onClick={(e) => { e.stopPropagation(); setSelectedFile(null); }}
-                  >
+                  <Button type="button" variant="ghost" size="sm" className="mt-2 text-red-500 hover:text-red-600 h-7" onClick={(e) => { e.stopPropagation(); setSelectedFile(null); }}>
                     <X className="w-3 h-3 mr-1" /> Rimuovi
                   </Button>
                 </div>
               ) : (
                 <>
                   <UploadCloud className="w-10 h-10 text-gray-300" />
-                  <div className="text-center">
-                    <p className="text-sm font-medium text-gray-600">Clicca per sfogliare</p>
-                    <p className="text-xs text-gray-400">Supporta immagini, video, PDF e documenti</p>
-                  </div>
+                  <p className="text-sm font-medium text-gray-600">Clicca per sfogliare</p>
                 </>
               )}
             </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label>Destinazione d'uso</Label>
-            <Select value={destinazione} onValueChange={(v: DestinazioneMateriale) => setDestinazione(v)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Seleziona destinazione" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="social">
-                  <div className="flex items-center gap-2"><Share2 className="w-4 h-4" /> Social Media</div>
-                </SelectItem>
-                <SelectItem value="sito">
-                  <div className="flex items-center gap-2"><Globe className="w-4 h-4" /> Sito Web</div>
-                </SelectItem>
-                <SelectItem value="offline">
-                  <div className="flex items-center gap-2"><Printer className="w-4 h-4" /> Grafica Offline</div>
-                </SelectItem>
-              </SelectContent>
-            </Select>
           </div>
 
           <DialogFooter className="pt-2">

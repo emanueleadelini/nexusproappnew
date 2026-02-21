@@ -1,3 +1,5 @@
+import { Timestamp } from 'firebase/firestore';
+
 export type StatoPost = 'bozza' | 'da_approvare' | 'approvato' | 'pubblicato';
 
 export const STATO_POST_LABELS: Record<StatoPost, string> = {
@@ -19,7 +21,7 @@ export interface Post {
   titolo: string;
   testo: string;
   stato: StatoPost;
-  dataPubblicazione?: any;  // campo Firestore: "data_pubblicazione"
-  creatoIl?: any;
-  aggiornatoIl?: any;
+  data_pubblicazione: Timestamp | null;
+  creato_il: Timestamp;
+  aggiornato_il: Timestamp;
 }
