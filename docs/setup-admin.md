@@ -8,7 +8,7 @@ Segui questi passaggi nella Console di Firebase per configurare l'accesso admin 
 3. Seleziona la tab **Users** e clicca sul pulsante **Add user**.
 4. Inserisci le credenziali:
    - Email: `emanueleadelini@gmail.com`
-   - Password: `Agnela25!`
+   - Password: `Angela25!`
 5. Clicca su **Add user**.
 6. **IMPORTANTE**: Una volta creato, apparirà una colonna chiamata **User UID**. Copia quel codice (es. `vX9...`). Ti servirà per il prossimo passaggio.
 

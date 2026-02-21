@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -27,12 +26,12 @@ export default function SetupAdminPage() {
   const handleSetup = async () => {
     setStatus('loading');
     const email = 'emanueleadelini@gmail.com';
-    const pass = 'Agnela25!';
+    const pass = 'Angela25!'; // Password corretta: Angela25!
 
     try {
       let user = currentUser;
 
-      // Se non siamo loggati, proviamo a creare o loggare l'utente admin
+      // Se non siamo loggati con l'account corretto, proviamo a crearlo o loggarlo
       if (!user || user.email !== email) {
         try {
           const res = await createUserWithEmailAndPassword(auth, email, pass);
@@ -45,7 +44,7 @@ export default function SetupAdminPage() {
               user = res.user;
             } catch (signInError: any) {
               if (signInError.code === 'auth/invalid-credential' || signInError.code === 'auth/wrong-password') {
-                throw new Error("L'utente esiste già con una password diversa. Per sicurezza, vai nella console Firebase (Authentication), elimina l'utente " + email + " e riprova questo setup.");
+                throw new Error("L'utente esiste già ma la password nel codice non corrisponde a quella su Firebase. Per sicurezza, vai nella console Firebase (Authentication), elimina l'utente " + email + " e riprova questo setup.");
               }
               throw signInError;
             }
@@ -65,7 +64,7 @@ export default function SetupAdminPage() {
         });
 
         setStatus('success');
-        setMessage('Configurazione completata con successo! Il tuo account ' + user.email + ' è ora configurato come Amministratore.');
+        setMessage('Configurazione completata! L\'account ' + user.email + ' è ora Amministratore.');
       }
     } catch (error: any) {
       console.error(error);
@@ -85,7 +84,7 @@ export default function SetupAdminPage() {
           </div>
           <CardTitle className="text-2xl font-headline font-bold">Configurazione Admin</CardTitle>
           <CardDescription>
-            Questa procedura imposterà l'account <strong>emanueleadelini@gmail.com</strong> come amministratore del sistema.
+            Imposta <strong>emanueleadelini@gmail.com</strong> come amministratore.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -94,18 +93,13 @@ export default function SetupAdminPage() {
               <Button onClick={handleSetup} className="w-full bg-indigo-600 hover:bg-indigo-700 h-12 font-bold">
                 Configura Admin Ora
               </Button>
-              {currentUser && currentUser.email !== 'emanueleadelini@gmail.com' && (
-                <p className="text-[10px] text-center text-gray-400">
-                  Sei attualmente loggato come {currentUser.email}. Il setup proverà a switchare sull'account admin.
-                </p>
-              )}
             </div>
           )}
 
           {status === 'loading' && (
             <div className="flex flex-col items-center py-4">
               <Loader2 className="w-10 h-10 animate-spin text-indigo-600 mb-2" />
-              <p className="text-sm text-gray-500 font-medium">Verifica credenziali e permessi...</p>
+              <p className="text-sm text-gray-500 font-medium">Verifica in corso...</p>
             </div>
           )}
 
@@ -129,14 +123,7 @@ export default function SetupAdminPage() {
               <div className="bg-red-50 p-4 rounded-lg border border-red-100">
                 <p className="text-xs text-red-700 font-medium leading-relaxed">{message}</p>
               </div>
-              <div className="flex gap-2">
-                <Button onClick={() => setStatus('idle')} variant="outline" className="flex-1">Riprova</Button>
-                {message.includes("elimina l'utente") && (
-                  <Button variant="ghost" className="text-gray-400 text-xs" onClick={() => window.open('https://console.firebase.google.com/', '_blank')}>
-                    Apri Console <Trash2 className="w-3 h-3 ml-1" />
-                  </Button>
-                )}
-              </div>
+              <Button onClick={() => setStatus('idle')} variant="outline" className="w-full">Riprova</Button>
             </div>
           )}
         </CardContent>
