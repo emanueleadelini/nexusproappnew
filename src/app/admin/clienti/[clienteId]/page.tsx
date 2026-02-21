@@ -11,11 +11,12 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
-import { CalendarDays, FolderOpen, Send, Clock, Sparkles, Plus, ChevronLeft, User, UploadCloud, Edit3, Image as ImageIcon, Filter, CheckCircle2, XCircle, PieChart, Info } from 'lucide-react';
+import { CalendarDays, FolderOpen, Send, Clock, Sparkles, Plus, ChevronLeft, User, UploadCloud, Edit3, Image as ImageIcon, Filter, CheckCircle2, XCircle, PieChart, Info, AlertTriangle } from 'lucide-react';
 import { useState } from 'react';
 import { GeneraBozzaModal } from '@/components/admin/genera-bozza-modal';
 import { CreaPostManualeModal } from '@/components/admin/crea-post-manuale-modal';
 import { ModificaPostModal } from '@/components/admin/modifica-post-modal';
+import { ModificaPianoModal } from '@/components/admin/modifica-piano-modal';
 import { CaricaMaterialeModal } from '@/components/admin/carica-materiale-modal';
 import { Calendar } from '@/components/ui/calendar';
 import Link from 'next/link';
@@ -29,6 +30,7 @@ export default function ClienteDettaglio() {
   const [isGeneraOpen, setIsGeneraOpen] = useState(false);
   const [isManualeOpen, setIsManualeOpen] = useState(false);
   const [isUploadOpen, setIsUploadOpen] = useState(false);
+  const [isPianoOpen, setIsPianoOpen] = useState(false);
   const [postDaModificare, setPostDaModificare] = useState<Post | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   
@@ -126,6 +128,21 @@ export default function ClienteDettaglio() {
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
         <div className="lg:col-span-3 space-y-8">
+          {client.richiesta_upgrade && (
+            <div className="bg-amber-50 border border-amber-200 p-4 rounded-xl flex items-center justify-between animate-pulse">
+              <div className="flex items-center gap-3">
+                <AlertTriangle className="text-amber-600 w-5 h-5" />
+                <div>
+                  <p className="text-sm font-bold text-amber-900">Richiesta di Upgrade</p>
+                  <p className="text-xs text-amber-700">Il cliente ha richiesto l'aggiunta di post extra al piano.</p>
+                </div>
+              </div>
+              <Button size="sm" onClick={() => setIsPianoOpen(true)} className="bg-amber-600 hover:bg-amber-700 text-white border-none">
+                Gestisci Piano
+              </Button>
+            </div>
+          )}
+
           <Tabs defaultValue="calendar" className="w-full">
             <TabsList className="bg-white border-b border-gray-200 p-0 h-12 w-full justify-start rounded-none mb-6">
               <TabsTrigger value="calendar" className="data-[state=active]:border-b-2 data-[state=active]:border-indigo-600 rounded-none h-full px-8 text-sm font-medium">
@@ -151,9 +168,6 @@ export default function ClienteDettaglio() {
                       hasPost: "bg-indigo-100 text-indigo-900 font-bold border-b-2 border-indigo-600 rounded-none"
                     }}
                   />
-                  <div className="mt-4 pt-4 border-t text-xs text-gray-500 flex items-center gap-2">
-                    <div className="w-2 h-2 bg-indigo-600 rounded-full" /> Giorni con post programmati
-                  </div>
                 </Card>
 
                 <div className="flex-1 space-y-4">
@@ -292,10 +306,6 @@ export default function ClienteDettaglio() {
                                 </div>
                               </div>
                               <p className="font-semibold text-sm truncate" title={mat.nome_file}>{mat.nome_file}</p>
-                              <div className="flex items-center gap-2 mt-2">
-                                <User className="w-3 h-3 text-indigo-500" />
-                                <span className="text-[10px] text-gray-400 font-medium">UID: {mat.caricato_da?.substring(0, 8)}...</span>
-                              </div>
                             </div>
                             {mat.stato_validazione === 'in_attesa' && (
                               <div className="p-3 bg-gray-50 border-t flex gap-2">
@@ -313,14 +323,12 @@ export default function ClienteDettaglio() {
                 <div className="text-center py-20 bg-white rounded-xl border-2 border-dashed border-gray-100">
                   <FolderOpen className="w-10 h-10 text-gray-200 mx-auto mb-2" />
                   <p className="text-muted-foreground">Nessun asset trovato con i filtri selezionati.</p>
-                  <Button variant="link" onClick={() => {setTipoFilter('all'); setDestFilter('all');}} className="text-indigo-600 mt-2">Pulisci i filtri</Button>
                 </div>
               )}
             </TabsContent>
           </Tabs>
         </div>
 
-        {/* Sidebar con Crediti & Stato */}
         <div className="space-y-6">
           <Card className="rounded-xl border-gray-200/50 shadow-md overflow-hidden sticky top-24">
             <CardHeader className="bg-indigo-600 text-white pb-6">
@@ -363,7 +371,7 @@ export default function ClienteDettaglio() {
               </div>
             </CardContent>
             <CardFooter className="border-t bg-gray-50/50 p-4">
-               <Button variant="outline" className="w-full text-xs font-bold text-indigo-600 border-indigo-200 hover:bg-indigo-50">
+               <Button onClick={() => setIsPianoOpen(true)} variant="outline" className="w-full text-xs font-bold text-indigo-600 border-indigo-200 hover:bg-indigo-50">
                  Modifica Piano Abbonamento
                </Button>
             </CardFooter>
@@ -374,6 +382,7 @@ export default function ClienteDettaglio() {
       <GeneraBozzaModal isOpen={isGeneraOpen} onClose={() => setIsGeneraOpen(false)} clienteId={clienteId} clienteNome={client.nome_azienda} clienteSettore={client.settore || ''} />
       <CreaPostManualeModal isOpen={isManualeOpen} onClose={() => setIsManualeOpen(false)} clienteId={clienteId} />
       <ModificaPostModal isOpen={!!postDaModificare} onClose={() => setPostDaModificare(null)} clienteId={clienteId} post={postDaModificare} />
+      <ModificaPianoModal isOpen={isPianoOpen} onClose={() => setIsPianoOpen(false)} clienteId={clienteId} postTotaliAttuali={postTotali} />
       <CaricaMaterialeModal isOpen={isUploadOpen} onClose={() => setIsUploadOpen(false)} clienteId={clienteId} />
     </div>
   );

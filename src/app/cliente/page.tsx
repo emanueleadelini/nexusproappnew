@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
-import { CalendarCheck, Upload, ArrowUpRight, Check, Loader2, User, UploadCloud, X, FileIcon, CalendarDays, Clock, Filter, Share2, Globe, Printer, PieChart, Info } from 'lucide-react';
+import { CalendarCheck, Upload, ArrowUpRight, Check, Loader2, User, UploadCloud, X, FileIcon, CalendarDays, Clock, Filter, Share2, Globe, Printer, PieChart, Info, Send } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -25,6 +25,7 @@ export default function ClienteDashboard() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [destinazione, setDestinazione] = useState<DestinazioneAsset>('social');
   const [isUploading, setIsUploading] = useState(false);
+  const [isRequestingUpgrade, setIsRequestingUpgrade] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [tipoFilter, setTipoFilter] = useState<string>('all');
   const [destFilter, setDestFilter] = useState<string>('all');
@@ -86,6 +87,24 @@ export default function ClienteDashboard() {
       toast({ title: "Materiale inviato!", description: "Il team Nexus lo validerà a breve." });
     } finally {
       setIsUploading(false);
+    }
+  };
+
+  const handleUpgradeRequest = async () => {
+    if (!clienteId) return;
+    setIsRequestingUpgrade(true);
+    try {
+      const ref = doc(db, 'clienti', clienteId);
+      await updateDoc(ref, { 
+        richiesta_upgrade: true,
+        aggiornato_il: serverTimestamp()
+      });
+      toast({ 
+        title: "Richiesta inviata!", 
+        description: "L'agenzia è stata notificata. Verrai contattato a breve per l'upgrade." 
+      });
+    } finally {
+      setIsRequestingUpgrade(false);
     }
   };
 
@@ -238,9 +257,20 @@ export default function ClienteDashboard() {
                 </p>
               </div>
 
-              <Button variant="link" className="w-full text-indigo-600 p-0 flex items-center justify-center gap-1 font-bold">
-                Richiedi Post Extra <ArrowUpRight className="w-4 h-4" />
-              </Button>
+              {client.richiesta_upgrade ? (
+                <div className="bg-indigo-50 text-indigo-700 text-[10px] font-bold p-3 rounded-lg flex items-center justify-center gap-2 border border-indigo-100 italic">
+                  <Send className="w-3 h-3" /> Richiesta inviata all'agenzia
+                </div>
+              ) : (
+                <Button 
+                  variant="link" 
+                  onClick={handleUpgradeRequest}
+                  disabled={isRequestingUpgrade}
+                  className="w-full text-indigo-600 p-0 flex items-center justify-center gap-1 font-bold"
+                >
+                  {isRequestingUpgrade ? <Loader2 className="animate-spin w-4 h-4" /> : <>Richiedi Post Extra <ArrowUpRight className="w-4 h-4" /></>}
+                </Button>
+              )}
             </CardContent>
           </Card>
 
@@ -378,17 +408,6 @@ export default function ClienteDashboard() {
                               </div>
                             </div>
                             <p className="font-semibold text-sm truncate" title={mat.nome_file}>{mat.nome_file}</p>
-                            <div className="flex items-center gap-2 mt-1">
-                              <User className="w-3 h-3 text-indigo-500" />
-                              <span className="text-[9px] text-gray-400 uppercase font-bold tracking-tighter">
-                                UID Caricatore: {mat.caricato_da?.substring(0, 8)}...
-                              </span>
-                            </div>
-                            {mat.stato_validazione === 'rifiutato' && mat.note_rifiuto && (
-                              <div className="mt-2 text-[10px] text-red-600 bg-red-50 p-2 rounded border border-red-100">
-                                <strong>Feedback:</strong> {mat.note_rifiuto}
-                              </div>
-                            )}
                           </CardContent>
                         </Card>
                       );
