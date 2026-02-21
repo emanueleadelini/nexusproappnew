@@ -1,9 +1,9 @@
 export interface Client {
-  id: string;
-  nome_azienda: string;
+  id: string;                // document ID
+  nomeAzienda: string;       // campo Firestore: "nome_azienda"
   settore?: string;
-  email_riferimento?: string;
-  post_totali: number;
-  post_usati: number;
-  creato_il?: any;
+  emailRiferimento?: string; // campo Firestore: "email_riferimento"
+  postTotali: number;        // campo Firestore: "post_totali"
+  postUsati: number;         // campo Firestore: "post_usati"
+  creatoIl?: any;            // campo Firestore: "creato_il"
 }

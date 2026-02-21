@@ -14,10 +14,10 @@ export const STATO_VALIDAZIONE_COLORS: Record<StatoValidazione, { bg: string; te
 
 export interface Material {
   id: string;
-  nome_file: string;
-  url_storage?: string | null;
-  caricato_da: string;
-  stato_validazione: StatoValidazione;
-  note_rifiuto?: string | null;
-  creato_il?: any;
+  nomeFile: string;          // campo Firestore: "nome_file"
+  urlStorage?: string | null; // campo Firestore: "url_storage"
+  caricatoDa: string;        // campo Firestore: "caricato_da" (UID)
+  statoValidazione: StatoValidazione;
+  noteRifiuto?: string | null;
+  creatoIl?: any;
 }

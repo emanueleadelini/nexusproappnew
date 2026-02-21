@@ -19,7 +19,7 @@ export interface Post {
   titolo: string;
   testo: string;
   stato: StatoPost;
-  data_pubblicazione?: any;
-  creato_il?: any;
-  aggiornato_il?: any;
+  dataPubblicazione?: any;  // campo Firestore: "data_pubblicazione"
+  creatoIl?: any;
+  aggiornatoIl?: any;
 }
