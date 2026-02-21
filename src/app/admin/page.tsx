@@ -1,68 +1,98 @@
-
 'use client';
 
-import { MOCK_CLIENTS } from "@/lib/mock-data";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { Building2, ChevronRight, Mail, PieChart } from "lucide-react";
-import Link from "next/link";
+import { useFirestore, useMemoFirebase, useCollection } from '@/firebase';
+import { collection, query, orderBy } from 'firebase/firestore';
+import { Client } from '@/types/client';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Building2, ChevronRight, PieChart } from 'lucide-react';
+import Link from 'next/link';
 
 export default function AdminDashboard() {
+  const db = useFirestore();
+  
+  const clientsQuery = useMemoFirebase(() => {
+    return query(collection(db, 'clienti'), orderBy('nome_azienda'));
+  }, [db]);
+
+  const { data: clients, isLoading, error } = useCollection<Client>(clientsQuery);
+
+  if (error) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-red-600">Errore nel caricamento dei clienti.</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-8">
+    <div className="space-y-6">
       <div className="flex justify-between items-end">
-        <div className="space-y-1">
-          <h1 className="text-3xl font-headline font-bold text-primary">Dashboard Agenzia</h1>
-          <p className="text-muted-foreground">Benvenuto, Admin. Ecco la panoramica dei tuoi clienti.</p>
+        <div>
+          <h2 className="text-3xl font-headline font-bold">I Tuoi Clienti</h2>
+          <p className="text-muted-foreground">Gestisci le aziende e i loro piani editoriali.</p>
         </div>
-        <Button className="bg-primary hover:bg-primary/90">
-          Aggiungi Cliente
-        </Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {MOCK_CLIENTS.map((client) => {
-          const usagePercent = (client.post_usati / client.post_totali) * 100;
-          return (
-            <Card key={client.id} className="group hover:border-accent transition-colors">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-lg font-headline font-semibold">
-                  {client.nome_azienda}
-                </CardTitle>
-                <div className="p-2 bg-muted rounded-full">
-                  <Building2 className="w-4 h-4 text-primary" />
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="text-sm text-muted-foreground flex items-center gap-1">
-                  <Badge variant="secondary" className="font-normal">{client.settore}</Badge>
-                </div>
-                
-                <div className="space-y-2 pt-2">
-                  <div className="flex justify-between text-xs font-medium">
-                    <span>Crediti Post: {client.post_usati} / {client.post_totali}</span>
-                    <span className={usagePercent > 80 ? "text-destructive" : ""}>{Math.round(usagePercent)}%</span>
-                  </div>
-                  <Progress value={usagePercent} className="h-2" />
-                </div>
-
-                <div className="flex items-center gap-2 text-xs text-muted-foreground mt-2">
-                  <Mail className="w-3 h-3" />
-                  {client.email_riferimento}
-                </div>
-
-                <Button asChild variant="outline" className="w-full mt-4 group-hover:bg-accent group-hover:text-primary-foreground group-hover:border-accent transition-all">
-                  <Link href={`/admin/client/${client.id}`}>
-                    Dettagli Cliente <ChevronRight className="ml-2 w-4 h-4" />
-                  </Link>
-                </Button>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
+      {isLoading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[1, 2, 3].map((i) => <Skeleton key={i} className="h-48 rounded-xl" />)}
+        </div>
+      ) : clients && clients.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {clients.map((client) => {
+            const usagePercent = client.post_totali > 0 ? (client.post_usati / client.post_totali) * 100 : 0;
+            return (
+              <Link key={client.id} href={`/admin/clienti/${client.id}`}>
+                <Card className="hover:border-indigo-400 transition-colors cursor-pointer group rounded-xl border-gray-200/50">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold">
+                        {client.nome_azienda.charAt(0).toUpperCase()}
+                      </div>
+                      <CardTitle className="text-lg font-headline font-semibold group-hover:text-indigo-600 transition-colors">
+                        {client.nome_azienda}
+                      </CardTitle>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-indigo-600 transition-colors" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div className="text-sm text-muted-foreground italic">
+                        {client.settore || 'Settore non specificato'}
+                      </div>
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-xs font-medium">
+                          <span className="flex items-center gap-1"><PieChart className="w-3 h-3" /> Crediti Post</span>
+                          <span className={usagePercent > 80 ? "text-red-600 font-bold" : ""}>
+                            {client.post_usati} / {client.post_totali}
+                          </span>
+                        </div>
+                        <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                          <div 
+                            className={`h-full transition-all ${usagePercent > 80 ? 'bg-red-500' : 'bg-indigo-600'}`} 
+                            style={{ width: `${Math.min(usagePercent, 100)}%` }}
+                          />
+                        </div>
+                      </div>
+                      <div className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">
+                        {client.email_riferimento}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="text-center py-24 bg-white rounded-xl border-2 border-dashed">
+          <Building2 className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+          <h3 className="text-lg font-medium">Nessun cliente trovato</h3>
+          <p className="text-muted-foreground">Inizia aggiungendo un nuovo cliente da Firestore.</p>
+        </div>
+      )}
     </div>
   );
 }
