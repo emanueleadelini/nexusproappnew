@@ -3,13 +3,13 @@
 import { useUser, useFirestore, useMemoFirebase, useCollection, useDoc } from '@/firebase';
 import { collection, doc, query, orderBy, updateDoc, addDoc, getDoc } from 'firebase/firestore';
 import { Post, STATO_POST_LABELS, STATO_POST_COLORS, StatoPost } from '@/types/post';
-import { Material, STATO_VALIDAZIONE_LABELS, STATO_VALIDAZIONE_COLORS, StatoValidazione } from '@/types/material';
+import { Material, STATO_VALIDAZIONE_LABELS, STATO_VALIDAZIONE_COLORS, StatoValidazione, getFileTypeInfo } from '@/types/material';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
-import { CalendarCheck, Upload, HelpCircle, ArrowUpRight, Check, FileText, Info, Loader2 } from 'lucide-react';
+import { CalendarCheck, Upload, HelpCircle, ArrowUpRight, Check, FileText, Info, Loader2, User, ShieldCheck } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -64,6 +64,7 @@ export default function ClienteDashboard() {
         nome_file: newFileName,
         url_storage: null,
         caricato_da: user.uid,
+        ruolo_caricatore: 'cliente',
         stato_validazione: 'in_attesa',
         creato_il: new Date().toISOString()
       });
@@ -79,6 +80,9 @@ export default function ClienteDashboard() {
 
   const postRimanenti = client.post_totali - client.post_usati;
   const usagePercent = client.post_totali > 0 ? (client.post_usati / client.post_totali) * 100 : 0;
+
+  const materialsFromClient = materials?.filter(m => m.ruolo_caricatore === 'cliente') || [];
+  const materialsFromAdmin = materials?.filter(m => m.ruolo_caricatore === 'admin') || [];
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto">
@@ -100,7 +104,7 @@ export default function ClienteDashboard() {
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label htmlFor="fileName">Nome File / Descrizione</Label>
+                <Label htmlFor="fileName">Nome File / Descrizione (includi estensione es. .jpg)</Label>
                 <Input id="fileName" value={newFileName} onChange={(e) => setNewFileName(e.target.value)} placeholder="es. Foto evento Natale.jpg" />
               </div>
             </div>
@@ -147,7 +151,8 @@ export default function ClienteDashboard() {
           </Card>
         </div>
 
-        <div className="lg:col-span-2 space-y-8">
+        <div className="lg:col-span-2 space-y-12">
+          {/* Calendario */}
           <div className="space-y-4">
             <h2 className="text-xl font-headline font-bold">Calendario Editoriale</h2>
             {isPostsLoading ? <Skeleton className="h-48" /> : posts && posts.length > 0 ? (
@@ -183,37 +188,77 @@ export default function ClienteDashboard() {
             )}
           </div>
 
-          <div className="space-y-4">
-            <h2 className="text-xl font-headline font-bold">I Tuoi Materiali</h2>
-            {isMaterialsLoading ? <Skeleton className="h-48" /> : materials && materials.length > 0 ? (
-              <div className="grid sm:grid-cols-2 gap-4">
-                {materials.map(mat => (
-                  <Card key={mat.id} className="rounded-xl border-gray-200/50 shadow-sm">
-                    <CardContent className="p-4">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-indigo-50 rounded-lg"><FileText className="w-5 h-5 text-indigo-600" /></div>
-                        <div className="min-w-0 flex-1">
-                          <p className="font-semibold text-sm truncate">{mat.nome_file}</p>
-                          <Badge className={`${STATO_VALIDAZIONE_COLORS[mat.stato_validazione as StatoValidazione].bg} ${STATO_VALIDAZIONE_COLORS[mat.stato_validazione as StatoValidazione].text} border-none text-[10px] mt-1`}>
-                            {STATO_VALIDAZIONE_LABELS[mat.stato_validazione as StatoValidazione]}
-                          </Badge>
-                        </div>
-                      </div>
-                      {mat.stato_validazione === 'rifiutato' && mat.note_rifiuto && (
-                        <div className="mt-3 bg-red-50 p-2 rounded border border-red-100 flex gap-2">
-                           <Info className="w-4 h-4 text-red-600 flex-shrink-0" />
-                           <p className="text-[10px] text-red-700"><strong>Motivo Rifiuto:</strong> {mat.note_rifiuto}</p>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-16 bg-white rounded-xl border-2 border-dashed">
-                <p className="text-muted-foreground">Nessun materiale inviato.</p>
-              </div>
-            )}
+          {/* Materiali */}
+          <div className="space-y-6">
+            <h2 className="text-xl font-headline font-bold">Materiali & Asset</h2>
+            
+            <div className="space-y-4">
+              <h3 className="text-sm font-bold uppercase tracking-wider text-gray-400 flex items-center gap-2">
+                <User className="w-4 h-4" /> I Tuoi Invii
+              </h3>
+              {isMaterialsLoading ? <Skeleton className="h-24" /> : materialsFromClient.length > 0 ? (
+                <div className="grid sm:grid-cols-2 gap-4">
+                  {materialsFromClient.map(mat => {
+                    const typeInfo = getFileTypeInfo(mat.nome_file);
+                    return (
+                      <Card key={mat.id} className="rounded-xl border-gray-200/50 shadow-sm">
+                        <CardContent className="p-4">
+                          <div className="flex items-center gap-3">
+                            <div className={`p-2 ${typeInfo.bg} rounded-lg`}>
+                              <typeInfo.icon className={`w-5 h-5 ${typeInfo.color}`} />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="font-semibold text-sm truncate">{mat.nome_file}</p>
+                              <Badge className={`${STATO_VALIDAZIONE_COLORS[mat.stato_validazione as StatoValidazione].bg} ${STATO_VALIDAZIONE_COLORS[mat.stato_validazione as StatoValidazione].text} border-none text-[10px] mt-1`}>
+                                {STATO_VALIDAZIONE_LABELS[mat.stato_validazione as StatoValidazione]}
+                              </Badge>
+                            </div>
+                          </div>
+                          {mat.stato_validazione === 'rifiutato' && mat.note_rifiuto && (
+                            <div className="mt-3 bg-red-50 p-2 rounded border border-red-100 flex gap-2">
+                               <Info className="w-4 h-4 text-red-600 flex-shrink-0" />
+                               <p className="text-[10px] text-red-700"><strong>Motivo Rifiuto:</strong> {mat.note_rifiuto}</p>
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground italic">Nessun materiale inviato.</p>
+              )}
+            </div>
+
+            <div className="space-y-4">
+              <h3 className="text-sm font-bold uppercase tracking-wider text-gray-400 flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4" /> Asset Agenzia
+              </h3>
+              {isMaterialsLoading ? <Skeleton className="h-24" /> : materialsFromAdmin.length > 0 ? (
+                <div className="grid sm:grid-cols-2 gap-4">
+                  {materialsFromAdmin.map(mat => {
+                    const typeInfo = getFileTypeInfo(mat.nome_file);
+                    return (
+                      <Card key={mat.id} className="rounded-xl border-gray-200/50 shadow-sm bg-gray-50/50">
+                        <CardContent className="p-4">
+                          <div className="flex items-center gap-3">
+                            <div className={`p-2 ${typeInfo.bg} rounded-lg`}>
+                              <typeInfo.icon className={`w-5 h-5 ${typeInfo.color}`} />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="font-semibold text-sm truncate">{mat.nome_file}</p>
+                              <p className="text-[10px] text-gray-400">Caricato da Nexus</p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground italic">Nessun asset caricato dall'agenzia.</p>
+              )}
+            </div>
           </div>
         </div>
       </div>

@@ -4,13 +4,13 @@ import { useParams } from 'next/navigation';
 import { useFirestore, useMemoFirebase, useCollection, useDoc } from '@/firebase';
 import { collection, doc, query, orderBy, updateDoc } from 'firebase/firestore';
 import { StatoPost, STATO_POST_LABELS, STATO_POST_COLORS } from '@/types/post';
-import { StatoValidazione, STATO_VALIDAZIONE_LABELS, STATO_VALIDAZIONE_COLORS } from '@/types/material';
+import { StatoValidazione, STATO_VALIDAZIONE_LABELS, STATO_VALIDAZIONE_COLORS, getFileTypeInfo } from '@/types/material';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { CalendarDays, FolderOpen, Send, CheckCircle, XCircle, Clock, Sparkles, Plus, ChevronLeft, RotateCcw } from 'lucide-react';
+import { CalendarDays, FolderOpen, Send, CheckCircle, XCircle, Clock, Sparkles, Plus, ChevronLeft, RotateCcw, User, ShieldCheck } from 'lucide-react';
 import { useState } from 'react';
 import { GeneraBozzaModal } from '@/components/admin/genera-bozza-modal';
 import { CreaPostManualeModal } from '@/components/admin/crea-post-manuale-modal';
@@ -58,6 +58,9 @@ export default function ClienteDettaglio() {
 
   if (isClientLoading) return <div className="space-y-4 p-8"><Skeleton className="h-12 w-1/3" /><Skeleton className="h-64" /></div>;
   if (!client) return <div className="p-8 text-center">Cliente non trovato.</div>;
+
+  const materialsFromClient = materials?.filter(m => m.ruolo_caricatore === 'cliente') || [];
+  const materialsFromAdmin = materials?.filter(m => m.ruolo_caricatore === 'admin') || [];
 
   return (
     <div className="space-y-8 p-4 md:p-0">
@@ -153,45 +156,87 @@ export default function ClienteDettaglio() {
           )}
         </TabsContent>
 
-        <TabsContent value="materials" className="space-y-4">
-          {isMaterialsLoading ? <Skeleton className="h-48" /> : materials && materials.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {materials.map(mat => (
-                <Card key={mat.id} className="rounded-xl border-gray-200/50 shadow-sm overflow-hidden flex flex-col">
-                  <div className="p-4 flex-1">
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className="p-2 bg-gray-100 rounded-lg"><FolderOpen className="w-5 h-5 text-gray-500" /></div>
-                      <div className="min-w-0 flex-1">
-                        <p className="font-semibold text-sm truncate" title={mat.nome_file}>{mat.nome_file}</p>
-                        <p className="text-[10px] text-gray-400">Caricato il {new Date(mat.creato_il).toLocaleDateString()}</p>
+        <TabsContent value="materials" className="space-y-12">
+          {/* Sezione Cliente */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-bold flex items-center gap-2 text-gray-700">
+              <User className="w-5 h-5 text-indigo-500" /> Inviati dal Cliente
+            </h3>
+            {isMaterialsLoading ? <Skeleton className="h-48" /> : materialsFromClient.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {materialsFromClient.map(mat => {
+                  const typeInfo = getFileTypeInfo(mat.nome_file);
+                  return (
+                    <Card key={mat.id} className="rounded-xl border-gray-200/50 shadow-sm overflow-hidden flex flex-col">
+                      <div className="p-4 flex-1">
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className={`p-3 ${typeInfo.bg} rounded-xl`}>
+                            <typeInfo.icon className={`w-6 h-6 ${typeInfo.color}`} />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="font-semibold text-sm truncate" title={mat.nome_file}>{mat.nome_file}</p>
+                            <p className="text-[10px] text-gray-400 capitalize">{typeInfo.label} • {new Date(mat.creato_il).toLocaleDateString()}</p>
+                          </div>
+                        </div>
+                        <Badge className={`${STATO_VALIDAZIONE_COLORS[mat.stato_validazione as StatoValidazione].bg} ${STATO_VALIDAZIONE_COLORS[mat.stato_validazione as StatoValidazione].text} border-none font-medium text-[10px] px-2`}>
+                          {STATO_VALIDAZIONE_LABELS[mat.stato_validazione as StatoValidazione]}
+                        </Badge>
+                        {mat.stato_validazione === 'rifiutato' && mat.note_rifiuto && (
+                          <p className="mt-2 text-xs text-red-600 bg-red-50 p-2 rounded border border-red-100"><strong>Motivo:</strong> {mat.note_rifiuto}</p>
+                        )}
                       </div>
-                    </div>
-                    <Badge className={`${STATO_VALIDAZIONE_COLORS[mat.stato_validazione as StatoValidazione].bg} ${STATO_VALIDAZIONE_COLORS[mat.stato_validazione as StatoValidazione].text} border-none font-medium text-[10px] px-2`}>
-                      {STATO_VALIDAZIONE_LABELS[mat.stato_validazione as StatoValidazione]}
-                    </Badge>
-                    {mat.stato_validazione === 'rifiutato' && mat.note_rifiuto && (
-                      <p className="mt-2 text-xs text-red-600 bg-red-50 p-2 rounded border border-red-100"><strong>Motivo:</strong> {mat.note_rifiuto}</p>
-                    )}
-                  </div>
-                  {mat.stato_validazione === 'in_attesa' && (
-                    <div className="p-3 bg-gray-50 border-t flex gap-2">
-                      <Button size="sm" variant="outline" className="flex-1 text-red-600 border-red-200 hover:bg-red-50" onClick={() => validateMaterial(mat.id, 'rifiutato')}>
-                        <XCircle className="w-3 h-3 mr-2" /> Rifiuta
-                      </Button>
-                      <Button size="sm" className="flex-1 bg-green-600 hover:bg-green-700" onClick={() => validateMaterial(mat.id, 'validato')}>
-                        <CheckCircle className="w-3 h-3 mr-2" /> Valida
-                      </Button>
-                    </div>
-                  )}
-                </Card>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-20 bg-white rounded-xl border-2 border-dashed">
-              <FolderOpen className="w-10 h-10 text-gray-200 mx-auto mb-2" />
-              <p className="text-muted-foreground">Nessun materiale caricato.</p>
-            </div>
-          )}
+                      {mat.stato_validazione === 'in_attesa' && (
+                        <div className="p-3 bg-gray-50 border-t flex gap-2">
+                          <Button size="sm" variant="outline" className="flex-1 text-red-600 border-red-200 hover:bg-red-50" onClick={() => validateMaterial(mat.id, 'rifiutato')}>
+                            <XCircle className="w-3 h-3 mr-2" /> Rifiuta
+                          </Button>
+                          <Button size="sm" className="flex-1 bg-green-600 hover:bg-green-700" onClick={() => validateMaterial(mat.id, 'validato')}>
+                            <CheckCircle className="w-3 h-3 mr-2" /> Valida
+                          </Button>
+                        </div>
+                      )}
+                    </Card>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground italic px-4">Nessun file inviato dal cliente.</p>
+            )}
+          </div>
+
+          {/* Sezione Agenzia */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-bold flex items-center gap-2 text-gray-700">
+              <ShieldCheck className="w-5 h-5 text-violet-500" /> Caricati da Nexus (Agenzia)
+            </h3>
+            {isMaterialsLoading ? <Skeleton className="h-48" /> : materialsFromAdmin.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {materialsFromAdmin.map(mat => {
+                  const typeInfo = getFileTypeInfo(mat.nome_file);
+                  return (
+                    <Card key={mat.id} className="rounded-xl border-gray-200/50 shadow-sm overflow-hidden flex flex-col bg-gray-50/30">
+                      <div className="p-4 flex-1">
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className={`p-3 ${typeInfo.bg} rounded-xl`}>
+                            <typeInfo.icon className={`w-6 h-6 ${typeInfo.color}`} />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="font-semibold text-sm truncate" title={mat.nome_file}>{mat.nome_file}</p>
+                            <p className="text-[10px] text-gray-400 capitalize">{typeInfo.label} • {new Date(mat.creato_il).toLocaleDateString()}</p>
+                          </div>
+                        </div>
+                        <Badge variant="outline" className="bg-white text-gray-500 border-gray-200 font-medium text-[10px] px-2">
+                          Asset Agenzia
+                        </Badge>
+                      </div>
+                    </Card>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground italic px-4">Nessun file caricato dall'agenzia.</p>
+            )}
+          </div>
         </TabsContent>
       </Tabs>
 
