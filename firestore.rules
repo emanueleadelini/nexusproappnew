@@ -2,27 +2,32 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // === FUNZIONI HELPER ===
+    // ╔══════════════════════════════════════════╗
+    // ║          FUNZIONI HELPER                  ║
+    // ╚══════════════════════════════════════════╝
+
     function isAuthenticated() {
       return request.auth != null;
     }
-    
-    function getAuthProfile() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid));
-    }
 
+    // Fallback: se il ruolo non è nel token, lo legge dal documento users
     function getUserRole() {
-      return exists(/databases/$(database)/documents/users/$(request.auth.uid)) 
-        ? getAuthProfile().data.ruolo 
-        : 'none';
+      return request.auth.token.ruolo != null
+        ? request.auth.token.ruolo
+        : get(/databases/$(database)/documents/users/$(request.auth.uid)).data.ruolo;
     }
 
-    function isAdminEmail() {
-      return request.auth.token.email == 'emanueleadelini@gmail.com';
+    function getClienteId() {
+      return request.auth.token.cliente_id != null
+        ? request.auth.token.cliente_id
+        : get(/databases/$(database)/documents/users/$(request.auth.uid)).data.cliente_id;
     }
 
     function isSuperAdmin() {
-      return isAuthenticated() && (isAdminEmail() || getUserRole() == 'super_admin');
+      return isAuthenticated() && (
+        request.auth.token.email == 'emanueleadelini@gmail.com' || 
+        getUserRole() == 'super_admin'
+      );
     }
 
     function isOperatore() {
@@ -33,44 +38,52 @@ service cloud.firestore {
       return isSuperAdmin() || isOperatore();
     }
 
-    function isClienteOwner(clienteId) {
-      return isAuthenticated() && (
-        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getAuthProfile().data.cliente_id == clienteId) ||
-        (request.auth.token.cliente_id == clienteId)
-      );
-    }
-
     function isReferente() {
       return isAuthenticated() && getUserRole() == 'referente';
     }
 
-    // === USERS ===
+    function isCollaboratore() {
+      return isAuthenticated() && getUserRole() == 'collaboratore';
+    }
+
+    function isCliente() {
+      return isReferente() || isCollaboratore();
+    }
+
+    function isClienteOwner(clienteId) {
+      return isCliente() && getClienteId() == clienteId;
+    }
+
+    // ╔══════════════════════════════════════════╗
+    // ║              USERS                        ║
+    // ╚══════════════════════════════════════════╝
+
     match /users/{uid} {
-      allow read: if isAuthenticated() && (request.auth.uid == uid || isAgency());
-      // Permettiamo la creazione del proprio profilo per il setup iniziale
+      allow get: if isAuthenticated() && (request.auth.uid == uid || isAgency());
+      allow list: if isAgency();
       allow create: if isAuthenticated() && request.auth.uid == uid;
-      // Impediamo la modifica del ruolo a se stessi se non si è Super Admin
-      allow update: if isAuthenticated() && (
-        isSuperAdmin() || 
-        (request.auth.uid == uid && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['ruolo', 'permessi', 'cliente_id']))
-      );
+      allow update: if isSuperAdmin() || (request.auth.uid == uid 
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['ruolo', 'permessi', 'cliente_id']));
       allow delete: if isSuperAdmin();
     }
 
-    // === CLIENTI ===
+    // ╔══════════════════════════════════════════╗
+    // ║             CLIENTI                       ║
+    // ╚══════════════════════════════════════════╝
+
     match /clienti/{clienteId} {
       allow read: if isAgency() || isClienteOwner(clienteId);
       allow create, delete: if isSuperAdmin();
       allow update: if isSuperAdmin() || isOperatore() || isClienteOwner(clienteId);
 
-      // POST
+      // ── POST ──
       match /post/{postId} {
         allow read: if isAgency() || isClienteOwner(clienteId);
         allow create: if isAgency();
         allow update: if isAgency() || (isClienteOwner(clienteId) && isReferente());
         allow delete: if isAgency();
-        
-        // COMMENTI
+
+        // ── COMMENTI ──
         match /commenti/{commentoId} {
           allow read: if isAgency() || isClienteOwner(clienteId);
           allow create: if isAuthenticated();
@@ -79,7 +92,7 @@ service cloud.firestore {
         }
       }
 
-      // MATERIALI
+      // ── MATERIALI ──
       match /materiali/{materialeId} {
         allow read: if isAgency() || isClienteOwner(clienteId);
         allow create: if isAgency() || isClienteOwner(clienteId);
@@ -87,25 +100,21 @@ service cloud.firestore {
         allow delete: if isAgency();
       }
 
-      // CAMPAGNE
+      // ── CAMPAGNE ──
       match /campagne/{campagnaId} {
         allow read: if isAgency() || isClienteOwner(clienteId);
         allow write: if isAgency();
       }
     }
 
-    // === NOTIFICHE ===
+    // ╔══════════════════════════════════════════╗
+    // ║            NOTIFICHE                      ║
+    // ╚══════════════════════════════════════════╝
+
     match /notifiche/{notificaId} {
-      // Split read in get e list per maggiore precisione
-      allow get: if isAuthenticated() && (
-        isAgency() || 
-        resource.data.destinatario_uid == request.auth.uid
-      );
-      allow list: if isAuthenticated() && (
-        isAgency() || 
-        request.query.limit <= 20 // Enforce limit per sicurezza
-      );
-      allow create: if isAuthenticated(); 
+      allow get: if isAuthenticated() && (isAgency() || resource.data.destinatario_uid == request.auth.uid);
+      allow list: if isAuthenticated() && (isAgency() || request.query.limit <= 20);
+      allow create: if isAuthenticated();
       allow update: if isAuthenticated() && (isAgency() || resource.data.destinatario_uid == request.auth.uid);
       allow delete: if isSuperAdmin();
     }
