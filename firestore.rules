@@ -34,7 +34,10 @@ service cloud.firestore {
     }
 
     function isClienteOwner(clienteId) {
-      return isAuthenticated() && getAuthProfile().data.cliente_id == clienteId;
+      return isAuthenticated() && (
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getAuthProfile().data.cliente_id == clienteId) ||
+        (request.auth.token.cliente_id == clienteId)
+      );
     }
 
     function isReferente() {
@@ -44,8 +47,13 @@ service cloud.firestore {
     // === USERS ===
     match /users/{uid} {
       allow read: if isAuthenticated() && (request.auth.uid == uid || isAgency());
+      // Permettiamo la creazione del proprio profilo per il setup iniziale
       allow create: if isAuthenticated() && request.auth.uid == uid;
-      allow update: if isAuthenticated() && (isSuperAdmin() || request.auth.uid == uid);
+      // Impediamo la modifica del ruolo a se stessi se non si è Super Admin
+      allow update: if isAuthenticated() && (
+        isSuperAdmin() || 
+        (request.auth.uid == uid && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['ruolo', 'permessi', 'cliente_id']))
+      );
       allow delete: if isSuperAdmin();
     }
 
@@ -53,7 +61,7 @@ service cloud.firestore {
     match /clienti/{clienteId} {
       allow read: if isAgency() || isClienteOwner(clienteId);
       allow create, delete: if isSuperAdmin();
-      allow update: if isAgency() || isClienteOwner(clienteId);
+      allow update: if isSuperAdmin() || isOperatore() || isClienteOwner(clienteId);
 
       // POST
       match /post/{postId} {
@@ -88,15 +96,16 @@ service cloud.firestore {
 
     // === NOTIFICHE ===
     match /notifiche/{notificaId} {
-      // Un utente può leggere le notifiche se è Admin, Agenzia o il destinatario specifico
-      allow read: if isAuthenticated() && (
-        isAdminEmail() || 
+      // Split read in get e list per maggiore precisione
+      allow get: if isAuthenticated() && (
         isAgency() || 
         resource.data.destinatario_uid == request.auth.uid
       );
-      // Creazione permessa dal sistema (client-side) per eventi specifici
+      allow list: if isAuthenticated() && (
+        isAgency() || 
+        request.query.limit <= 20 // Enforce limit per sicurezza
+      );
       allow create: if isAuthenticated(); 
-      // Update permesso per segnare come letta
       allow update: if isAuthenticated() && (isAgency() || resource.data.destinatario_uid == request.auth.uid);
       allow delete: if isSuperAdmin();
     }

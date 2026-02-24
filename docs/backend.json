@@ -3,7 +3,7 @@
     "UserProfile": {
       "title": "UserProfile",
       "type": "object",
-      "description": "Profilo utente avanzato con RBAC a 4 livelli.",
+      "description": "Profilo utente avanzato con RBAC a 4 livelli per AD next lab.",
       "properties": {
         "id": { "type": "string" },
         "email": { "type": "string", "format": "email" },
@@ -55,7 +55,7 @@
     "Material": {
       "title": "Material",
       "type": "object",
-      "description": "Asset multimediale con distinzione di caricamento e limite 50MB.",
+      "description": "Asset multimediale con limite 50MB e supporto link esterni.",
       "properties": {
         "id": { "type": "string" },
         "nome_file": { "type": "string" },
