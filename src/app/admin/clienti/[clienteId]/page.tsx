@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import { useFirestore, useMemoFirebase, useCollection, useDoc } from '@/firebase';
 import { collection, doc, query, orderBy, updateDoc, serverTimestamp, deleteDoc, increment, arrayUnion, Timestamp } from 'firebase/firestore';
 import { StatoPost, STATO_POST_LABELS, STATO_POST_COLORS, Post, PIATTAFORMA_LABELS, FORMATO_LABELS } from '@/types/post';
@@ -13,12 +12,13 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
 import { CalendarDays, FolderOpen, Send, Clock, Sparkles, Plus, ChevronLeft, UploadCloud, Edit3, Image as ImageIcon, Filter, PieChart, Info, AlertTriangle, Trash2, MessageSquare, Share2, Link as LinkIcon, ExternalLink, History } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { GeneraBozzaModal } from '@/components/admin/genera-bozza-modal';
 import { CreaPostManualeModal } from '@/components/admin/crea-post-manuale-modal';
 import { ModificaPostModal } from '@/components/admin/modifica-post-modal';
 import { ModificaPianoModal } from '@/components/admin/modifica-piano-modal';
 import { CaricaMaterialeModal } from '@/components/admin/carica-materiale-modal';
+import { CommentiSidebar } from '@/components/commenti-sidebar';
 import { Calendar } from '@/components/ui/calendar';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import Link from 'next/link';
@@ -41,6 +41,9 @@ const TRANSIZIONI_PERMESSE: Record<StatoPost, StatoPost[]> = {
 
 export default function ClienteDettaglio() {
   const { clienteId } = useParams() as { clienteId: string };
+  const searchParams = useSearchParams();
+  const postIdFromUrl = searchParams.get('postId');
+  
   const db = useFirestore();
   const { user } = useUser();
   const { toast } = useToast();
@@ -51,10 +54,17 @@ export default function ClienteDettaglio() {
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [isPianoOpen, setIsPianoOpen] = useState(false);
   const [postDaModificare, setPostDaModificare] = useState<Post | null>(null);
+  const [postPerCommenti, setPostPerCommenti] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   
   const [tipoFilter, setTipoFilter] = useState<string>('all');
   const [destFilter, setDestFilter] = useState<string>('all');
+
+  useEffect(() => {
+    if (postIdFromUrl) {
+      setPostPerCommenti(postIdFromUrl);
+    }
+  }, [postIdFromUrl]);
 
   const clientDocRef = useMemoFirebase(() => doc(db, 'clienti', clienteId), [db, clienteId]);
   const { data: client, isLoading: isClientLoading } = useDoc<any>(clientDocRef);
@@ -122,21 +132,6 @@ export default function ClienteDettaglio() {
     const matchesDest = destFilter === 'all' || mat.destinazione === destFilter;
     return matchesTipo && matchesDest;
   }) || [];
-
-  const agencyMaterials = filteredMaterials.filter(m => m.ruolo_caricatore === 'admin');
-  const clientMaterials = filteredMaterials.filter(m => m.ruolo_caricatore === 'cliente');
-
-  const getGrouped = (mats: Material[]) => {
-    return mats.reduce((acc: any, mat: any) => {
-      let date = 'Data non disponibile';
-      if (mat.creato_il && typeof mat.creato_il.toDate === 'function') {
-        date = mat.creato_il.toDate().toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' });
-      }
-      if (!acc[date]) acc[date] = [];
-      acc[date].push(mat);
-      return acc;
-    }, {});
-  };
 
   const postsOnSelectedDate = posts?.filter(post => {
     if (!post.data_pubblicazione || !selectedDate || typeof post.data_pubblicazione.toDate !== 'function') return false;
@@ -264,6 +259,9 @@ export default function ClienteDettaglio() {
                                 </div>
                               </div>
                               <div className="flex gap-1">
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-indigo-600" onClick={() => setPostPerCommenti(post.id)}>
+                                  <MessageSquare className="w-4 h-4" />
+                                </Button>
                                 {haPermesso('modifica_post') && (
                                   <Button variant="ghost" size="icon" className="h-8 w-8 text-indigo-600" onClick={() => setPostDaModificare(post)}>
                                     <Edit3 className="w-4 h-4" />
@@ -278,12 +276,6 @@ export default function ClienteDettaglio() {
                             </div>
                             <div className="px-4 pb-3">
                               <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{post.testo}</p>
-                              {post.note_revisione && post.stato === 'revisione' && (
-                                <div className="mt-3 p-3 bg-red-50 border border-red-100 rounded-lg">
-                                  <p className="text-[10px] font-bold text-red-600 uppercase mb-1">Nota Revisione Cliente:</p>
-                                  <p className="text-xs text-red-800 italic">"{post.note_revisione}"</p>
-                                </div>
-                              )}
                             </div>
                             {materialAssociato && (
                               <div className="relative aspect-video bg-gray-100 border-y border-gray-50 flex flex-col items-center justify-center group overflow-hidden">
@@ -331,8 +323,6 @@ export default function ClienteDettaglio() {
                 </div>
               </div>
             </TabsContent>
-
-            {/* Altri TabsContent rimangono invariati... */}
           </Tabs>
         </div>
 
@@ -371,14 +361,15 @@ export default function ClienteDettaglio() {
       <ModificaPostModal isOpen={!!postDaModificare} onClose={() => setPostDaModificare(null)} clienteId={clienteId} post={postDaModificare} />
       <ModificaPianoModal isOpen={isPianoOpen} onClose={() => setIsPianoOpen(false)} clienteId={clienteId} postTotaliAttuali={postTotali} />
       <CaricaMaterialeModal isOpen={isUploadOpen} onClose={() => setIsUploadOpen(false)} clienteId={clienteId} />
+      
+      {postPerCommenti && (
+        <CommentiSidebar 
+          clienteId={clienteId} 
+          postId={postPerCommenti} 
+          isOpen={!!postPerCommenti} 
+          onClose={() => setPostPerCommenti(null)} 
+        />
+      )}
     </div>
-  );
-}
-
-function MaterialeStatoChip({ stato }: { stato: StatoValidazione }) {
-  return (
-    <Badge className={`${STATO_VALIDAZIONE_COLORS[stato].bg} ${STATO_VALIDAZIONE_COLORS[stato].text} border-none text-[9px] py-0`}>
-      {STATO_VALIDAZIONE_LABELS[stato]}
-    </Badge>
   );
 }

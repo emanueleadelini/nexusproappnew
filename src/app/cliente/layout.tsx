@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -7,6 +6,7 @@ import { useUser, useFirestore, useAuth } from '@/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { LogOut, Loader2, UserCircle, Briefcase } from 'lucide-react';
+import { NotificheBell } from '@/components/notifiche-bell';
 
 export default function ClienteLayout({ children }: { children: React.ReactNode }) {
   const { user, isUserLoading } = useUser();
@@ -28,7 +28,7 @@ export default function ClienteLayout({ children }: { children: React.ReactNode 
       const userDoc = await getDoc(doc(db, 'users', user.uid));
       if (userDoc.exists()) {
         const ruolo = userDoc.data().ruolo;
-        if (ruolo === 'referente' || ruolo === 'collaboratore' || ruolo === 'cliente') {
+        if (ruolo === 'referente' || ruolo === 'collaboratore') {
           setIsAuthorized(true);
           setNomeAzienda(userDoc.data().nomeAzienda || 'La tua Azienda');
         } else {
@@ -64,7 +64,8 @@ export default function ClienteLayout({ children }: { children: React.ReactNode 
         </div>
         
         <div className="flex items-center gap-4">
-          <div className="md:hidden text-xs font-bold text-gray-400 truncate max-w-[120px]">
+          <NotificheBell />
+          <div className="hidden sm:block md:hidden text-xs font-bold text-gray-400 truncate max-w-[120px]">
             {nomeAzienda}
           </div>
           <Button 

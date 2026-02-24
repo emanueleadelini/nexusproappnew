@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -8,6 +7,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Users, LogOut, Loader2, Settings, ShieldCheck, ChevronLeft } from 'lucide-react';
 import Link from 'next/link';
+import { NotificheBell } from '@/components/notifiche-bell';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const { user, isUserLoading } = useUser();
@@ -57,7 +57,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <div className="bg-indigo-600 p-2 rounded-lg">
             <ShieldCheck className="w-6 h-6 text-white" />
           </div>
-          <h1 className="text-xl font-headline font-bold text-gray-900 tracking-tight">AD next lab Admin</h1>
+          <h1 className="text-xl font-headline font-bold text-gray-900 tracking-tight">AD next lab</h1>
         </div>
         
         <nav className="flex-1 p-4 space-y-1 mt-4">
@@ -83,13 +83,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       </aside>
 
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <header className="md:hidden bg-white border-b p-4 flex justify-between items-center shadow-sm">
-          <h1 className="font-headline font-bold text-indigo-600 flex items-center gap-2">
+        <header className="bg-white border-b p-4 flex justify-between items-center shadow-sm h-16 px-6">
+          <h1 className="md:hidden font-headline font-bold text-indigo-600 flex items-center gap-2">
             <ShieldCheck className="w-5 h-5" /> AD next lab
           </h1>
-          <Button variant="ghost" size="icon" onClick={() => auth.signOut()}>
-            <LogOut className="w-5 h-5 text-red-600" />
-          </Button>
+          <div className="flex-1" />
+          <div className="flex items-center gap-4">
+            <NotificheBell />
+            <Button variant="ghost" size="icon" className="md:hidden" onClick={() => auth.signOut()}>
+              <LogOut className="w-5 h-5 text-red-600" />
+            </Button>
+          </div>
         </header>
 
         <div className="flex-1 overflow-y-auto p-4 md:p-10">
@@ -103,6 +107,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <Users className="w-6 h-6" />
             <span className="text-[10px] font-bold mt-1 uppercase">Clienti</span>
           </Link>
+          <NotificheBell />
           <button className="p-3 text-gray-300 flex flex-col items-center cursor-not-allowed">
             <Settings className="w-6 h-6" />
             <span className="text-[10px] font-bold mt-1 uppercase">Impostazioni</span>

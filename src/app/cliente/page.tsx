@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useUser, useFirestore, useMemoFirebase, useCollection, useDoc } from '@/firebase';
@@ -11,26 +10,27 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Upload, ArrowUpRight, Check, Loader2, UploadCloud, X, CalendarDays, Clock, PieChart, Image as ImageIcon, Link as LinkIcon, ExternalLink, AlertCircle, MessageSquare } from 'lucide-react';
+import { Upload, ArrowUpRight, Check, Loader2, UploadCloud, X, CalendarDays, Clock, PieChart, Image as ImageIcon, Link as LinkIcon, ExternalLink, MessageSquare, History } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { Calendar } from '@/components/ui/calendar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Input } from '@/components/ui/input';
+import { CommentiSidebar } from '@/components/commenti-sidebar';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { usePermessi } from '@/hooks/use-permessi';
-
-const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+import { useSearchParams } from 'next/navigation';
 
 export default function ClienteDashboard() {
   const { user } = useUser();
   const db = useFirestore();
   const { toast } = useToast();
-  const { haPermesso, ruolo } = usePermessi();
+  const { haPermesso } = usePermessi();
+  const searchParams = useSearchParams();
+  const postIdFromUrl = searchParams.get('postId');
   
   const [clienteId, setClienteId] = useState<string | null>(null);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -38,8 +38,8 @@ export default function ClienteDashboard() {
   const [uploadType, setUploadType] = useState<'file' | 'link'>('file');
   const [destinazione, setDestinazione] = useState<DestinazioneAsset>('social');
   const [isUploading, setIsUploading] = useState(false);
-  const [isRequestingUpgrade, setIsRequestingUpgrade] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
+  const [postPerCommenti, setPostPerCommenti] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -51,6 +51,10 @@ export default function ClienteDashboard() {
       fetchProfile();
     }
   }, [user, db]);
+
+  useEffect(() => {
+    if (postIdFromUrl) setPostPerCommenti(postIdFromUrl);
+  }, [postIdFromUrl]);
 
   const clientDocRef = useMemoFirebase(() => clienteId ? doc(db, 'clienti', clienteId) : null, [db, clienteId]);
   const { data: client, isLoading: isClientLoading } = useDoc<any>(clientDocRef);
@@ -69,28 +73,26 @@ export default function ClienteDashboard() {
     if (!clienteId || !user) return;
     const postRef = doc(db, 'clienti', clienteId, 'post', postId);
     const nuovoStato = approvato ? 'approvato' : 'revisione';
-    const nota = !approvato ? window.prompt("Specifica cosa vuoi modificare:") : "";
     
-    if (!approvato && nota === null) return;
-
     updateDoc(postRef, { 
       stato: nuovoStato, 
       aggiornato_il: serverTimestamp(),
-      note_revisione: nota || "",
       storico_stati: arrayUnion({
         stato: nuovoStato,
         autore_uid: user.uid,
         timestamp: Timestamp.now(),
-        nota: nota || (approvato ? "Approvato dal cliente" : "Revisione richiesta")
+        nota: approvato ? "Approvato dal cliente" : "Revisione richiesta tramite feedback"
       })
     }).catch(e => {
       errorEmitter.emit('permission-error', new FirestorePermissionError({ path: postRef.path, operation: 'update' }));
     });
     
     toast({ 
-      title: approvato ? "Post approvato!" : "Revisione inviata", 
-      description: approvato ? "L'agenzia procederà alla programmazione." : "L'agenzia ha ricevuto le tue note." 
+      title: approvato ? "Post approvato!" : "Richiesta revisione", 
+      description: approvato ? "L'agenzia procederà alla programmazione." : "Usa la sidebar dei commenti per specificare le modifiche." 
     });
+    
+    if (!approvato) setPostPerCommenti(postId);
   };
 
   const handleUpload = async () => {
@@ -178,7 +180,7 @@ export default function ClienteDashboard() {
                   <TabsContent value="file" className="pt-4">
                     <div onClick={() => fileInputRef.current?.click()} className="border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50">
                       <input type="file" ref={fileInputRef} onChange={(e) => setSelectedFiles(Array.from(e.target.files || []))} className="hidden" multiple />
-                      <UploadCloud className="w-8 h-8 text-gray-300 mb-2" />
+                      <ImageIcon className="w-8 h-8 text-gray-300 mb-2" />
                       <p className="text-xs text-gray-500">{selectedFiles.length > 0 ? `${selectedFiles.length} file selezionati` : "Clicca per caricare (max 50MB)"}</p>
                     </div>
                   </TabsContent>
@@ -245,6 +247,11 @@ export default function ClienteDashboard() {
                           <p className="text-[10px] text-gray-400">Pianificato: {post.data_pubblicazione?.toDate().toLocaleString('it-IT')}</p>
                         </div>
                       </div>
+                      <div className="flex gap-2">
+                         <Button variant="ghost" size="icon" onClick={() => setPostPerCommenti(post.id)} className="text-indigo-600">
+                           <MessageSquare className="w-4 h-4" />
+                         </Button>
+                      </div>
                     </div>
                     <div className="p-4 text-sm text-gray-700 whitespace-pre-wrap">{post.testo}</div>
                     {materialAssociato && (
@@ -258,10 +265,13 @@ export default function ClienteDashboard() {
                       </div>
                     )}
                     <CardFooter className="p-3 bg-gray-50 flex justify-end gap-2">
+                      <div className="mr-auto flex items-center gap-1 text-[10px] text-gray-400">
+                        <History className="w-3 h-3" /> v.{post.versione_corrente + 1}
+                      </div>
                       {haPermesso('approvazione_post') && post.stato === 'da_approvare' && (
                         <>
-                          <Button variant="ghost" size="sm" className="text-red-600" onClick={() => handleApprovazione(post.id, false)}><X className="w-4 h-4 mr-1" /> Revisione</Button>
-                          <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700" onClick={() => handleApprovazione(post.id, true)}><Check className="w-4 h-4 mr-1" /> Approva</Button>
+                          <Button variant="ghost" size="sm" className="text-red-600 font-bold" onClick={() => handleApprovazione(post.id, false)}><X className="w-4 h-4 mr-1" /> Revisione</Button>
+                          <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 font-bold" onClick={() => handleApprovazione(post.id, true)}><Check className="w-4 h-4 mr-1" /> Approva Post</Button>
                         </>
                       )}
                     </CardFooter>
@@ -272,6 +282,15 @@ export default function ClienteDashboard() {
           ) : <div className="text-center py-20 bg-gray-50 rounded-xl border-2 border-dashed text-gray-400">Nessun post per questa data.</div>}
         </div>
       </div>
+
+      {postPerCommenti && (
+        <CommentiSidebar 
+          clienteId={clienteId} 
+          postId={postPerCommenti} 
+          isOpen={!!postPerCommenti} 
+          onClose={() => setPostPerCommenti(null)} 
+        />
+      )}
     </div>
   );
 }
