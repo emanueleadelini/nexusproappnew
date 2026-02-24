@@ -12,7 +12,6 @@ service cloud.firestore {
     }
 
     function getUserRole() {
-      // Se il documento esiste, restituisce il ruolo, altrimenti 'none'
       return exists(/databases/$(database)/documents/users/$(request.auth.uid)) 
         ? getAuthProfile().data.ruolo 
         : 'none';
@@ -44,9 +43,7 @@ service cloud.firestore {
     // === USERS ===
     match /users/{uid} {
       allow read: if isAuthenticated() && (request.auth.uid == uid || isAgency());
-      // Permette la creazione e l'aggiornamento del proprio profilo
-      // NOTA: In produzione questa regola andrebbe ristretta, ma è necessaria per il setup iniziale
-      allow create: if isAuthenticated() && request.auth.uid == uid;
+      allow create: if isAuthenticated() && (request.auth.uid == uid || isSuperAdmin());
       allow update: if isSuperAdmin() || (isAuthenticated() && request.auth.uid == uid);
       allow delete: if isSuperAdmin();
     }
@@ -55,9 +52,7 @@ service cloud.firestore {
     match /clienti/{clienteId} {
       allow read: if isAgency() || isClienteOwner(clienteId);
       allow create, delete: if isSuperAdmin();
-      allow update: if isSuperAdmin()
-        || (isOperatore() && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['post_totali', 'post_usati']))
-        || (isClienteOwner(clienteId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['richiesta_upgrade']));
+      allow update: if isAgency() || isClienteOwner(clienteId);
 
       // POST
       match /post/{postId} {
@@ -65,16 +60,37 @@ service cloud.firestore {
         allow create: if isAgency();
         allow update: if isAgency() || (isClienteOwner(clienteId) && isReferente());
         allow delete: if isAgency();
+        
+        // COMMENTI
+        match /commenti/{commentoId} {
+          allow read: if isAgency() || isClienteOwner(clienteId);
+          allow create: if isAuthenticated();
+          allow update: if isAgency();
+          allow delete: if isSuperAdmin();
+        }
       }
 
       // MATERIALI
       match /materiali/{materialeId} {
         allow read: if isAgency() || isClienteOwner(clienteId);
         allow create: if isAgency() || isClienteOwner(clienteId);
-        allow update: if isAgency()
-          || (isClienteOwner(clienteId) && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['stato_validazione', 'note_rifiuto']));
+        allow update: if isAgency() || isClienteOwner(clienteId);
         allow delete: if isAgency();
       }
+
+      // CAMPAGNE
+      match /campagne/{campagnaId} {
+        allow read: if isAgency() || isClienteOwner(clienteId);
+        allow write: if isAgency();
+      }
+    }
+
+    // === NOTIFICHE ===
+    match /notifiche/{notificaId} {
+      allow read: if isAuthenticated() && (resource.data.destinatario_uid == request.auth.uid || isAgency());
+      allow create: if isAuthenticated(); 
+      allow update: if isAuthenticated() && resource.data.destinatario_uid == request.auth.uid;
+      allow delete: if isSuperAdmin();
     }
   }
 }
