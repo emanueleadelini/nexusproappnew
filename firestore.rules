@@ -24,11 +24,11 @@ service cloud.firestore {
     }
 
     function isSuperAdmin() {
-      return getUserRole() == 'super_admin';
+      return getUserRole() == 'super_admin' || getUserRole() == 'admin';
     }
 
     function isAgency() {
-      return getUserRole() in ['super_admin', 'operatore'];
+      return getUserRole() in ['super_admin', 'operatore', 'admin'];
     }
 
     function isClienteOwner(clienteId) {
@@ -61,7 +61,7 @@ service cloud.firestore {
       match /post/{postId} {
         allow read: if isAgency() || isClienteOwner(clienteId);
         allow create: if isAgency();
-        allow update: if isAgency() || (isClienteOwner(clienteId) && getUserRole() == 'referente');
+        allow update: if isAgency() || (isClienteOwner(clienteId) && getUserRole() in ['referente', 'super_admin']);
         allow delete: if isAgency();
 
         // ── COMMENTI ──
@@ -86,12 +86,6 @@ service cloud.firestore {
         allow read: if isAgency() || isClienteOwner(clienteId);
         allow write: if isAgency();
       }
-      
-      // ── BRAND BRIEF ──
-      match /brand_brief/{docId} {
-        allow read: if isAgency() || isClienteOwner(clienteId);
-        allow write: if isAgency();
-      }
     }
 
     // ╔══════════════════════════════════════════╗
@@ -99,7 +93,7 @@ service cloud.firestore {
     // ╚══════════════════════════════════════════╝
 
     match /notifiche/{notificaId} {
-      allow list: if isAuthenticated(); 
+      allow list: if isAuthenticated() && (isAgency() || resource.data.destinatario_uid == request.auth.uid);
       allow get: if isAuthenticated() && (isAgency() || resource.data.destinatario_uid == request.auth.uid);
       allow create: if isAuthenticated();
       allow update: if isAuthenticated() && (isAgency() || resource.data.destinatario_uid == request.auth.uid);
