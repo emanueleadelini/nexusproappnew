@@ -10,21 +10,28 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // Legge il ruolo dai custom claims (priorità) o dal documento user (fallback)
+    // Legge il ruolo in modo sicuro: prioritizza i claims, poi Firestore, poi fallback 'guest'
     function getUserRole() {
-      return isAuthenticated() && (request.auth.token.ruolo != null
-        ? request.auth.token.ruolo
-        : get(/databases/$(database)/documents/users/$(request.auth.uid)).data.ruolo);
+      return !isAuthenticated() ? 'guest' : (
+        request.auth.token.ruolo != null
+          ? request.auth.token.ruolo
+          : (exists(/databases/$(database)/documents/users/$(request.auth.uid))
+              ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data.ruolo
+              : 'guest')
+      );
     }
 
     function getClienteId() {
-      return isAuthenticated() && (request.auth.token.cliente_id != null
-        ? request.auth.token.cliente_id
-        : get(/databases/$(database)/documents/users/$(request.auth.uid)).data.cliente_id);
+      return !isAuthenticated() ? null : (
+        request.auth.token.cliente_id != null
+          ? request.auth.token.cliente_id
+          : (exists(/databases/$(database)/documents/users/$(request.auth.uid))
+              ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data.cliente_id
+              : null)
+      );
     }
 
     function isSuperAdmin() {
-      // Controllo di sicurezza basato su email per il setup iniziale + ruolo super_admin
       return isAuthenticated() && (
         request.auth.token.email == 'emanueleadelini@gmail.com' ||
         getUserRole() == 'super_admin' || 
@@ -33,8 +40,8 @@ service cloud.firestore {
     }
 
     function isAgency() {
-      let role = getUserRole();
-      return isSuperAdmin() || role == 'operatore';
+      // Evitiamo variabili let per compatibilità e usiamo logica short-circuit
+      return isSuperAdmin() || getUserRole() == 'operatore';
     }
 
     function isClienteOwner(clienteId) {
@@ -64,14 +71,12 @@ service cloud.firestore {
       allow update: if isAgency() || (isClienteOwner(clienteId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['richiesta_upgrade']));
       allow delete: if isSuperAdmin();
 
-      // ── POST ──
       match /post/{postId} {
         allow read: if isAgency() || isClienteOwner(clienteId);
         allow create: if isAgency();
         allow update: if isAgency() || (isClienteOwner(clienteId) && getUserRole() in ['referente', 'super_admin']);
         allow delete: if isAgency();
 
-        // ── COMMENTI ──
         match /commenti/{commentoId} {
           allow read: if isAgency() || isClienteOwner(clienteId);
           allow create: if isAuthenticated();
@@ -80,7 +85,6 @@ service cloud.firestore {
         }
       }
 
-      // ── MATERIALI ──
       match /materiali/{materialeId} {
         allow read: if isAgency() || isClienteOwner(clienteId);
         allow create: if isAgency() || isClienteOwner(clienteId);
@@ -94,8 +98,11 @@ service cloud.firestore {
     // ╚══════════════════════════════════════════╝
 
     match /notifiche/{notificaId} {
-      allow list: if isAuthenticated() && (isAgency() || resource.data.destinatario_uid == request.auth.uid);
-      allow get: if isAuthenticated() && (isAgency() || resource.data.destinatario_uid == request.auth.uid);
+      // List e Get permessi se l'utente è destinatario o agenzia
+      allow list, get: if isAuthenticated() && (
+        isAgency() || 
+        (resource != null && resource.data.destinatario_uid == request.auth.uid)
+      );
       allow create: if isAuthenticated();
       allow update: if isAuthenticated() && (isAgency() || resource.data.destinatario_uid == request.auth.uid);
       allow delete: if isSuperAdmin();

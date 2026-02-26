@@ -1,64 +1,66 @@
-# AD Next Lab - Documentazione Tecnica Master (V3.0)
+# AD Next Lab - Documentazione Tecnica Master (V4.0)
 
-Questo documento contiene l'analisi ingegneristica completa, la struttura del database e il codice sorgente logico della piattaforma **AD Next Lab**.
+Questo documento costituisce il manuale tecnico definitivo della piattaforma **AD Next Lab**. È stato redatto per l'analisi ingegneristica e descrive l'architettura, le logiche di business e il codice core.
 
 ## 1. Architettura di Sistema
-Il sistema è una Single Page Application (SPA) multi-tenant basata su **Next.js 15 (App Router)** e **Firebase 11**.
+- **Frontend**: Next.js 15 (App Router), React 19, Tailwind CSS, ShadCN UI.
+- **Backend**: Firebase 11 (Firestore, Auth).
+- **AI Engine**: Genkit 1.x con Google Gemini 2.5 Flash.
+- **Pattern**: Multi-tenant basato su `cliente_id` con RBAC (Role-Based Access Control) a 4 livelli.
 
-### Stack Tecnologico
-- **Frontend**: React 19, Tailwind CSS, ShadCN UI.
-- **Backend**: Firebase Firestore, Auth.
-- **AI**: Genkit 1.x + Google Gemini 2.5 Flash.
+## 2. Modello Dati (Firestore)
 
----
+### 2.1 Collezioni Core
+- `users`: Profili utenti con ruoli (`super_admin`, `operatore`, `referente`, `collaboratore`).
+- `clienti`: Aziende gestite con sistema crediti post.
+- `clienti/{id}/post`: Piano Editoriale (PED) con workflow a 7 stati.
+- `clienti/{id}/materiali`: Archivio asset (Foto, Video, Grafiche) con limite 50MB.
+- `notifiche`: Eventi real-time per approvazioni e feedback.
 
-## 2. Modello Dati e Sicurezza (Firestore)
+### 2.2 Workflow a 7 Stati (Logica Transizioni)
+Il sistema implementa una macchina a stati finiti:
+1. `bozza` (Agenzia)
+2. `revisione_interna` (Agenzia)
+3. `da_approvare` (Agenzia -> Cliente)
+4. `revisione` (Cliente -> Agenzia)
+5. `approvato` (Cliente)
+6. `programmato` (Automazione/Agenzia)
+7. `pubblicato` (Fine ciclo)
 
-### 2.1 Ruoli (RBAC)
-1. **super_admin**: Accesso totale, gestione piani e clienti.
-2. **operatore**: Gestione post e asset, supporto strategico.
-3. **referente**: Approvazione post e upload asset per l'azienda cliente.
-4. **collaboratore**: Visualizzazione e commenti.
+## 3. Logiche di Business Critiche
 
-### 2.2 Schema Collezioni (backend.json)
-```json
-{
-  "entities": {
-    "UserProfile": {
-      "ruolo": ["super_admin", "operatore", "referente", "collaboratore"],
-      "cliente_id": "string (opzionale)"
-    },
-    "Client": {
-      "post_totali": "number",
-      "post_usati": "number",
-      "richiesta_upgrade": "boolean"
-    },
-    "Post": {
-      "stato": ["bozza", "revisione_interna", "da_approvare", "revisione", "approvato", "programmato", "pubblicato"],
-      "versione_corrente": "number",
-      "versioni": "array<VersionePost>"
-    }
-  }
+### 3.1 Sistema Crediti
+- Ogni post creato in una collezione cliente scala 1 credito dal campo `post_totali`.
+- L'eliminazione di un post in stato `bozza` riaccredita automaticamente il punto.
+- I clienti possono usare il tasto "Richiedi Upgrade" per inviare una notifica al Super Admin.
+
+### 3.2 Gestione Asset e Storage
+- **Limite 50MB**: Per file locali caricati direttamente.
+- **Link Esterni**: Supporto integrato per URL Drive/WeTransfer per asset pesanti (>50MB), trattati come entità nell'archivio ma gestiti esternamente.
+
+## 4. Codice Core (Analisi per Ingegneri)
+
+### 4.1 Security Rules (Safe RBAC)
+```javascript
+function getUserRole() {
+  return request.auth.token.ruolo != null
+    ? request.auth.token.ruolo
+    : (exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data.ruolo
+        : 'guest');
 }
 ```
 
----
-
-## 3. Codice Sorgente - Core Logic
-
-### 3.1 Firebase Hooks (Real-time Sync)
-**File**: `src/firebase/firestore/use-collection.tsx`
-Gestisce la sottoscrizione ai dati con gestione centralizzata degli errori di permesso.
-
+### 4.2 Hook Real-time (useCollection)
 ```tsx
 export function useCollection<T = any>(memoizedTargetRefOrQuery) {
   const [data, setData] = useState(null);
   useEffect(() => {
+    if (!memoizedTargetRefOrQuery) return;
     const unsubscribe = onSnapshot(memoizedTargetRefOrQuery, (snapshot) => {
-      const results = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
-      setData(results);
+      setData(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })));
     }, (error) => {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({ operation: 'list', path: '...' }));
+      errorEmitter.emit('permission-error', new FirestorePermissionError({ ... }));
     });
     return () => unsubscribe();
   }, [memoizedTargetRefOrQuery]);
@@ -66,29 +68,8 @@ export function useCollection<T = any>(memoizedTargetRefOrQuery) {
 }
 ```
 
-### 3.2 Workflow a 7 Stati (Logica Transizioni)
-Il sistema impedisce transizioni illegali.
-- **Agenzia**: Gestisce `bozza` -> `revisione_interna` -> `da_approvare`.
-- **Cliente (Referente)**: Gestisce `da_approvare` -> `approvato` OR `revisione`.
-- **Automazione**: `approvato` -> `programmato` -> `pubblicato`.
-
-### 3.3 Generazione AI (Genkit Flow)
-**File**: `src/ai/flows/generate-post-ai-flow.ts`
-Utilizza un prompt strutturato per mantenere il Brand Tone of Voice del cliente.
-
-```ts
-const generatePostPrompt = ai.definePrompt({
-  name: 'generatePostPrompt',
-  prompt: `Sei un social media manager per AD next lab. Genera un post per {{{nomeAzienda}}}...`
-});
-```
+### 4.3 Generazione AI (Genkit Flow)
+Il flusso AI utilizza Gemini 2.5 Flash per generare copy social basati sul Tone of Voice del brand cliente, iniettando il settore e l'argomento nel prompt.
 
 ---
-
-## 4. Logiche di Business Critiche
-- **Sistema Crediti**: Ogni post creato scala un credito dal `post_totali` del cliente. L'eliminazione di una bozza riaccredita il punto.
-- **Gestione Asset**: Limite di 50MB per upload diretto. Per file pesanti, il sistema supporta l'inserimento di link esterni (Drive/WeTransfer) integrati nel workflow di approvazione.
-- **Notifiche Real-time**: Filtrate per `destinatario_uid` per garantire la privacy dei dati tra diversi tenant.
-
----
-*Documento generato per analisi ingegneristica interna. Proprietà di AD Next Lab.*
+*Proprietà Riservata di AD Next Lab - Sprint 2 Completato.*

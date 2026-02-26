@@ -40,15 +40,14 @@
         "stato": { "type": "string", "enum": ["bozza", "revisione_interna", "da_approvare", "revisione", "approvato", "programmato", "pubblicato"] },
         "piattaforma": { "type": "string" },
         "formato": { "type": "string" },
-        "versione_corrente": { "type": "number" },
-        "versioni": { "type": "array" }
+        "versione_corrente": { "type": "number" }
       },
       "required": ["id", "titolo", "testo", "stato"]
     },
     "Notifica": {
       "title": "Notifica",
       "type": "object",
-      "description": "Evento real-time.",
+      "description": "Evento real-time di sistema.",
       "properties": {
         "id": { "type": "string" },
         "tipo": { "type": "string" },
@@ -76,7 +75,7 @@
     },
     "notifiche/{notificaId}": {
       "schema": { "$ref": "#/backend/entities/Notifica" },
-      "description": "Eventi di sistema."
+      "description": "Notifiche utente."
     }
   }
 }
