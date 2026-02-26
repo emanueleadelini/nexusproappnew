@@ -24,11 +24,13 @@ service cloud.firestore {
     }
 
     function isSuperAdmin() {
-      return getUserRole() == 'super_admin' || getUserRole() == 'admin';
+      let role = getUserRole();
+      return role == 'super_admin' || role == 'admin';
     }
 
     function isAgency() {
-      return getUserRole() in ['super_admin', 'operatore', 'admin'];
+      let role = getUserRole();
+      return role in ['super_admin', 'operatore', 'admin'];
     }
 
     function isClienteOwner(clienteId) {
@@ -42,6 +44,7 @@ service cloud.firestore {
     match /users/{uid} {
       allow get: if isAuthenticated() && (request.auth.uid == uid || isAgency());
       allow list: if isAgency();
+      // Permetti la creazione del proprio profilo durante il setup iniziale
       allow create: if isAuthenticated() && request.auth.uid == uid;
       allow update: if isAgency() || (request.auth.uid == uid 
         && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['ruolo', 'permessi', 'cliente_id']));
@@ -80,12 +83,6 @@ service cloud.firestore {
         allow update: if isAgency() || isClienteOwner(clienteId);
         allow delete: if isAgency();
       }
-
-      // ── CAMPAGNE ──
-      match /campagne/{campagnaId} {
-        allow read: if isAgency() || isClienteOwner(clienteId);
-        allow write: if isAgency();
-      }
     }
 
     // ╔══════════════════════════════════════════╗
@@ -93,7 +90,8 @@ service cloud.firestore {
     // ╚══════════════════════════════════════════╝
 
     match /notifiche/{notificaId} {
-      allow list: if isAuthenticated() && (isAgency() || resource.data.destinatario_uid == request.auth.uid);
+      // Regola per il listing: deve filtrare per destinatario_uid o essere agenzia
+      allow list: if isAuthenticated() && (isAgency() || request.query.filters.destinatario_uid == request.auth.uid);
       allow get: if isAuthenticated() && (isAgency() || resource.data.destinatario_uid == request.auth.uid);
       allow create: if isAuthenticated();
       allow update: if isAuthenticated() && (isAgency() || resource.data.destinatario_uid == request.auth.uid);

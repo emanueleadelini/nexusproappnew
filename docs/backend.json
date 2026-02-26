@@ -62,39 +62,21 @@
     "providers": ["password"]
   },
   "firestore": {
-    "structure": [
-      {
-        "path": "users/{uid}",
-        "definition": {
-          "entityName": "UserProfile",
-          "schema": { "$ref": "#/backend/entities/UserProfile" },
-          "description": "Dati utente e permessi."
-        }
-      },
-      {
-        "path": "clienti/{clienteId}",
-        "definition": {
-          "entityName": "Client",
-          "schema": { "$ref": "#/backend/entities/Client" },
-          "description": "Dati principali del cliente."
-        }
-      },
-      {
-        "path": "clienti/{clienteId}/post/{postId}",
-        "definition": {
-          "entityName": "Post",
-          "schema": { "$ref": "#/backend/entities/Post" },
-          "description": "Contenuti del PED."
-        }
-      },
-      {
-        "path": "notifiche/{notificaId}",
-        "definition": {
-          "entityName": "Notifica",
-          "schema": { "$ref": "#/backend/entities/Notifica" },
-          "description": "Eventi di sistema."
-        }
-      }
-    ]
+    "users/{uid}": {
+      "schema": { "$ref": "#/backend/entities/UserProfile" },
+      "description": "Dati utente e permessi."
+    },
+    "clienti/{clienteId}": {
+      "schema": { "$ref": "#/backend/entities/Client" },
+      "description": "Dati principali del cliente."
+    },
+    "clienti/{clienteId}/post/{postId}": {
+      "schema": { "$ref": "#/backend/entities/Post" },
+      "description": "Contenuti del PED."
+    },
+    "notifiche/{notificaId}": {
+      "schema": { "$ref": "#/backend/entities/Notifica" },
+      "description": "Eventi di sistema."
+    }
   }
 }

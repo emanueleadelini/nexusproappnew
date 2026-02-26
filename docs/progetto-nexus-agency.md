@@ -1,92 +1,77 @@
-# Nexus Agency - Specifica Tecnica Master (Source Code Snapshot)
+# AD Next Lab - Documentazione Tecnica Master (V2.0)
+
+Questo documento è destinato all'analisi ingegneristica e descrive l'architettura completa della piattaforma CRM/PED.
 
 ## 1. Architettura di Sistema
-Il CRM è costruito su uno stack **Next.js 15 (App Router)** con integrazione profonda di **Firebase 11**. La logica di business è guidata da un sistema **Multi-tenant** con isolamento dei dati basato su `cliente_id`.
+Il sistema è una Single Page Application (SPA) multi-tenant basata su **Next.js 15 (App Router)** e **Firebase 11**.
 
 ### Stack Tecnologico
-- **Frontend**: React 19, Tailwind CSS, ShadCN UI, Lucide Icons.
-- **Backend**: Firebase Firestore (NoSQL), Firebase Authentication (JWT/RBAC).
-- **AI Engine**: Genkit 1.x con Google Gemini 2.5 Flash per la generazione dei contenuti.
-- **Gestione Stato**: React Hooks + Firestore Real-time Snapshots.
+- **Frontend**: React 19, Tailwind CSS, ShadCN UI.
+- **Backend-as-a-Service**: Firebase Firestore, Auth.
+- **AI Engine**: Genkit 1.x + Google Gemini 2.5 Flash.
+- **State Management**: Real-time snapshots (Firestore SDK).
 
-## 2. Modelli Dati Core (TypeScript)
+## 2. Modello Dati (Firestore Schema)
 
-### 2.1 Post Social (Workflow a 7 Stati)
-Il cuore della piattaforma è il workflow del post, progettato per eliminare frizioni tra agenzia e cliente.
+### 2.1 Utenti e Permessi (`/users/{uid}`)
+Il sistema utilizza un modello RBAC a 4 livelli gestito tramite Firestore e Custom Claims.
 ```typescript
-type StatoPost = 'bozza' | 'revisione_interna' | 'da_approvare' | 'revisione' | 'approvato' | 'programmato' | 'pubblicato';
+interface UserProfile {
+  uid: string;
+  email: string;
+  ruolo: 'super_admin' | 'operatore' | 'referente' | 'collaboratore';
+  cliente_id?: string; // Solo per referente/collaboratore
+  permessi: string[];
+  creatoIl: Timestamp;
+}
+```
 
+### 2.2 Clienti (`/clienti/{clienteId}`)
+Gestione tenant e budget post.
+```typescript
+interface Client {
+  nome_azienda: string;
+  settore: string;
+  post_totali: number; // Budget mensile
+  post_usati: number;  // Conteggio post creati
+  richiesta_upgrade: boolean;
+}
+```
+
+### 2.3 Post e Workflow (`/clienti/{id}/post/{id}`)
+Workflow a 7 stati: `bozza` -> `revisione_interna` -> `da_approvare` -> `revisione` -> `approvato` -> `programmato` -> `pubblicato`.
+```typescript
 interface Post {
-  id: string;
   titolo: string;
   testo: string;
   stato: StatoPost;
-  piattaforma: "instagram" | "facebook" | "linkedin" | "tiktok" | "twitter" | "pinterest" | "google_business";
-  formato: "immagine_singola" | "carosello" | "video" | "reel" | "story" | "testo";
-  data_pubblicazione: Timestamp | null;
-  materiale_id?: string | null;
+  piattaforma: 'instagram' | 'facebook' | 'linkedin' | 'tiktok' | 'twitter' | 'pinterest' | 'google_business';
+  formato: 'immagine_singola' | 'carosello' | 'video' | 'reel' | 'story' | 'testo';
+  data_pubblicazione: Timestamp;
+  materiale_id: string; // Ref ad asset
   versione_corrente: number;
-  versioni: Array<{
-    testo: string;
-    titolo: string;
-    autore_uid: string;
-    autore_nome: string;
-    timestamp: Timestamp;
-  }>;
-  storico_stati: Array<{
-    stato: StatoPost;
-    autore_uid: string;
-    timestamp: Timestamp;
-    nota?: string;
-  }>;
+  versioni: Array<Versione>; // Storico modifiche testo
+  storico_stati: Array<Stato>; // Storico transizioni
 }
 ```
 
-### 2.2 Utente e RBAC (4 Livelli)
-Il sistema utilizza un modello di permessi granulare (`src/types/user.ts`):
-- **super_admin**: Accesso totale, gestione piani e fatturazione.
-- **operatore**: Gestione post e asset per tutti i clienti.
-- **referente (Cliente)**: Approvazione post, caricamento materiali, gestione ticket.
-- **collaboratore (Cliente)**: Solo visualizzazione e caricamento asset.
+## 3. Logica di Sicurezza (Security Rules)
+Le regole di Firestore implementano il multi-tenancy e il fallback dei permessi.
+- **Agenzia (super_admin/operatore)**: Accesso trasversale a tutti i clienti.
+- **Cliente (referente/collaboratore)**: Accesso isolato tramite `cliente_id`.
+- **Integrità Notifiche**: Le query di listing devono obbligatoriamente filtrare per `destinatario_uid`.
 
-## 3. Logiche di Sicurezza (Firestore Rules)
-Le regole utilizzano un sistema di **fallback documentale**. Se i Custom Claims non sono presenti nel token JWT, la regola legge direttamente il profilo utente per validare l'accesso.
-```javascript
-function getUserRole() {
-  return request.auth.token.ruolo != null
-    ? request.auth.token.ruolo
-    : get(/databases/$(database)/documents/users/$(request.auth.uid)).data.ruolo;
-}
-```
+## 4. Integrazione AI (Genkit Flow)
+La generazione dei contenuti utilizza un flow server-side che inietta il contesto aziendale nel prompt.
+- **Input**: Nome azienda, settore, tono di voce, argomento.
+- **Output**: Titolo interno e copy del post ottimizzato per la piattaforma scelta.
 
-## 4. Motore AI (Genkit & Gemini)
-L'IA non genera solo testo, ma agisce come un esperto di comunicazione. Utilizziamo **Genkit Flows** per iniettare il contesto aziendale nei prompt (`src/ai/flows/generate-post-ai-flow.ts`).
+## 5. Gestione Asset e Materiali
+- **Storage**: Caricamento diretto fino a 50MB.
+- **External Linking**: Supporto per file pesanti (>50MB) tramite URL WeTransfer/Drive integrati nel workflow di approvazione.
 
-### Prompt Strategico:
-```handlebars
-Sei un social media manager esperto per AD next lab.
-CLIENTE: {{{nomeAzienda}}}
-SETTORE: {{{settore}}}
-PIATTAFORMA: {{{piattaforma.label}}}
-TONO: {{{tono.label}}} ({{{tono.descrizione}}})
-ARGOMENTO: {{{argomento}}}
-```
-
-## 5. Workflow Operativo
-1. **Creazione**: L'agenzia crea una `bozza`.
-2. **Review Interna**: Passaggio opzionale tra operatori agenzia.
-3. **Approvazione**: Il post viene inviato al cliente (`da_approvare`).
-4. **Feedback**: Il cliente può approvare o richiedere una `revisione`. In caso di revisione, viene aperta la sidebar dei commenti real-time.
-5. **Programmazione**: Una volta approvato, l'agenzia imposta data/ora (`programmato`).
-
-## 6. Gestione Asset
-- **Limiti**: Supporto diretto fino a 50MB per file tramite caricamento immediato.
-- **Link Esterni**: Integrazione con WeTransfer/Drive per file pesanti (Video RAW).
-- **Validazione**: Workflow dedicato per l'approvazione degli asset grafici.
-
-## 7. Sistema Notifiche e Collaborazione
-- **Notifiche**: Gestite tramite collezione `notifiche` con query filtrate obbligatoriamente per `destinatario_uid` per privacy e performance.
-- **Commenti**: Ogni post ha una collezione sub-level `commenti` per discussioni contestuali, riducendo l'uso di email/whatsapp.
-
----
-*Documento generato per analisi tecnica degli ingegneri - Sprint 2 Completato*
+## 6. Sistema di Collaborazione Real-time
+Ogni post contiene una sub-collezione `commenti` che permette:
+- Discussioni contestuali.
+- Richieste di revisione bloccanti (il post torna in stato `revisione`).
+- Notifiche push immediate al destinatario interessato.
