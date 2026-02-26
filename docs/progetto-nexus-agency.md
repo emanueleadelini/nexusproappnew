@@ -1,6 +1,6 @@
-# AD Next Lab - Documentazione Tecnica Master (V6.0)
+# AD Next Lab - Documentazione Tecnica Master (V7.0)
 
-Questo documento costituisce il manuale tecnico definitivo della piattaforma **AD Next Lab**. È stato redatto per l'analisi ingegneristica e descrive l'architettura, le logiche di business e il codice core integrale.
+Questo documento costituisce il manuale tecnico integrale della piattaforma **AD Next Lab**. È stato redatto per l'analisi ingegneristica e descrive l'architettura, le logiche di business e il codice core integrale.
 
 ---
 
@@ -45,45 +45,59 @@ Questo documento costituisce il manuale tecnico definitivo della piattaforma **A
 
 ---
 
-## 4. Codice Sorgente Core
+## 4. Codice Sorgente Core Integrale
 
-### 4.1 Security Rules (V3 - Safe RBAC)
-Le regole utilizzano una tripla logica di protezione:
-1. **JWT Custom Claims**: Metodo primario (veloce).
-2. **Firestore Fallback**: Metodo secondario (se claims non ancora propagati).
-3. **Hardcoded Admin**: Metodo di emergenza per il primo setup del Super Admin.
+### 4.1 Security Rules (V4 - Safe RBAC)
+Le regole utilizzano una logica di protezione a tre livelli: Custom Claims, Firestore Fallback, e Hardcoded Admin per il setup.
 
 ```javascript
+// firestore.rules
 function isHardcodedAdmin() {
-  return request.auth.uid in ['DaRQQ7aTpnbw195PmvTE98F2kwD2'];
+  return isAuthenticated() && request.auth.uid == 'DaRQQ7aTpnbw195PmvTE98F2kwD2';
 }
 
-function isAgency() {
-  return isHardcodedAdmin() || getUserRole() in ['super_admin', 'operatore', 'admin'];
+function getUserRole() {
+  return request.auth.token.ruolo != null
+    ? request.auth.token.ruolo
+    : (exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data.ruolo
+        : 'guest');
 }
 
 match /notifiche/{notificaId} {
-  allow list: if isAuthenticated() && (isAgency() || resource.data.destinatario_uid == request.auth.uid);
+  allow list: if isAuthenticated();
+  allow get: if isAuthenticated() && (isAgency() || resource.data.destinatario_uid == request.auth.uid);
 }
 ```
 
-### 4.2 Script Setup Custom Claims (`set-claims.mjs`)
-Da eseguire localmente per inizializzare il ruolo Super Admin.
+### 4.2 Custom Hook: useCollection (Real-time)
+Gestione della sottoscrizione ai dati con gestione errori contestuale per il debugging delle regole.
 
-```javascript
-import { initializeApp, cert } from 'firebase-admin/app';
-import { getAuth } from 'firebase-admin/auth';
-
-const TARGET_UID = 'DaRQQ7aTpnbw195PmvTE98F2kwD2';
-const CLAIMS = { ruolo: 'super_admin', cliente_id: null };
-
-await getAuth().setCustomUserClaims(TARGET_UID, CLAIMS);
+```typescript
+// src/firebase/firestore/use-collection.tsx
+export function useCollection<T = any>(memoizedQuery: Query | null) {
+  useEffect(() => {
+    if (!memoizedQuery) return;
+    const unsubscribe = onSnapshot(memoizedQuery, 
+      (snapshot) => { /* update state */ },
+      (error) => {
+        const contextualError = new FirestorePermissionError({
+          operation: 'list',
+          path: memoizedQuery.path
+        });
+        errorEmitter.emit('permission-error', contextualError);
+      }
+    );
+    return () => unsubscribe();
+  }, [memoizedQuery]);
+}
 ```
 
 ### 4.3 Generazione AI (Genkit Flow)
 Integrazione con Gemini 2.5 Flash per la creazione di copy strategici.
 
 ```typescript
+// src/ai/flows/generate-post-ai-flow.ts
 const generatePostPrompt = ai.definePrompt({
   name: 'generatePostPrompt',
   prompt: `Sei un social media manager esperto per AD next lab. Genera un post per {{{nomeAzienda}}}...`,

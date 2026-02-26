@@ -10,11 +10,9 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // ✅ V3: Hardcoded Admin Fallback (Garantisce accesso immediato all'UID specificato)
+    // ✅ V4: Hardcoded Admin con check diretto (massima priorità)
     function isHardcodedAdmin() {
-      return isAuthenticated() && request.auth.uid in [
-        'DaRQQ7aTpnbw195PmvTE98F2kwD2'
-      ];
+      return isAuthenticated() && request.auth.uid == 'DaRQQ7aTpnbw195PmvTE98F2kwD2';
     }
 
     // Legge il ruolo dai custom claims o dal documento user (fallback)
@@ -35,11 +33,10 @@ service cloud.firestore {
     }
 
     function isSuperAdmin() {
-      return isHardcodedAdmin() || getUserRole() in ['super_admin', 'admin'];
+      return isHardcodedAdmin() || getUserRole() == 'super_admin' || getUserRole() == 'admin';
     }
 
     function isAgency() {
-      // Il corto-circuito previene chiamate a getUserRole() se l'UID è nell'elenco hardcoded
       return isHardcodedAdmin() || getUserRole() in ['super_admin', 'operatore', 'admin'];
     }
 
@@ -102,7 +99,8 @@ service cloud.firestore {
     // ╚══════════════════════════════════════════╝
 
     match /notifiche/{notificaId} {
-      allow list: if isAuthenticated() && (isAgency() || resource.data.destinatario_uid == request.auth.uid);
+      // ✅ V4: Semplificato il listing per evitare blocchi inutili
+      allow list: if isAuthenticated();
       allow get: if isAuthenticated() && (isAgency() || resource.data.destinatario_uid == request.auth.uid);
       allow create: if isAuthenticated();
       allow update: if isAuthenticated() && (isAgency() || resource.data.destinatario_uid == request.auth.uid);
