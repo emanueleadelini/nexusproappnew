@@ -1,108 +1,94 @@
-# AD Next Lab - Documentazione Tecnica Master (V5.0)
+# AD Next Lab - Documentazione Tecnica Master (V6.0)
 
 Questo documento costituisce il manuale tecnico definitivo della piattaforma **AD Next Lab**. È stato redatto per l'analisi ingegneristica e descrive l'architettura, le logiche di business e il codice core integrale.
+
+---
 
 ## 1. Architettura di Sistema
 - **Frontend**: Next.js 15 (App Router), React 19, Tailwind CSS, ShadCN UI.
 - **Backend**: Firebase 11 (Firestore, Auth).
 - **AI Engine**: Genkit 1.x con Google Gemini 2.5 Flash.
-- **Pattern**: Multi-tenant basato su `cliente_id` con RBAC (Role-Based Access Control) a 4 livelli.
+- **Pattern**: Multi-tenant basato su `cliente_id` con RBAC (Role-Based Access Control) a 4 livelli:
+  1. `super_admin`: Pieno controllo agenzia e gestione piani.
+  2. `operatore`: Gestione quotidiana PED e asset.
+  3. `referente`: Approvazione contenuti e feedback lato cliente.
+  4. `collaboratore`: Visualizzazione e upload asset lato cliente.
 
 ---
 
 ## 2. Modello Dati (Firestore)
 
 ### 2.1 Collezioni Core
-- `users`: Profili utenti con ruoli (`super_admin`, `operatore`, `referente`, `collaboratore`).
-- `clienti`: Aziende gestite con sistema crediti post.
+- `users`: Profili utenti con ruoli e permessi granulari.
+- `clienti`: Aziende gestite con sistema crediti post e stato upgrade.
 - `clienti/{id}/post`: Piano Editoriale (PED) con workflow a 7 stati.
-- `clienti/{id}/materiali`: Archivio asset (Foto, Video, Grafiche) con limite 50MB.
-- `notifiche`: Eventi real-time per approvazioni e feedback.
+- `clienti/{id}/materiali`: Archivio asset (Foto, Video, Grafiche) con limite hardware 50MB.
+- `notifiche`: Eventi real-time per approvazioni, feedback e comunicazioni di sistema.
 
 ---
 
 ## 3. Logiche di Business Critiche
 
-### 3.1 Workflow a 7 Stati (PED)
-Il sistema implementa una macchina a stati finiti per il ciclo di vita dei contenuti:
-1. `bozza`: Fase iniziale agenzia.
-2. `revisione_interna`: Controllo qualità interno agenzia.
-3. `da_approvare`: Invio al cliente per feedback.
-4. `revisione`: Cliente richiede modifiche (con commenti).
-5. `approvato`: Cliente dà il via libera.
-6. `programmato`: Il post è pronto per l'uscita.
-7. `pubblicato`: Fine ciclo.
+### 3.1 Workflow a 7 Stati (Contenuti)
+1. `bozza`: Creazione iniziale (Agenzia).
+2. `revisione_interna`: Controllo qualità (Agenzia).
+3. `da_approvare`: In attesa di approvazione (Cliente).
+4. `revisione`: Richiesta modifiche con feedback (Cliente).
+5. `approvato`: Pronto per la programmazione (Cliente).
+6. `programmato`: Impostato sui tool di pubblicazione (Agenzia).
+7. `pubblicato`: Fine ciclo vita.
 
-### 3.2 Sistema Crediti
-- Ogni post creato scala 1 credito dal campo `post_totali` del cliente.
-- L'eliminazione di un post in stato `bozza` riaccredita automaticamente il punto.
-- Notifica automatica al Super Admin per richieste di upgrade.
-
-### 3.3 Gestione Asset e Limiti
-- **Upload Locale**: Limite hardware di 50MB per file caricati direttamente tramite `CaricaMaterialeModal`.
-- **Link Esterni**: Supporto per URL Drive/WeTransfer per asset pesanti (>50MB).
+### 3.2 Sistema Crediti e Upgrade
+- Ogni post creato scala 1 credito dal piano del cliente.
+- L'eliminazione di una bozza riaccredita automaticamente il punto.
+- Notifica automatica al Super Admin in caso di richiesta upgrade tramite flag `richiesta_upgrade`.
 
 ---
 
 ## 4. Codice Sorgente Core
 
-### 4.1 Security Rules (Safe RBAC)
-Le regole utilizzano una logica di fallback per garantire l'accesso anche prima della propagazione dei Custom Claims.
+### 4.1 Security Rules (V3 - Safe RBAC)
+Le regole utilizzano una tripla logica di protezione:
+1. **JWT Custom Claims**: Metodo primario (veloce).
+2. **Firestore Fallback**: Metodo secondario (se claims non ancora propagati).
+3. **Hardcoded Admin**: Metodo di emergenza per il primo setup del Super Admin.
 
 ```javascript
-function getUserRole() {
-  return request.auth.token.ruolo != null
-    ? request.auth.token.ruolo
-    : (exists(/databases/$(database)/documents/users/$(request.auth.uid)) 
-        ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data.ruolo 
-        : 'guest');
+function isHardcodedAdmin() {
+  return request.auth.uid in ['DaRQQ7aTpnbw195PmvTE98F2kwD2'];
+}
+
+function isAgency() {
+  return isHardcodedAdmin() || getUserRole() in ['super_admin', 'operatore', 'admin'];
 }
 
 match /notifiche/{notificaId} {
-  allow list: if isAuthenticated() && (
-    isAgency() || resource.data.destinatario_uid == request.auth.uid
-  );
+  allow list: if isAuthenticated() && (isAgency() || resource.data.destinatario_uid == request.auth.uid);
 }
 ```
 
-### 4.2 Hook Real-time (useCollection)
-Gestione centralizzata delle sottoscrizioni Firestore con emissione di errori contestuali.
+### 4.2 Script Setup Custom Claims (`set-claims.mjs`)
+Da eseguire localmente per inizializzare il ruolo Super Admin.
 
-```tsx
-export function useCollection<T = any>(memoizedTargetRefOrQuery) {
-  const [data, setData] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
+```javascript
+import { initializeApp, cert } from 'firebase-admin/app';
+import { getAuth } from 'firebase-admin/auth';
 
-  useEffect(() => {
-    if (!memoizedTargetRefOrQuery) return;
-    setIsLoading(true);
-    const unsubscribe = onSnapshot(memoizedTargetRefOrQuery, (snapshot) => {
-      setData(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })));
-      setIsLoading(false);
-    }, (serverError) => {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({
-        operation: 'list',
-        path: memoizedTargetRefOrQuery.path
-      }));
-    });
-    return () => unsubscribe();
-  }, [memoizedTargetRefOrQuery]);
+const TARGET_UID = 'DaRQQ7aTpnbw195PmvTE98F2kwD2';
+const CLAIMS = { ruolo: 'super_admin', cliente_id: null };
 
-  return { data, isLoading };
-}
+await getAuth().setCustomUserClaims(TARGET_UID, CLAIMS);
 ```
 
 ### 4.3 Generazione AI (Genkit Flow)
-L'integrazione con Gemini 2.5 Flash permette la generazione strategica di copy basati sul brand del cliente.
+Integrazione con Gemini 2.5 Flash per la creazione di copy strategici.
 
-```ts
+```typescript
 const generatePostPrompt = ai.definePrompt({
   name: 'generatePostPrompt',
-  input: { schema: GeneratePostInputSchema },
-  output: { schema: GeneratePostOutputSchema },
-  prompt: `Sei un social media manager esperto per AD next lab. Genera un post per {{{nomeAzienda}}} in tono {{{tono.label}}}.`,
+  prompt: `Sei un social media manager esperto per AD next lab. Genera un post per {{{nomeAzienda}}}...`,
 });
 ```
 
 ---
-*Proprietà Riservata di AD Next Lab. Sprint 2 - Concluso.*
+*Proprietà Riservata di AD Next Lab. Sprint 2 - Concluso con successo.*

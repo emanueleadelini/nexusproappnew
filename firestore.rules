@@ -10,7 +10,14 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // Legge il ruolo dai custom claims (V1) o dal documento user (V2 fallback)
+    // ✅ V3: Hardcoded Admin Fallback (Garantisce accesso immediato all'UID specificato)
+    function isHardcodedAdmin() {
+      return isAuthenticated() && request.auth.uid in [
+        'DaRQQ7aTpnbw195PmvTE98F2kwD2'
+      ];
+    }
+
+    // Legge il ruolo dai custom claims o dal documento user (fallback)
     function getUserRole() {
       return request.auth.token.ruolo != null
         ? request.auth.token.ruolo
@@ -28,13 +35,12 @@ service cloud.firestore {
     }
 
     function isSuperAdmin() {
-      let role = getUserRole();
-      return role == 'super_admin' || role == 'admin';
+      return isHardcodedAdmin() || getUserRole() in ['super_admin', 'admin'];
     }
 
     function isAgency() {
-      let role = getUserRole();
-      return role in ['super_admin', 'operatore', 'admin'];
+      // Il corto-circuito previene chiamate a getUserRole() se l'UID è nell'elenco hardcoded
+      return isHardcodedAdmin() || getUserRole() in ['super_admin', 'operatore', 'admin'];
     }
 
     function isClienteOwner(clienteId) {
@@ -48,7 +54,7 @@ service cloud.firestore {
     match /users/{uid} {
       allow get: if isAuthenticated() && (request.auth.uid == uid || isAgency());
       allow list: if isAuthenticated() && isAgency();
-      allow create: if isAuthenticated() && request.auth.uid == uid;
+      allow create: if isAuthenticated() && (request.auth.uid == uid || isSuperAdmin());
       allow update: if isAuthenticated() && (isAgency() || (request.auth.uid == uid
         && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['ruolo', 'permessi', 'cliente_id'])));
       allow delete: if isAuthenticated() && isSuperAdmin();
@@ -61,7 +67,7 @@ service cloud.firestore {
     match /clienti/{clienteId} {
       allow get: if isAuthenticated() && (isAgency() || isClienteOwner(clienteId));
       allow list: if isAuthenticated() && isAgency();
-      allow create: if isAuthenticated() && (isSuperAdmin() || isAgency());
+      allow create: if isAuthenticated() && isAgency();
       allow update: if isAuthenticated() && (isAgency() || (isClienteOwner(clienteId)
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['richiesta_upgrade'])));
       allow delete: if isAuthenticated() && isSuperAdmin();
