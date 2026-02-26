@@ -1,65 +1,90 @@
-# AD next lab - Documentazione Tecnica e Funzionale (Master Plan)
+# AD next lab - Documentazione Tecnica Master (Source Code Snapshot)
 
-## 1. Visione del Progetto
-**AD next lab** è un ecosistema CRM SaaS progettato per automatizzare e professionalizzare la collaborazione tra agenzie di comunicazione e i loro clienti. Il sistema centralizza la gestione del Piano Editoriale (PED), la validazione degli asset multimediali e la generazione di contenuti assistita da AI, garantendo sicurezza multi-tenant e tracciabilità totale tramite versioning.
+## 1. Architettura di Sistema
+Il CRM è costruito su uno stack **Next.js 15 (App Router)** con integrazione profonda di **Firebase 11**. La logica di business è guidata da un sistema **Multi-tenant** con isolamento dei dati basato su `cliente_id`.
 
-## 2. Architettura Tecnologica
-- **Frontend**: Next.js 15 (App Router) con React 19 e TypeScript.
-- **Backend**: Firebase 11 (Authentication, Firestore, Cloud Storage).
-- **Styling**: Tailwind CSS + ShadCN UI (Design System professionale e accessibile).
-- **AI Engine**: Google Gemini 2.5 Flash via Genkit (Prompt Engineering contestuale).
-- **Stato**: Real-time tramite Firestore Snapshots (Notifiche e Commenti).
+## 2. Modelli Dati Core (TypeScript)
 
-## 3. Modello Dati Firestore (Specifiche Tecniche)
+### 2.1 Post Strategico
+```typescript
+interface Post {
+  id: string;
+  titolo: string;
+  testo: string;
+  stato: "bozza" | "revisione_interna" | "da_approvare" | "revisione" | "approvato" | "programmato" | "pubblicato";
+  piattaforma: "instagram" | "facebook" | "linkedin" | "tiktok" | "twitter" | "pinterest" | "google_business";
+  formato: "immagine_singola" | "carosello" | "video" | "reel" | "story" | "testo";
+  data_pubblicazione: Timestamp | null;
+  materiale_id?: string | null;
+  versione_corrente: number;
+  versioni: Array<{
+    testo: string;
+    titolo: string;
+    autore_uid: string;
+    autore_nome: string;
+    timestamp: Timestamp;
+  }>;
+  storico_stati: Array<{
+    stato: string;
+    autore_uid: string;
+    timestamp: Timestamp;
+    nota?: string;
+  }>;
+}
+```
 
-### 3.1 Utenti (`users/{uid}`)
-Implementa un sistema RBAC a 4 livelli:
-- `ruolo`: `super_admin`, `operatore`, `referente`, `collaboratore`.
-- `permessi`: Array di stringhe per controllo granulare delle azioni UI.
-- `cliente_id`: Stringa di associazione per l'isolamento dei dati (Multi-tenancy).
+### 2.2 Utente e RBAC
+```typescript
+type UserRole = 'super_admin' | 'operatore' | 'referente' | 'collaboratore';
 
-### 3.2 Clienti (`clienti/{clienteId}`)
-- `post_totali`: Crediti mensili inclusi nel piano.
-- `post_usati`: Contatore automatico dei post creati nel periodo.
-- `richiesta_upgrade`: Flag per segnalazione automatica all'agenzia.
+interface UserProfile {
+  uid: string;
+  email: string;
+  ruolo: UserRole;
+  cliente_id?: string;
+  nomeAzienda?: string;
+  permessi: string[];
+}
+```
 
-### 3.3 Post Strategici (`clienti/{clienteId}/post/{postId}`)
-Ogni post è un'entità complessa che supporta:
-- `piattaforma`: Instagram, Facebook, LinkedIn, TikTok, ecc.
-- `formato`: Reel, Story, Carosello, Immagine Singola, Testo.
-- `stato`: Workflow a 7 fasi (`bozza`, `revisione_interna`, `da_approvare`, `revisione`, `approvato`, `programmato`, `pubblicato`).
-- `versioni`: Storico completo delle modifiche al testo (Audit Trail).
-- `storico_stati`: Tracciamento di chi ha cambiato lo stato e quando.
+## 3. Logiche di Sicurezza (Firestore Rules)
+Le regole utilizzano un sistema di **fallback documentale**. Se i Custom Claims non sono ancora presenti nel token JWT, la regola legge direttamente il profilo utente per validare l'accesso.
 
-### 3.4 Asset e Materiali (`clienti/{clienteId}/materiali/{materialeId}`)
-- **Limite Caricamento**: Supporto diretto fino a **50MB** (Storage ottimizzato).
-- **Link Esterni**: Supporto per file pesanti via Drive/WeTransfer per mantenere alte le performance.
-- **Validazione**: Workflow di approvazione materiali con feedback contestuale.
+```javascript
+function getUserRole() {
+  return request.auth.token.ruolo != null
+    ? request.auth.token.ruolo
+    : get(/databases/$(database)/documents/users/$(request.auth.uid)).data.ruolo;
+}
+```
 
-### 3.5 Notifiche (`notifiche/{notificaId}`)
-Sistema di eventi real-time filtrati per `destinatario_uid`. Tipi supportati: `commento_nuovo`, `post_da_approvare`, `materiale_caricato`.
+## 4. Motore AI (Genkit & Gemini)
+L'IA non genera solo testo, ma agisce come un esperto di comunicazione. Utilizziamo **Genkit Flows** per iniettare il contesto aziendale nei prompt.
 
-## 4. Logiche di Business Core
+### Prompt Strategico:
+```handlebars
+Sei un social media manager esperto per AD next lab.
+CLIENTE: {{{nomeAzienda}}}
+SETTORE: {{{settore}}}
+PIATTAFORMA: {{{piattaforma.label}}}
+TONO: {{{tono.label}}} ({{{tono.descrizione}}})
+ARGOMENTO: {{{argomento}}}
+```
 
-### 4.1 Workflow di Approvazione Rigido
-Il sistema impedisce salti di stato non autorizzati:
-1. L'Agenzia sposta in `da_approvare`.
-2. Il Cliente (Referente) può solo scegliere tra `approvato` o `revisione`.
-3. Se in `revisione`, il sistema obbliga l'inserimento di una nota e apre la sidebar dei commenti.
+## 5. Workflow Operativo
+1. **Creazione**: L'agenzia crea una `bozza`.
+2. **Review Interna**: Passaggio opzionale tra operatori.
+3. **Approvazione**: Il post viene inviato al cliente (`da_approvare`).
+4. **Feedback**: Il cliente può approvare o richiedere una `revisione`. In caso di revisione, viene aperta la sidebar dei commenti real-time.
+5. **Programmazione**: Una volta approvato, l'agenzia imposta data/ora (`programmato`).
 
-### 4.2 Assistente AI Strategico
-Gemini è configurato per agire come Social Media Manager di **AD next lab**. I prompt sono ottimizzati per:
-- Generare bozze basate su piattaforma e tono di voce.
-- Inserire automaticamente emoji e hashtag pertinenti.
-- Rispettare i vincoli di caratteri delle diverse piattaforme.
+## 6. Gestione Asset
+- **Limiti**: Supporto diretto fino a 50MB.
+- **Link Esterni**: Integrazione con Drive/WeTransfer per file pesanti.
+- **Validazione**: Workflow dedicato per l'approvazione degli asset grafici.
 
-### 4.3 Sistema Crediti
-Il numero di post creati è vincolato ai `post_totali` definiti nel piano del cliente. Il sistema avvisa automaticamente l'admin quando un cliente raggiunge l'80% di utilizzo dei crediti.
-
-## 5. Sicurezza e Privacy
-- **Isolamento Totale**: Un cliente non può mai visualizzare dati, post o materiali appartenenti ad un altro `cliente_id`.
-- **Security Rules**: La validazione avviene a livello server (Firestore) verificando l'identità dell'utente e il suo ruolo nel token JWT.
-- **Protezione Asset**: Solo gli utenti associati all'azienda possono accedere ai file caricati nel Cloud Storage.
+## 7. Sistema Notifiche
+Gestito tramite una collezione top-level `notifiche` con query filtrate obbligatoriamente per `destinatario_uid` per garantire performance e privacy.
 
 ---
-*Documento aggiornato al: Marzo 2024 - Sprint 2 Completo*
+*Documento generato per analisi tecnica - Sprint 2 Completato*
