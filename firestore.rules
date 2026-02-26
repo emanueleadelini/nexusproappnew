@@ -10,7 +10,10 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // FIX: Rimosso isAuthenticated() && per evitare type error boolean && string
+    function isAdminEmail() {
+      return isAuthenticated() && request.auth.token.email == 'emanueleadelini@gmail.com';
+    }
+
     function getUserRole() {
       return request.auth.token.ruolo != null
         ? request.auth.token.ruolo
@@ -28,11 +31,7 @@ service cloud.firestore {
     }
 
     function isSuperAdmin() {
-      return isAuthenticated() && (
-        request.auth.token.email == 'emanueleadelini@gmail.com' ||
-        getUserRole() == 'super_admin' || 
-        getUserRole() == 'admin'
-      );
+      return isAdminEmail() || getUserRole() == 'super_admin' || getUserRole() == 'admin';
     }
 
     function isAgency() {
