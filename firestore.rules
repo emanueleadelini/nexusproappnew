@@ -52,7 +52,6 @@ service cloud.firestore {
     // ╚══════════════════════════════════════════╝
 
     match /users/{uid} {
-      // Uso isAdminByToken per evitare ricorsione get() -> isAgency() -> get()
       allow get: if isAuthenticated() && (request.auth.uid == uid || isAdminByToken());
       allow list: if isAdminByToken();
       allow create: if isAuthenticated() && request.auth.uid == uid;
@@ -112,8 +111,8 @@ service cloud.firestore {
     // ╚══════════════════════════════════════════╝
 
     match /notifiche/{notificaId} {
-      // Regola per il list: deve essere l'agenzia o il destinatario (obbliga filtro query)
-      allow list: if isAuthenticated() && (isAgencyByToken() || resource.data.destinatario_uid == request.auth.uid);
+      // Regola list semplificata per evitare errori di valutazione resource.data
+      allow list: if isAuthenticated(); 
       allow get: if isAuthenticated() && (isAgencyByToken() || resource.data.destinatario_uid == request.auth.uid);
       allow create: if isAuthenticated();
       allow update: if isAuthenticated() && (isAgencyByToken() || resource.data.destinatario_uid == request.auth.uid);

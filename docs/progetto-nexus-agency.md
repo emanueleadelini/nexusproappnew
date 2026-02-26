@@ -31,7 +31,7 @@ Ogni post è un'entità complessa che supporta:
 - `versioni`: Storico completo delle modifiche al testo (Audit Trail).
 - `storico_stati`: Tracciamento di chi ha cambiato lo stato e quando.
 
-### 3.4 Asset e Materiali (`clienti/{clienteId}/materiali/{materialId}`)
+### 3.4 Asset e Materiali (`clienti/{clienteId}/materiali/{materialeId}`)
 - **Limite Caricamento**: Supporto diretto fino a **50MB** (Storage ottimizzato).
 - **Link Esterni**: Supporto per file pesanti via Drive/WeTransfer per mantenere alte le performance.
 - **Validazione**: Workflow di approvazione materiali con feedback contestuale.
