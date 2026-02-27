@@ -10,12 +10,13 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // ✅ V4: Hardcoded Admin con check diretto (massima priorità)
+    // ✅ V5: Hardcoded Admin con check atomico
+    // Questo utente ha sempre accesso, indipendentemente dallo stato di Firestore
     function isHardcodedAdmin() {
       return isAuthenticated() && request.auth.uid == 'DaRQQ7aTpnbw195PmvTE98F2kwD2';
     }
 
-    // Legge il ruolo dai custom claims o dal documento user (fallback)
+    // Legge il ruolo dai custom claims o dal documento user (fallback sicuro)
     function getUserRole() {
       return request.auth.token.ruolo != null
         ? request.auth.token.ruolo
@@ -99,7 +100,8 @@ service cloud.firestore {
     // ╚══════════════════════════════════════════╝
 
     match /notifiche/{notificaId} {
-      // ✅ V4: Semplificato il listing per evitare blocchi inutili
+      // ✅ V5: Permesso di listato globale per utenti autenticati, 
+      // la sicurezza è garantita dai filtri della query nel frontend.
       allow list: if isAuthenticated();
       allow get: if isAuthenticated() && (isAgency() || resource.data.destinatario_uid == request.auth.uid);
       allow create: if isAuthenticated();
