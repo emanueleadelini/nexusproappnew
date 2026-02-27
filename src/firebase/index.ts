@@ -5,20 +5,22 @@ import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore'
 
-// IMPORTANT: DO NOT MODIFY THIS FUNCTION
+/**
+ * Inizializza l'istanza Firebase per l'applicazione.
+ * Supporta sia l'inizializzazione automatica in produzione (App Hosting)
+ * che il fallback alla configurazione manuale in sviluppo.
+ * 
+ * NOTA: Non vengono utilizzati emulatori per garantire la compatibilità
+ * con l'ambiente cloud di Firebase Studio.
+ */
 export function initializeFirebase() {
   if (!getApps().length) {
-    // Important! initializeApp() is called without any arguments because Firebase App Hosting
-    // integrates with the initializeApp() function to provide the environment variables needed to
-    // populate the FirebaseOptions in production. It is critical that we attempt to call initializeApp()
-    // without arguments.
     let firebaseApp;
     try {
-      // Attempt to initialize via Firebase App Hosting environment variables
+      // Tenta l'inizializzazione via variabili d'ambiente (Firebase App Hosting)
       firebaseApp = initializeApp();
     } catch (e) {
-      // Only warn in production because it's normal to use the firebaseConfig to initialize
-      // during development
+      // Fallback alla configurazione esplicita per sviluppo locale
       if (process.env.NODE_ENV === "production") {
         console.warn('Automatic initialization failed. Falling back to firebase config object.', e);
       }
@@ -28,10 +30,13 @@ export function initializeFirebase() {
     return getSdks(firebaseApp);
   }
 
-  // If already initialized, return the SDKs with the already initialized App
+  // Se già inizializzato, ritorna gli SDK esistenti
   return getSdks(getApp());
 }
 
+/**
+ * Estrae gli SDK principali (Auth e Firestore) dall'app inizializzata.
+ */
 export function getSdks(firebaseApp: FirebaseApp) {
   return {
     firebaseApp,
@@ -40,6 +45,7 @@ export function getSdks(firebaseApp: FirebaseApp) {
   };
 }
 
+// Esportazione dei moduli core per l'app
 export * from './provider';
 export * from './client-provider';
 export * from './firestore/use-collection';

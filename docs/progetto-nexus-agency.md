@@ -1,147 +1,55 @@
 # AD Next Lab - Manuale Tecnico Master (Documentazione Integrale)
 
-Questo documento contiene l'analisi ingegneristica completa, l'architettura e il codice sorgente integrale della piattaforma AD Next Lab. È destinato all'uso esclusivo del team ingegneristico per audit e sviluppo.
+Questo documento contiene l'analisi ingegneristica completa, l'architettura e il codice sorgente logico della piattaforma AD Next Lab. È destinato all'uso esclusivo del team ingegneristico per audit e sviluppo.
 
 ---
 
 ## 1. Architettura di Sistema
 - **Frontend**: Next.js 15 (App Router), React 19, Tailwind CSS, ShadCN UI.
 - **Backend**: Firebase 11 (Firestore, Authentication).
-- **AI Engine**: Genkit 1.x con plugin Google Generative AI (Gemini 2.5 Flash).
+- **AI Engine**: Genkit 1.x con Gemini 2.5 Flash.
 - **Pattern**: Multi-tenant basato su `cliente_id` con RBAC a 4 livelli: `super_admin`, `operatore`, `referente`, `collaboratore`.
 
 ---
 
-## 2. Configurazione e Inizializzazione (src/firebase/)
+## 2. Modelli Dati (Firestore)
 
-### 2.1 Configurazione (config.ts)
-```typescript
-export const firebaseConfig = {
-  "projectId": "studio-1172125722-4fbeb",
-  "appId": "1:93997751906:web:f34d376284a6232765bb3b",
-  "apiKey": "AIzaSyCydvNHxTZMivgQDGClqopoG1PiE_gZsBA",
-  "authDomain": "studio-1172125722-4fbeb.firebaseapp.com",
-  "measurementId": "",
-  "messagingSenderId": "93997751906"
-};
-```
+### 2.1 UserProfile (`/users/{uid}`)
+Definisce l'identità e i permessi dell'utente nel sistema.
+- `ruolo`: Determina l'accesso (super_admin, operatore, referente, collaboratore).
+- `cliente_id`: Collega l'utente (referente/collaboratore) a una specifica azienda.
+- `permessi`: Array di stringhe per granularità fine (es. `creazione_post`, `uso_ai`).
 
-### 2.2 Provider Core (provider.tsx)
-```typescript
-'use client';
-import React, { createContext, useContext, ReactNode, useMemo, useState, useEffect } from 'react';
-import { FirebaseApp } from 'firebase/app';
-import { Firestore } from 'firebase/firestore';
-import { Auth, User, onAuthStateChanged } from 'firebase/auth';
-import { FirebaseErrorListener } from '@/components/FirebaseErrorListener'
+### 2.2 Client (`/clienti/{clienteId}`)
+Gestione dell'azienda cliente e dei crediti.
+- `post_totali`: Budget mensile di post.
+- `post_usati`: Contatore dei post creati nel mese corrente.
+- `richiesta_upgrade`: Flag booleano per segnalare necessità di post extra.
 
-export const FirebaseContext = createContext<any>(undefined);
-
-export const FirebaseProvider = ({ children, firebaseApp, firestore, auth }) => {
-  const [userState, setUserState] = useState({ user: null, isUserLoading: true });
-
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (u) => {
-      setUserState({ user: u, isUserLoading: false });
-    });
-    return () => unsubscribe();
-  }, [auth]);
-
-  const contextValue = useMemo(() => ({
-    firebaseApp, firestore, auth, ...userState
-  }), [firebaseApp, firestore, auth, userState]);
-
-  return (
-    <FirebaseContext.Provider value={contextValue}>
-      <FirebaseErrorListener />
-      {children}
-    </FirebaseContext.Provider>
-  );
-};
-
-export const useFirebase = () => useContext(FirebaseContext);
-export const useFirestore = () => useFirebase().firestore;
-export const useAuth = () => useFirebase().auth;
-export const useUser = () => {
-  const { user, isUserLoading } = useFirebase();
-  return { user, isUserLoading };
-};
-```
+### 2.3 Post (`/clienti/{clienteId}/post/{postId}`)
+Contenuto strategico con workflow a 7 stati.
+- **Stati**: `bozza` -> `revisione_interna` -> `da_approvare` -> `revisione` -> `approvato` -> `programmato` -> `pubblicato`.
+- `piattaforma`: Instagram, LinkedIn, ecc.
+- `versione_corrente`: Gestione del versioning del copy.
 
 ---
 
-## 3. Custom Hooks Firestore (src/firebase/firestore/)
+## 3. Logiche di Business Core
 
-### 3.1 useCollection.tsx
-```typescript
-'use client';
-import { useState, useEffect } from 'react';
-import { onSnapshot, QuerySnapshot, FirestoreError } from 'firebase/firestore';
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
+### 3.1 Sistema Crediti
+Ogni post creato (anche via AI) incrementa `post_usati`. L'eliminazione di un post in stato `bozza` riaccredita il punto. Il sistema impedisce la creazione oltre il limite `post_totali` a meno di upgrade.
 
-export function useCollection(memoizedQuery) {
-  const [data, setData] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
-
-  useEffect(() => {
-    if (!memoizedQuery) return;
-    setIsLoading(true);
-
-    const unsubscribe = onSnapshot(memoizedQuery, 
-      (snapshot) => {
-        setData(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })));
-        setIsLoading(false);
-      },
-      (error) => {
-        const contextualError = new FirestorePermissionError({
-          operation: 'list',
-          path: memoizedQuery.path || 'query'
-        });
-        errorEmitter.emit('permission-error', contextualError);
-        setIsLoading(false);
-      }
-    );
-    return () => unsubscribe();
-  }, [memoizedQuery]);
-
-  return { data, isLoading };
-}
-```
+### 3.2 Gestione Asset (Asset Strategy)
+- **Limite Hardware**: Upload diretto limitato a 50MB per file.
+- **Video & File Pesanti**: Per file > 50MB, il sistema salva un `link_esterno` (Drive/WeTransfer) memorizzato nel documento `Material`.
+- **Validazione**: L'agenzia valida gli asset caricati dal cliente prima che possano essere associati a un post.
 
 ---
 
-## 4. Logiche AI (src/ai/flows/)
+## 4. Codice Sorgente Logico (Core Snippets)
 
-### 4.1 Generazione Post (generate-post-ai-flow.ts)
-```typescript
-'use server';
-import { ai } from '@/ai/genkit';
-import { z } from 'genkit';
-
-const GeneratePostInputSchema = z.object({
-  nomeAzienda: z.string(),
-  settore: z.string(),
-  piattaforma: z.object({ label: z.string(), istruzioni: z.string() }),
-  tono: z.object({ label: z.string(), descrizione: z.string() }),
-  argomento: z.string(),
-});
-
-export const generateSocialPost = async (input) => {
-  const prompt = ai.definePrompt({
-    name: 'generatePostPrompt',
-    input: { schema: GeneratePostInputSchema },
-    prompt: `Sei un esperto SMM per AD next lab. Genera un post per {{{nomeAzienda}}}...`,
-  });
-  const { output } = await prompt(input);
-  return output;
-};
-```
-
----
-
-## 5. Security Rules (firestore.rules)
-*(Attualmente in modalità di test nucleare per debug)*
+### 4.1 Security Rules (Stato Attuale: Debug Mode)
+Attualmente impostate per permettere l'accesso totale durante la fase di analisi e debug dei permessi.
 ```javascript
 rules_version = '2';
 service cloud.firestore {
@@ -153,12 +61,33 @@ service cloud.firestore {
 }
 ```
 
----
+### 4.2 Hook Reale-Time: useCollection
+```typescript
+export function useCollection<T>(memoizedQuery) {
+  const [data, setData] = useState(null);
+  useEffect(() => {
+    if (!memoizedQuery) return;
+    const unsubscribe = onSnapshot(memoizedQuery, (snapshot) => {
+      setData(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })));
+    }, (error) => {
+      // Gestione centralizzata errori permessi
+      errorEmitter.emit('permission-error', new FirestorePermissionError({ operation: 'list', path: '...' }));
+    });
+    return () => unsubscribe();
+  }, [memoizedQuery]);
+  return { data };
+}
+```
 
-## 6. Business Logic: Workflow e Crediti
-- **Workflow (7 stati)**: `bozza` -> `revisione_interna` -> `da_approvare` -> `revisione` -> `approvato` -> `programmato` -> `pubblicato`.
-- **Sistema Crediti**: Ogni post creato decrementa il saldo `post_totali - post_usati`. L'eliminazione di una bozza riaccredita il punto.
-- **Gestione Asset**: Limite hardware di 50MB per upload diretto. Oltre tale soglia, il sistema utilizza riferimenti a link esterni (Drive/WeTransfer) salvati nel metadato `link_esterno`.
+### 4.3 AI Flow: Generazione Post
+Utilizza Gemini 2.5 Flash per trasformare i requisiti del cliente in copy strategico.
+```typescript
+const generatePostPrompt = ai.definePrompt({
+  name: 'generatePostPrompt',
+  prompt: `Sei un SMM per AD next lab. Genera un post per {{{nomeAzienda}}}...`,
+  // ... input/output schema defined with Zod
+});
+```
 
 ---
 *Documento generato per audit tecnico - Versione 1.1*
