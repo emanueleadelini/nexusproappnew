@@ -1,8 +1,9 @@
 'use client';
 
 import { useParams, useSearchParams } from 'next/navigation';
-import { useFirestore, useMemoFirebase, useCollection, useDoc } from '@/firebase';
+import { useFirestore, useMemoFirebase, useCollection, useDoc, useAuth } from '@/firebase';
 import { collection, doc, query, orderBy, updateDoc, serverTimestamp, deleteDoc, increment, arrayUnion, Timestamp } from 'firebase/firestore';
+import { sendPasswordResetEmail } from 'firebase/auth';
 import { StatoPost, STATO_POST_LABELS, STATO_POST_COLORS, Post, PIATTAFORMA_LABELS } from '@/types/post';
 import { StatoValidazione, STATO_VALIDAZIONE_LABELS, STATO_VALIDAZIONE_COLORS, getFileTypeInfo, Material, DESTINAZIONE_LABELS } from '@/types/material';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -11,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
-import { CalendarDays, FolderOpen, Clock, Sparkles, Plus, ChevronLeft, UploadCloud, Edit3, Image as ImageIcon, Trash2, MessageSquare, History, LayoutGrid, List, CheckCircle2, XCircle } from 'lucide-react';
+import { CalendarDays, FolderOpen, Clock, Sparkles, Plus, ChevronLeft, UploadCloud, Edit3, Image as ImageIcon, Trash2, MessageSquare, History, LayoutGrid, List, CheckCircle2, XCircle, ShieldAlert, KeyRound, Mail } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { GeneraBozzaModal } from '@/components/admin/genera-bozza-modal';
 import { CreaPostManualeModal } from '@/components/admin/crea-post-manuale-modal';
@@ -19,8 +20,6 @@ import { ModificaPostModal } from '@/components/admin/modifica-post-modal';
 import { ModificaPianoModal } from '@/components/admin/modifica-piano-modal';
 import { CaricaMaterialeModal } from '@/components/admin/carica-materiale-modal';
 import { CommentiSidebar } from '@/components/commenti-sidebar';
-import { Calendar } from '@/components/ui/calendar';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { errorEmitter } from '@/firebase/error-emitter';
@@ -41,9 +40,7 @@ const TRANSIZIONI_PERMESSE: Record<StatoPost, StatoPost[]> = {
 
 export default function ClienteDettaglio() {
   const { clienteId } = useParams() as { clienteId: string };
-  const searchParams = useSearchParams();
-  const postIdFromUrl = searchParams.get('postId');
-  
+  const auth = useAuth();
   const db = useFirestore();
   const { user } = useUser();
   const { toast } = useToast();
@@ -53,9 +50,9 @@ export default function ClienteDettaglio() {
   const [isManualeOpen, setIsManualeOpen] = useState(false);
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [isPianoOpen, setIsPianoOpen] = useState(false);
+  const [isResetLoading, setIsResetLoading] = useState(false);
   const [postDaModificare, setPostDaModificare] = useState<Post | null>(null);
   const [postPerCommenti, setPostPerCommenti] = useState<string | null>(null);
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
 
   const clientDocRef = useMemoFirebase(() => doc(db, 'clienti', clienteId), [db, clienteId]);
   const { data: client, isLoading: isClientLoading } = useDoc<any>(clientDocRef);
@@ -88,22 +85,23 @@ export default function ClienteDettaglio() {
     toast({ title: "Stato aggiornato", description: `Post in ${STATO_POST_LABELS[nuovoStato]}` });
   };
 
-  const handleValidazioneAsset = (materialId: string, validato: boolean) => {
-    const matRef = doc(db, 'clienti', clienteId, 'materiali', materialId);
-    const nota = !validato ? window.prompt("Motivo del rifiuto:") : null;
-    
-    if (!validato && !nota) return;
+  const handleResetPassword = async () => {
+    if (!client?.email_riferimento) {
+      toast({ variant: 'destructive', title: "Errore", description: "Email di riferimento non trovata per questo cliente." });
+      return;
+    }
 
-    updateDoc(matRef, {
-      stato_validazione: validato ? 'validato' : 'rifiutato',
-      note_rifiuto: nota,
-      aggiornato_il: serverTimestamp()
-    }).catch(e => errorEmitter.emit('permission-error', new FirestorePermissionError({ path: matRef.path, operation: 'update' })));
-    
-    toast({ 
-      title: validato ? "Asset Validato" : "Asset Rifiutato", 
-      description: validato ? "L'asset è ora pronto per essere usato nei post." : "Il cliente riceverà una notifica."
-    });
+    if (!window.confirm(`Vuoi inviare un link di reset password a ${client.email_riferimento}?`)) return;
+
+    setIsResetLoading(true);
+    try {
+      await sendPasswordResetEmail(auth, client.email_riferimento);
+      toast({ title: "Email inviata", description: `Il link di ripristino è stato inviato a ${client.email_riferimento}` });
+    } catch (error: any) {
+      toast({ variant: 'destructive', title: "Errore", description: "Impossibile inviare l'email. Verifica che l'indirizzo sia corretto." });
+    } finally {
+      setIsResetLoading(false);
+    }
   };
 
   const deletePost = (postId: string) => {
@@ -210,13 +208,6 @@ export default function ClienteDettaglio() {
                       <div className="aspect-video bg-gray-100 flex flex-col items-center justify-center relative">
                         <type.icon className={`w-10 h-10 ${type.color} opacity-40`}/>
                         <span className="text-[10px] mt-2 font-bold uppercase text-gray-400 px-4 text-center truncate w-full">{mat.nome_file}</span>
-                        
-                        {mat.stato_validazione === 'in_attesa' && (
-                          <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4">
-                            <Button size="icon" variant="secondary" className="bg-green-500 hover:bg-green-600 border-none" onClick={() => handleValidazioneAsset(mat.id, true)}><CheckCircle2 className="text-white"/></Button>
-                            <Button size="icon" variant="secondary" className="bg-red-500 hover:bg-red-600 border-none" onClick={() => handleValidazioneAsset(mat.id, false)}><XCircle className="text-white"/></Button>
-                          </div>
-                        )}
                       </div>
                       <CardHeader className="p-3">
                         <div className="flex justify-between items-center">
@@ -235,7 +226,7 @@ export default function ClienteDettaglio() {
         </div>
 
         <div className="space-y-6">
-          <Card className="rounded-xl shadow-md border-indigo-100 sticky top-24">
+          <Card className="rounded-xl shadow-md border-indigo-100">
             <CardHeader className="bg-indigo-600 text-white rounded-t-xl">
               <CardTitle className="text-lg font-headline">Stato Piano Post</CardTitle>
             </CardHeader>
@@ -252,6 +243,32 @@ export default function ClienteDettaglio() {
                 <Progress value={usagePercent} className={`h-2 ${usagePercent > 80 ? '[&>div]:bg-red-500' : '[&>div]:bg-indigo-600'}`} />
               </div>
               <Button variant="outline" className="w-full text-indigo-600 border-indigo-200" onClick={() => setIsPianoOpen(true)}>Gestisci Crediti</Button>
+            </CardContent>
+          </Card>
+
+          <Card className="rounded-xl shadow-sm border-red-100 bg-red-50/20">
+            <CardHeader>
+              <CardTitle className="text-sm font-bold uppercase tracking-widest text-red-600 flex items-center gap-2">
+                <ShieldAlert className="w-4 h-4" /> Gestione Account
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="p-3 bg-white rounded-lg border border-red-100">
+                <p className="text-[11px] text-gray-500 mb-3">Come Admin, puoi resettare l'accesso del cliente inviando un link sicuro alla sua email.</p>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="w-full border-red-200 text-red-600 hover:bg-red-50 h-9 font-bold text-[11px]"
+                  onClick={handleResetPassword}
+                  disabled={isResetLoading}
+                >
+                  {isResetLoading ? <Clock className="w-3 h-3 animate-spin mr-2" /> : <KeyRound className="w-3 h-3 mr-2" />}
+                  INVIA RESET PASSWORD
+                </Button>
+              </div>
+              <div className="flex items-center gap-2 text-[10px] text-gray-400 px-1">
+                <Mail className="w-3 h-3" /> {client.email_riferimento}
+              </div>
             </CardContent>
           </Card>
         </div>
