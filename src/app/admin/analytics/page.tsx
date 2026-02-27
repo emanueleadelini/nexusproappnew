@@ -12,12 +12,12 @@ import {
   CartesianGrid, 
   Tooltip, 
   ResponsiveContainer,
-  PieChart,
+  PieChart as RechartsPieChart,
   Pie,
   Cell,
   Legend
 } from 'recharts';
-import { BarChart3, TrendingUp, Users, CreditCard, CheckCircle2, AlertCircle } from 'lucide-react';
+import { BarChart3, TrendingUp, Users, CreditCard, CheckCircle2, AlertCircle, PieChart } from 'lucide-react';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 
 const COLORS = ['#6366f1', '#a855f7', '#ec4899', '#f97316', '#22c55e', '#ef4444'];
@@ -145,13 +145,13 @@ export default function AnalyticsPage() {
         <Card className="rounded-xl border-gray-200/50 shadow-md">
           <CardHeader>
             <CardTitle className="text-lg font-headline flex items-center gap-2">
-              <PieChartIcon className="w-5 h-5 text-indigo-600" /> Saturazione Risorse
+              <PieChart className="w-5 h-5 text-indigo-600" /> Saturazione Risorse
             </CardTitle>
             <CardDescription>Ripartizione tra crediti impegnati e residui globali.</CardDescription>
           </CardHeader>
           <CardContent className="h-80 flex flex-col items-center justify-center">
             <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
+              <RechartsPieChart>
                 <Pie
                   data={[
                     { name: 'Usati', value: stats?.totalUsed },
@@ -169,7 +169,7 @@ export default function AnalyticsPage() {
                 </Pie>
                 <Tooltip />
                 <Legend iconType="circle" wrapperStyle={{ fontSize: '10px', textTransform: 'uppercase', fontWeight: 'bold' }} />
-              </PieChart>
+              </RechartsPieChart>
             </ResponsiveContainer>
             <div className="absolute flex flex-col items-center justify-center pointer-events-none">
                 <span className="text-2xl font-bold">{stats?.avgUsage.toFixed(0)}%</span>
