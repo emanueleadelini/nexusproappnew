@@ -1,45 +1,27 @@
+'use client';
 
 import { Badge } from "@/components/ui/badge";
-import { StatoPost, StatoValidazione } from "@/lib/types";
+import { StatoPost, STATO_POST_LABELS, STATO_POST_COLORS } from "@/types/post";
+import { StatoValidazione, STATO_VALIDAZIONE_LABELS, STATO_VALIDAZIONE_COLORS } from "@/types/material";
 
 export function PostStatoChip({ stato }: { stato: StatoPost }) {
-  const styles: Record<StatoPost, string> = {
-    bozza: "bg-gray-200 text-gray-700 hover:bg-gray-300",
-    da_approvare: "bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-200",
-    approvato: "bg-emerald-100 text-emerald-700 border-emerald-200 hover:bg-emerald-200",
-    pubblicato: "bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-200",
-  };
-
-  const labels: Record<StatoPost, string> = {
-    bozza: "Bozza",
-    da_approvare: "Da Approvare",
-    approvato: "Approvato",
-    pubblicato: "Pubblicato",
-  };
+  const color = STATO_POST_COLORS[stato] || { bg: 'bg-gray-100', text: 'text-gray-700' };
+  const label = STATO_POST_LABELS[stato] || stato;
 
   return (
-    <Badge variant="outline" className={`${styles[stato]} capitalize px-3 py-1`}>
-      {labels[stato]}
+    <Badge variant="outline" className={`${color.bg} ${color.text} capitalize px-3 py-1 border-none font-bold text-[10px]`}>
+      {label}
     </Badge>
   );
 }
 
 export function MaterialeStatoChip({ stato }: { stato: StatoValidazione }) {
-  const styles: Record<StatoValidazione, string> = {
-    in_attesa: "bg-slate-100 text-slate-700 border-slate-200",
-    validato: "bg-green-100 text-green-700 border-green-200",
-    rifiutato: "bg-rose-100 text-rose-700 border-rose-200",
-  };
-
-  const labels: Record<StatoValidazione, string> = {
-    in_attesa: "In Attesa",
-    validato: "Validato",
-    rifiutato: "Rifiutato",
-  };
+  const color = STATO_VALIDAZIONE_COLORS[stato] || { bg: 'bg-gray-100', text: 'text-gray-700' };
+  const label = STATO_VALIDAZIONE_LABELS[stato] || stato;
 
   return (
-    <Badge variant="outline" className={`${styles[stato]} capitalize px-3 py-1`}>
-      {labels[stato]}
+    <Badge variant="outline" className={`${color.bg} ${color.text} capitalize px-3 py-1 border-none font-bold text-[10px]`}>
+      {label}
     </Badge>
   );
 }
