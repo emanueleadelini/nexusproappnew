@@ -42,24 +42,26 @@ Ogni post creato (anche via AI) incrementa `post_usati`. L'eliminazione di un po
 ### 3.2 Gestione Asset (Asset Strategy)
 - **Limite Hardware**: Upload diretto limitato a 50MB per file.
 - **Video & File Pesanti**: Per file > 50MB, il sistema salva un `link_esterno` (Drive/WeTransfer) memorizzato nel documento `Material`.
-- **Validazione**: L'agenzia valida gli asset caricati dal cliente prima che possano essere associati a un post.
+- **Validazione**: L'agenzia valida gli asset caricati dal cliente prima che possano essere ufficialmente approvati.
 
 ---
 
 ## 4. Codice Sorgente Logico (Core Snippets)
 
-### 4.1 Security Rules (V3 - Hybrid Token/Doc Path)
+### 4.1 Security Rules (Test Nucleare Attivo)
 ```javascript
-function getUserRole() {
-  return request.auth.token.ruolo != null
-    ? request.auth.token.ruolo
-    : (exists(/databases/$(database)/documents/users/$(request.auth.uid))
-        ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data.ruolo
-        : 'guest');
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
 }
 ```
 
 ### 4.2 Hook Real-Time: useCollection
+Il cuore della reattività dell'app, con gestione centralizzata degli errori di permesso.
 ```typescript
 export function useCollection<T>(memoizedQuery) {
   const [data, setData] = useState(null);
@@ -80,4 +82,4 @@ export function useCollection<T>(memoizedQuery) {
 Utilizza Gemini 2.5 Flash per trasformare i requisiti del cliente in copy strategico adattato alla piattaforma e al tono di voce richiesto.
 
 ---
-*Documento generato per audit tecnico - Versione 1.2*
+*Documento generato per audit tecnico - Versione 1.3*
