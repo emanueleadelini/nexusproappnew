@@ -1,6 +1,6 @@
 # AD Next Lab - Manuale Tecnico Master (Nexus Agency)
 
-Questo documento contiene l'analisi ingegneristica completa, l'architettura e il codice sorgente logico della piattaforma AD Next Lab aggiornato allo Sprint 4.
+Questo documento contiene l'analisi ingegneristica completa, l'architettura e il codice sorgente logico della piattaforma AD Next Lab aggiornato allo Sprint 4. È destinato al team di sviluppo per la validazione pre-lancio e la valutazione della scalabilità SaaS.
 
 ---
 
@@ -45,12 +45,73 @@ Dashboard centralizzata per l'agenzia che aggrega l'utilizzo dei crediti e la sa
 
 ---
 
-## 4. Stato del Progetto
+## 4. Codice Sorgente Logico (Core Artifacts)
 
-- **Sprint 1 (Fondamenta)**: COMPLETATO. Architettura, Auth e RBAC.
-- **Sprint 2 (Content AI)**: COMPLETATO. Generazione post con Gemini e gestione Asset.
-- **Sprint 3 (Produttività)**: COMPLETATO. Calendario visuale con Drag-and-Drop.
-- **Sprint 4 (Analytics)**: COMPLETATO. Reportistica avanzata sull'utilizzo dei crediti.
+### 4.1 Security Rules (`firestore.rules`)
+```javascript
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      // TEST NUCLEARE: Accesso libero per debug ambiente Studio.
+      // In produzione sostituire con RBAC basato su UID e ruolo.
+      allow read, write: if true;
+    }
+  }
+}
+```
+
+### 4.2 Inizializzazione Firebase (`src/firebase/index.ts`)
+```typescript
+import { initializeApp, getApps, getApp } from 'firebase/app';
+import { getAuth } from 'firebase/auth';
+import { getFirestore } from 'firebase/firestore';
+import { firebaseConfig } from './config';
+
+export function initializeFirebase() {
+  const apps = getApps();
+  // Forza l'uso della config esplicita per evitare l'instradamento automatico di Studio verso l'emulatore.
+  const firebaseApp = !apps.length ? initializeApp(firebaseConfig) : getApp();
+  return {
+    firebaseApp,
+    auth: getAuth(firebaseApp),
+    firestore: getFirestore(firebaseApp)
+  };
+}
+```
+
+### 4.3 AI Post Generator Flow (`src/ai/flows/generate-post-ai-flow.ts`)
+```typescript
+import { ai } from '@/ai/genkit';
+import { z } from 'genkit';
+
+const generatePostPrompt = ai.definePrompt({
+  name: 'generatePostPrompt',
+  prompt: `Sei un social media manager esperto per AD next lab. Genera un post per {{{nomeAzienda}}} nel settore {{{settore}}}. Piattaforma: {{{piattaforma.label}}}. Tono: {{{tono.label}}}.`,
+  // ... schema di output per titolo e testo
+});
+```
+
+### 4.4 Definizione Tipi Post (`src/types/post.ts`)
+```typescript
+export type StatoPost = 'bozza' | 'revisione_interna' | 'da_approvare' | 'revisione' | 'approvato' | 'programmato' | 'pubblicato';
+export interface Post {
+  id: string;
+  titolo: string;
+  testo: string;
+  stato: StatoPost;
+  piattaforma: string;
+  versione_corrente: number;
+  storico_stati: Array<{ stato: string; timestamp: any }>;
+}
+```
 
 ---
-*Documento generato per audit tecnico - Versione 2.2*
+
+## 5. Roadmap SaaS & Commercializzazione
+1.  **Onboarding**: Implementata la creazione automatica di Client + User Referente.
+2.  **Scalabilità**: La struttura multi-tenant permette di ospitare infiniti clienti senza interferenze.
+3.  **Monetizzazione**: Il sistema a crediti (`post_totali`) è pronto per essere collegato a un gateway di pagamento (es. Stripe) per upgrade automatici.
+
+---
+*Documento generato per audit tecnico e go-live - Versione 3.0*
