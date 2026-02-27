@@ -1,10 +1,67 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // TEST NUCLEARE: Accesso libero per debug ambiente Studio/Cloud.
-    // Una volta confermato lo sblocco, ripristineremo l'RBAC basato su UID/Ruoli.
-    match /{document=**} {
-      allow read, write: if true;
+    
+    // HELPERS CORE
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+    
+    function isSuperAdmin() {
+      return isSignedIn() && getUserData().ruolo == 'super_admin';
+    }
+    
+    function isOperatore() {
+      return isSignedIn() && (getUserData().ruolo == 'operatore' || getUserData().ruolo == 'super_admin');
+    }
+    
+    function isClientOf(clienteId) {
+      return isSignedIn() && getUserData().cliente_id == clienteId;
+    }
+
+    // USERS: Solo admin vedono tutti, utente vede se stesso
+    match /users/{uid} {
+      allow read: if isSignedIn() && (request.auth.uid == uid || isOperatore());
+      allow write: if isSuperAdmin();
+    }
+    
+    // CLIENTI: Accesso isolato per tenant
+    match /clienti/{clienteId} {
+      allow read: if isSignedIn() && (isClientOf(clienteId) || isOperatore());
+      allow write: if isSuperAdmin();
+      
+      // POST: Sotto-collezione isolata
+      match /post/{postId} {
+        allow read: if isSignedIn() && (isClientOf(clienteId) || isOperatore());
+        allow create: if isOperatore();
+        allow update: if isSignedIn() && (isOperatore() || isClientOf(clienteId));
+        allow delete: if isSuperAdmin();
+        
+        // COMMENTI: Interni ai post
+        match /commenti/{commentId} {
+          allow read, write: if isSignedIn() && (isClientOf(clienteId) || isOperatore());
+        }
+      }
+      
+      // MATERIALI: Archivio asset
+      match /materiali/{materialId} {
+        allow read: if isSignedIn() && (isClientOf(clienteId) || isOperatore());
+        allow create: if isSignedIn() && (isClientOf(clienteId) || isOperatore());
+        allow update: if isOperatore() || (isClientOf(clienteId) && resource.data.caricato_da == request.auth.uid);
+        allow delete: if isOperatore();
+      }
+    }
+    
+    // NOTIFICHE: Solo destinatario o agenzia
+    match /notifiche/{notificaId} {
+      allow read: if isSignedIn() && (resource.data.destinatario_uid == request.auth.uid || isOperatore());
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && (resource.data.destinatario_uid == request.auth.uid || isOperatore());
+      allow delete: if isOperatore();
     }
   }
 }

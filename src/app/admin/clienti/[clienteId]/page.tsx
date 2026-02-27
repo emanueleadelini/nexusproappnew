@@ -1,18 +1,17 @@
-
 'use client';
 
 import { useParams, useSearchParams } from 'next/navigation';
 import { useFirestore, useMemoFirebase, useCollection, useDoc } from '@/firebase';
 import { collection, doc, query, orderBy, updateDoc, serverTimestamp, deleteDoc, increment, arrayUnion, Timestamp } from 'firebase/firestore';
-import { StatoPost, STATO_POST_LABELS, STATO_POST_COLORS, Post, PIATTAFORMA_LABELS, FORMATO_LABELS } from '@/types/post';
-import { StatoValidazione, STATO_VALIDAZIONE_LABELS, STATO_VALIDAZIONE_COLORS, getFileTypeInfo, Material, DestinazioneAsset, DESTINAZIONE_LABELS, DESTINAZIONE_ICONS } from '@/types/material';
+import { StatoPost, STATO_POST_LABELS, STATO_POST_COLORS, Post, PIATTAFORMA_LABELS } from '@/types/post';
+import { StatoValidazione, STATO_VALIDAZIONE_LABELS, STATO_VALIDAZIONE_COLORS, getFileTypeInfo, Material, DESTINAZIONE_LABELS } from '@/types/material';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardFooter, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
-import { CalendarDays, FolderOpen, Send, Clock, Sparkles, Plus, ChevronLeft, UploadCloud, Edit3, Image as ImageIcon, Filter, PieChart, Info, AlertTriangle, Trash2, MessageSquare, Share2, Link as LinkIcon, ExternalLink, History, LayoutGrid, List } from 'lucide-react';
+import { CalendarDays, FolderOpen, Clock, Sparkles, Plus, ChevronLeft, UploadCloud, Edit3, Image as ImageIcon, Trash2, MessageSquare, History, LayoutGrid, List, CheckCircle2, XCircle } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { GeneraBozzaModal } from '@/components/admin/genera-bozza-modal';
 import { CreaPostManualeModal } from '@/components/admin/crea-post-manuale-modal';
@@ -24,7 +23,6 @@ import { Calendar } from '@/components/ui/calendar';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { usePermessi } from '@/hooks/use-permessi';
@@ -49,7 +47,7 @@ export default function ClienteDettaglio() {
   const db = useFirestore();
   const { user } = useUser();
   const { toast } = useToast();
-  const { haPermesso, ruolo } = usePermessi();
+  const { haPermesso } = usePermessi();
 
   const [isGeneraOpen, setIsGeneraOpen] = useState(false);
   const [isManualeOpen, setIsManualeOpen] = useState(false);
@@ -58,15 +56,6 @@ export default function ClienteDettaglio() {
   const [postDaModificare, setPostDaModificare] = useState<Post | null>(null);
   const [postPerCommenti, setPostPerCommenti] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
-  
-  const [tipoFilter, setTipoFilter] = useState<string>('all');
-  const [destFilter, setDestFilter] = useState<string>('all');
-
-  useEffect(() => {
-    if (postIdFromUrl) {
-      setPostPerCommenti(postIdFromUrl);
-    }
-  }, [postIdFromUrl]);
 
   const clientDocRef = useMemoFirebase(() => doc(db, 'clienti', clienteId), [db, clienteId]);
   const { data: client, isLoading: isClientLoading } = useDoc<any>(clientDocRef);
@@ -83,89 +72,73 @@ export default function ClienteDettaglio() {
 
   const handleTransizione = (post: Post, nuovoStato: StatoPost) => {
     if (!user) return;
-    
     const postRef = doc(db, 'clienti', clienteId, 'post', post.id);
-    const nota = nuovoStato === 'revisione' ? window.prompt("Inserisci le note per la revisione:") : "";
+    const nota = nuovoStato === 'revisione' ? window.prompt("Note per il cliente:") : "";
     
-    if (nuovoStato === 'revisione' && nota === null) return;
-
     updateDoc(postRef, { 
       stato: nuovoStato, 
       aggiornato_il: serverTimestamp(),
-      note_revisione: nota || post.note_revisione || "",
       storico_stati: arrayUnion({
         stato: nuovoStato,
         autore_uid: user.uid,
         timestamp: Timestamp.now(),
         nota: nota || ""
       })
-    }).catch(e => {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({ path: postRef.path, operation: 'update' }));
-    });
+    }).catch(e => errorEmitter.emit('permission-error', new FirestorePermissionError({ path: postRef.path, operation: 'update' })));
+    toast({ title: "Stato aggiornato", description: `Post in ${STATO_POST_LABELS[nuovoStato]}` });
+  };
 
-    toast({ title: "Stato aggiornato", description: `Il post è ora: ${STATO_POST_LABELS[nuovoStato]}` });
+  const handleValidazioneAsset = (materialId: string, validato: boolean) => {
+    const matRef = doc(db, 'clienti', clienteId, 'materiali', materialId);
+    const nota = !validato ? window.prompt("Motivo del rifiuto:") : null;
+    
+    if (!validato && !nota) return;
+
+    updateDoc(matRef, {
+      stato_validazione: validato ? 'validato' : 'rifiutato',
+      note_rifiuto: nota,
+      aggiornato_il: serverTimestamp()
+    }).catch(e => errorEmitter.emit('permission-error', new FirestorePermissionError({ path: matRef.path, operation: 'update' })));
+    
+    toast({ 
+      title: validato ? "Asset Validato" : "Asset Rifiutato", 
+      description: validato ? "L'asset è ora pronto per essere usato nei post." : "Il cliente riceverà una notifica."
+    });
   };
 
   const deletePost = (postId: string) => {
-    if (!window.confirm("Sei sicuro di voler eliminare questo post? Il credito verrà riaccreditato.")) return;
-    
-    const postRef = doc(db, 'clienti', clienteId, 'post', postId);
-    const clientRef = doc(db, 'clienti', clienteId);
-
-    deleteDoc(postRef).catch(e => {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({ path: postRef.path, operation: 'delete' }));
-    });
-
-    updateDoc(clientRef, {
-      post_usati: increment(-1)
-    }).catch(e => {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({ path: clientRef.path, operation: 'update' }));
-    });
-
-    toast({ title: "Post eliminato", description: "Calendario e crediti aggiornati." });
+    if (!window.confirm("Eliminare definitivamente e riaccreditare?")) return;
+    deleteDoc(doc(db, 'clienti', clienteId, 'post', postId));
+    updateDoc(doc(db, 'clienti', clienteId), { post_usati: increment(-1) });
+    toast({ title: "Post eliminato" });
   };
 
-  if (isClientLoading) return <div className="space-y-4 p-8"><Skeleton className="h-12 w-1/3" /><Skeleton className="h-64" /></div>;
+  if (isClientLoading) return <div className="p-8 space-y-4"><Skeleton className="h-12 w-1/3"/><Skeleton className="h-64"/></div>;
   if (!client) return <div className="p-8 text-center">Cliente non trovato.</div>;
 
-  const filteredMaterials = materials?.filter(mat => {
-    const typeInfo = getFileTypeInfo(mat.nome_file, !!mat.link_esterno);
-    const matchesTipo = tipoFilter === 'all' || typeInfo.type === tipoFilter;
-    const matchesDest = destFilter === 'all' || mat.destinazione === destFilter;
-    return matchesTipo && matchesDest;
-  }) || [];
-
-  const postsOnSelectedDate = posts?.filter(post => {
-    if (!post.data_pubblicazione || !selectedDate || typeof post.data_pubblicazione.toDate !== 'function') return false;
-    const pubDate = post.data_pubblicazione.toDate();
-    return pubDate.toDateString() === selectedDate.toDateString();
-  }) || [];
-
-  const daysWithPosts = posts?.filter(p => p.data_pubblicazione && typeof p.data_pubblicazione.toDate === 'function').map(p => p.data_pubblicazione.toDate().toDateString()) || [];
-
-  const postTotali = client.post_totali || 0;
-  const postUsati = posts?.length || 0; 
-  const usagePercent = postTotali > 0 ? (postUsati / postTotali) * 100 : 0;
+  const postUsati = posts?.length || 0;
+  const usagePercent = (postUsati / (client.post_totali || 1)) * 100;
+  const pendingAssets = materials?.filter(m => m.stato_validazione === 'in_attesa') || [];
 
   return (
-    <div className="space-y-8 p-4 md:p-0">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+    <div className="space-y-8">
+      <div className="flex justify-between items-end gap-4">
         <div>
-          <Link href="/admin" className="flex items-center gap-1 text-sm text-indigo-600 hover:underline mb-2">
-            <ChevronLeft className="w-4 h-4" /> Torna ai Clienti
+          <Link href="/admin" className="text-indigo-600 hover:underline text-sm flex items-center gap-1 mb-2">
+            <ChevronLeft className="w-4 h-4"/> Elenco Clienti
           </Link>
-          <h1 className="text-4xl font-headline font-bold text-gray-900">{client.nome_azienda}</h1>
-          <p className="text-muted-foreground">{client.settore || 'Settore non specificato'} • {client.email_riferimento}</p>
+          <h1 className="text-4xl font-headline font-bold">{client.nome_azienda}</h1>
+          <p className="text-muted-foreground">{client.settore} • {client.email_riferimento}</p>
         </div>
-        <div className="flex gap-2 w-full md:w-auto">
+        <div className="flex gap-2">
           {haPermesso('upload_materiali') && (
-            <Button onClick={() => setIsUploadOpen(true)} variant="outline" className="flex-1 md:flex-none gap-2 border-indigo-200 text-indigo-700">
-              <UploadCloud className="w-4 h-4" /> Invia Asset
+            <Button variant="outline" onClick={() => setIsUploadOpen(true)} className="border-indigo-200 text-indigo-700">
+              <UploadCloud className="w-4 h-4 mr-2"/> Carica Asset
             </Button>
           )}
           {haPermesso('uso_ai') && (
-            <Button onClick={() => setIsGeneraOpen(true)} className="flex-1 md:flex-none gap-2 bg-violet-600 hover:bg-violet-700 shadow-lg shadow-violet-200">
-              <Sparkles className="w-4 h-4" /> Genera con AI
+            <Button onClick={() => setIsGeneraOpen(true)} className="bg-violet-600 hover:bg-violet-700 shadow-violet-100 shadow-lg">
+              <Sparkles className="w-4 h-4 mr-2"/> Genera Post AI
             </Button>
           )}
         </div>
@@ -173,195 +146,107 @@ export default function ClienteDettaglio() {
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
         <div className="lg:col-span-3 space-y-8">
-          {client.richiesta_upgrade && (
-            <div className="bg-amber-50 border border-amber-200 p-4 rounded-xl flex items-center justify-between animate-pulse">
-              <div className="flex items-center gap-3">
-                <AlertTriangle className="text-amber-600 w-5 h-5" />
-                <div>
-                  <p className="text-sm font-bold text-amber-900">Richiesta di Upgrade</p>
-                  <p className="text-xs text-amber-700">Il cliente ha richiesto l'aggiunta di post extra al piano.</p>
-                </div>
-              </div>
-              {haPermesso('gestione_piani') && (
-                <Button size="sm" onClick={() => setIsPianoOpen(true)} className="bg-amber-600 hover:bg-amber-700 text-white border-none">
-                  Gestisci Piano
-                </Button>
-              )}
-            </div>
-          )}
-
-          <Tabs defaultValue="visual" className="w-full">
-            <TabsList className="bg-white border-b border-gray-200 p-0 h-12 w-full justify-start rounded-none mb-6 overflow-x-auto overflow-y-hidden">
-              <TabsTrigger value="visual" className="data-[state=active]:border-b-2 data-[state=active]:border-indigo-600 rounded-none h-full px-6 text-sm font-medium whitespace-nowrap">
-                <LayoutGrid className="w-4 h-4 mr-2" /> Vista Griglia (Drag&Drop)
+          <Tabs defaultValue="visual">
+            <TabsList className="bg-transparent border-b rounded-none h-12 w-full justify-start p-0 mb-6">
+              <TabsTrigger value="visual" className="data-[state=active]:border-b-2 border-indigo-600 rounded-none h-full px-6">
+                <LayoutGrid className="w-4 h-4 mr-2"/> Calendario Visuale
               </TabsTrigger>
-              <TabsTrigger value="calendar" className="data-[state=active]:border-b-2 data-[state=active]:border-indigo-600 rounded-none h-full px-6 text-sm font-medium whitespace-nowrap">
-                <List className="w-4 h-4 mr-2" /> Elenco PED
+              <TabsTrigger value="list" className="data-[state=active]:border-b-2 border-indigo-600 rounded-none h-full px-6">
+                <List className="w-4 h-4 mr-2"/> Elenco Post
               </TabsTrigger>
-              <TabsTrigger value="materials_agency" className="data-[state=active]:border-b-2 data-[state=active]:border-indigo-600 rounded-none h-full px-6 text-sm font-medium whitespace-nowrap">
-                <FolderOpen className="w-4 h-4 mr-2" /> Archivio Nexus
+              <TabsTrigger value="assets" className="data-[state=active]:border-b-2 border-indigo-600 rounded-none h-full px-6">
+                <FolderOpen className="w-4 h-4 mr-2"/> Archivio Asset 
+                {pendingAssets.length > 0 && <Badge className="ml-2 bg-amber-500">{pendingAssets.length}</Badge>}
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="visual" className="pt-2">
-              {posts ? (
-                <CalendarioVisuale clienteId={clienteId} posts={posts} />
-              ) : (
-                <Skeleton className="h-96 w-full" />
-              )}
+            <TabsContent value="visual">
+              {posts && <CalendarioVisuale clienteId={clienteId} posts={posts} />}
             </TabsContent>
 
-            <TabsContent value="calendar" className="space-y-6">
-              <div className="flex flex-col lg:flex-row gap-8">
-                <Card className="p-4 h-fit border-indigo-100 shadow-sm w-full lg:w-80">
-                  <Calendar
-                    mode="single"
-                    selected={selectedDate}
-                    onSelect={setSelectedDate}
-                    className="rounded-md"
-                    modifiers={{
-                      hasPost: (date) => daysWithPosts.includes(date.toDateString())
-                    }}
-                    modifiersClassNames={{
-                      hasPost: "bg-indigo-100 text-indigo-900 font-bold border-b-2 border-indigo-600 rounded-none"
-                    }}
-                  />
-                </Card>
+            <TabsContent value="list" className="space-y-4">
+               {posts?.map(post => (
+                 <Card key={post.id} className="hover:shadow-md transition-shadow">
+                    <CardHeader className="pb-3 flex flex-row items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <Badge className={`${STATO_POST_COLORS[post.stato].bg} ${STATO_POST_COLORS[post.stato].text} border-none`}>
+                          {STATO_POST_LABELS[post.stato]}
+                        </Badge>
+                        <span className="text-xs text-gray-400">Pianificato: {post.data_pubblicazione?.toDate().toLocaleDateString()}</span>
+                      </div>
+                      <div className="flex gap-1">
+                        <Button variant="ghost" size="icon" onClick={() => setPostPerCommenti(post.id)}><MessageSquare className="w-4 h-4"/></Button>
+                        <Button variant="ghost" size="icon" onClick={() => setPostDaModificare(post)}><Edit3 className="w-4 h-4"/></Button>
+                        <Button variant="ghost" size="icon" className="text-red-400" onClick={() => deletePost(post.id)}><Trash2 className="w-4 h-4"/></Button>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <h4 className="font-bold mb-1">{post.titolo}</h4>
+                      <p className="text-sm text-gray-600 line-clamp-3">{post.testo}</p>
+                    </CardContent>
+                    <CardFooter className="bg-gray-50/50 p-3 flex justify-end gap-2">
+                       {TRANSIZIONI_PERMESSE[post.stato].map(next => (
+                         <Button key={next} size="sm" onClick={() => handleTransizione(post, next)} className={`h-8 text-[10px] font-bold uppercase ${STATO_POST_COLORS[next].bg} ${STATO_POST_COLORS[next].text} border-none`}>
+                           Sposta in {STATO_POST_LABELS[next]}
+                         </Button>
+                       ))}
+                    </CardFooter>
+                 </Card>
+               ))}
+            </TabsContent>
 
-                <div className="flex-1 space-y-6">
-                  <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl font-headline font-bold">
-                      {selectedDate ? `Post per il ${selectedDate.toLocaleDateString('it-IT')}` : 'Tutti i post'}
-                    </h2>
-                    {haPermesso('creazione_post') && (
-                      <Button size="sm" onClick={() => setIsManualeOpen(true)} className="bg-indigo-600"><Plus className="w-4 h-4 mr-2"/> Aggiungi Post</Button>
-                    )}
-                  </div>
-
-                  {isPostsLoading ? <Skeleton className="h-48" /> : postsOnSelectedDate.length > 0 ? (
-                    <div className="grid gap-6">
-                      {postsOnSelectedDate.map(post => {
-                        const materialAssociato = materials?.find(m => m.id === post.materiale_id);
-                        const typeInfo = materialAssociato ? getFileTypeInfo(materialAssociato.nome_file, !!materialAssociato.link_esterno) : null;
-                        const transizioni = TRANSIZIONI_PERMESSE[post.stato] || [];
+            <TabsContent value="assets">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {materials?.map(mat => {
+                  const type = getFileTypeInfo(mat.nome_file, !!mat.link_esterno);
+                  return (
+                    <Card key={mat.id} className="overflow-hidden group">
+                      <div className="aspect-video bg-gray-100 flex flex-col items-center justify-center relative">
+                        <type.icon className={`w-10 h-10 ${type.color} opacity-40`}/>
+                        <span className="text-[10px] mt-2 font-bold uppercase text-gray-400 px-4 text-center truncate w-full">{mat.nome_file}</span>
                         
-                        return (
-                          <Card key={post.id} className="rounded-xl border-gray-200/60 overflow-hidden shadow-sm hover:shadow-md transition-shadow bg-white">
-                            <div className="p-4 flex items-center justify-between">
-                              <div className="flex items-center gap-3">
-                                <Avatar className="h-10 w-10 border border-gray-100">
-                                  <AvatarFallback className="bg-indigo-600 text-white font-bold">
-                                    {client.nome_azienda.charAt(0).toUpperCase()}
-                                  </AvatarFallback>
-                                </Avatar>
-                                <div>
-                                  <div className="flex items-center gap-2">
-                                    <h3 className="font-bold text-sm text-gray-900">{client.nome_azienda}</h3>
-                                    <Badge className={`${STATO_POST_COLORS[post.stato].bg} ${STATO_POST_COLORS[post.stato].text} border-none font-medium text-[9px] py-0 px-1.5`}>
-                                      {STATO_POST_LABELS[post.stato]}
-                                    </Badge>
-                                    <Badge variant="outline" className="text-[8px] font-bold uppercase">{PIATTAFORMA_LABELS[post.piattaforma]}</Badge>
-                                  </div>
-                                  <p className="text-[10px] text-gray-400 flex items-center gap-1">
-                                    <Clock className="w-2.5 h-2.5" />
-                                    {post.data_pubblicazione ? post.data_pubblicazione.toDate().toLocaleString('it-IT') : 'Da definire'}
-                                  </p>
-                                </div>
-                              </div>
-                              <div className="flex gap-1">
-                                <Button variant="ghost" size="icon" className="h-8 w-8 text-indigo-600" onClick={() => setPostPerCommenti(post.id)}>
-                                  <MessageSquare className="w-4 h-4" />
-                                </Button>
-                                {haPermesso('modifica_post') && (
-                                  <Button variant="ghost" size="icon" className="h-8 w-8 text-indigo-600" onClick={() => setPostDaModificare(post)}>
-                                    <Edit3 className="w-4 h-4" />
-                                  </Button>
-                                )}
-                                {haPermesso('modifica_post') && (
-                                  <Button variant="ghost" size="icon" className="h-8 w-8 text-red-400 hover:text-red-600" onClick={() => deletePost(post.id)}>
-                                    <Trash2 className="w-4 h-4" />
-                                  </Button>
-                                )}
-                              </div>
-                            </div>
-                            <div className="px-4 pb-3">
-                              <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{post.testo}</p>
-                            </div>
-                            {materialAssociato && (
-                              <div className="relative aspect-video bg-gray-100 border-y border-gray-50 flex flex-col items-center justify-center group overflow-hidden">
-                                {materialAssociato.link_esterno ? (
-                                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-blue-50 text-blue-400">
-                                    <LinkIcon className="w-12 h-12 mb-2" />
-                                    <a href={materialAssociato.link_esterno} target="_blank" rel="noopener" className="mt-2 flex items-center gap-1 text-[10px] bg-blue-600 text-white px-3 py-1 rounded">
-                                      Apri Link <ExternalLink className="w-3 h-3" />
-                                    </a>
-                                  </div>
-                                ) : (
-                                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-50 text-gray-300">
-                                    {typeInfo?.icon && <typeInfo.icon className="w-12 h-12 mb-2" />}
-                                    <span className="text-xs font-medium px-4 text-center truncate w-full">{materialAssociato.nome_file}</span>
-                                  </div>
-                                )}
-                              </div>
-                            )}
-                            <div className="p-3 px-4 flex items-center justify-between border-t border-gray-50 bg-gray-50/30">
-                               <div className="flex gap-4 text-gray-400">
-                                  <div className="flex items-center gap-1 text-[10px] font-bold uppercase"><History className="w-3.5 h-3.5" /> v.{post.versione_corrente + 1}</div>
-                               </div>
-                               <div className="flex gap-2">
-                                  {transizioni.map(statoDest => (
-                                    <Button 
-                                      key={statoDest}
-                                      size="sm" 
-                                      onClick={() => handleTransizione(post, statoDest)} 
-                                      className={`h-8 text-[9px] font-bold uppercase tracking-tight ${STATO_POST_COLORS[statoDest].bg} ${STATO_POST_COLORS[statoDest].text} hover:opacity-80 border-none`}
-                                    >
-                                      Sposta in {STATO_POST_LABELS[statoDest]}
-                                    </Button>
-                                  ))}
-                               </div>
-                            </div>
-                          </Card>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <div className="text-center py-20 bg-white rounded-xl border-2 border-dashed border-gray-100">
-                      <p className="text-muted-foreground text-sm">Nessun post pianificato.</p>
-                    </div>
-                  )}
-                </div>
+                        {mat.stato_validazione === 'in_attesa' && (
+                          <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4">
+                            <Button size="icon" variant="secondary" className="bg-green-500 hover:bg-green-600 border-none" onClick={() => handleValidazioneAsset(mat.id, true)}><CheckCircle2 className="text-white"/></Button>
+                            <Button size="icon" variant="secondary" className="bg-red-500 hover:bg-red-600 border-none" onClick={() => handleValidazioneAsset(mat.id, false)}><XCircle className="text-white"/></Button>
+                          </div>
+                        )}
+                      </div>
+                      <CardHeader className="p-3">
+                        <div className="flex justify-between items-center">
+                          <Badge variant="outline" className="text-[9px] uppercase">{DESTINAZIONE_LABELS[mat.destinazione]}</Badge>
+                          <Badge className={`${STATO_VALIDAZIONE_COLORS[mat.stato_validazione].bg} ${STATO_VALIDAZIONE_COLORS[mat.stato_validazione].text} text-[9px]`}>
+                            {STATO_VALIDAZIONE_LABELS[mat.stato_validazione]}
+                          </Badge>
+                        </div>
+                      </CardHeader>
+                    </Card>
+                  );
+                })}
               </div>
             </TabsContent>
           </Tabs>
         </div>
 
         <div className="space-y-6">
-          <Card className="rounded-xl border-gray-200/50 shadow-md overflow-hidden sticky top-24">
-            <CardHeader className="bg-indigo-600 text-white pb-6">
-              <CardTitle className="text-lg font-headline flex items-center gap-2"><PieChart className="w-5 h-5" /> Crediti Piano</CardTitle>
+          <Card className="rounded-xl shadow-md border-indigo-100 sticky top-24">
+            <CardHeader className="bg-indigo-600 text-white rounded-t-xl">
+              <CardTitle className="text-lg font-headline">Stato Piano Post</CardTitle>
             </CardHeader>
             <CardContent className="pt-6 space-y-6">
-              <div className="flex flex-col items-center justify-center py-4 bg-gray-50 rounded-xl border border-gray-100">
-                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Post Rimanenti</span>
-                <div className="flex items-baseline gap-1">
-                  <span className={`text-5xl font-bold font-headline ${postUsati >= postTotali ? 'text-red-600' : 'text-gray-900'}`}>{Math.max(0, postTotali - postUsati)}</span>
-                  <span className="text-gray-400 font-medium">/ {postTotali}</span>
-                </div>
+              <div className="text-center bg-gray-50 rounded-xl p-4 border border-gray-100">
+                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Residui Mensili</span>
+                <div className="text-5xl font-bold font-headline mt-1">{client.post_totali - postUsati}</div>
               </div>
               <div className="space-y-2">
-                <div className="flex justify-between text-xs font-bold uppercase tracking-tighter">
-                  <span className="text-gray-400">Utilizzo</span>
-                  <span className={usagePercent > 80 ? 'text-red-600' : 'text-indigo-600'}>{postUsati} / {postTotali}</span>
+                <div className="flex justify-between text-xs font-bold">
+                  <span>Utilizzo</span>
+                  <span className={usagePercent > 80 ? 'text-red-600' : 'text-indigo-600'}>{postUsati} / {client.post_totali}</span>
                 </div>
                 <Progress value={usagePercent} className={`h-2 ${usagePercent > 80 ? '[&>div]:bg-red-500' : '[&>div]:bg-indigo-600'}`} />
               </div>
+              <Button variant="outline" className="w-full text-indigo-600 border-indigo-200" onClick={() => setIsPianoOpen(true)}>Gestisci Crediti</Button>
             </CardContent>
-            {haPermesso('gestione_piani') && (
-              <CardFooter className="border-t bg-gray-50/50 p-4">
-                 <Button onClick={() => setIsPianoOpen(true)} variant="outline" className="w-full text-xs font-bold text-indigo-600 border-indigo-200 hover:bg-indigo-50">Modifica Piano</Button>
-              </CardFooter>
-            )}
           </Card>
         </div>
       </div>
@@ -369,17 +254,9 @@ export default function ClienteDettaglio() {
       <GeneraBozzaModal isOpen={isGeneraOpen} onClose={() => setIsGeneraOpen(false)} clienteId={clienteId} clienteNome={client.nome_azienda} clienteSettore={client.settore || ''} />
       <CreaPostManualeModal isOpen={isManualeOpen} onClose={() => setIsManualeOpen(false)} clienteId={clienteId} />
       <ModificaPostModal isOpen={!!postDaModificare} onClose={() => setPostDaModificare(null)} clienteId={clienteId} post={postDaModificare} />
-      <ModificaPianoModal isOpen={isPianoOpen} onClose={() => setIsPianoOpen(false)} clienteId={clienteId} postTotaliAttuali={postTotali} />
+      <ModificaPianoModal isOpen={isPianoOpen} onClose={() => setIsPianoOpen(false)} clienteId={clienteId} postTotaliAttuali={client.post_totali} />
       <CaricaMaterialeModal isOpen={isUploadOpen} onClose={() => setIsUploadOpen(false)} clienteId={clienteId} />
-      
-      {postPerCommenti && (
-        <CommentiSidebar 
-          clienteId={clienteId} 
-          postId={postPerCommenti} 
-          isOpen={!!postPerCommenti} 
-          onClose={() => setPostPerCommenti(null)} 
-        />
-      )}
+      {postPerCommenti && <CommentiSidebar clienteId={clienteId} postId={postPerCommenti} isOpen={!!postPerCommenti} onClose={() => setPostPerCommenti(null)} />}
     </div>
   );
 }

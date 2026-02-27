@@ -2,7 +2,7 @@
 
 import { useUser, useFirestore, useMemoFirebase, useCollection, useDoc } from '@/firebase';
 import { collection, doc, query, orderBy, updateDoc, addDoc, getDoc, serverTimestamp, arrayUnion, Timestamp } from 'firebase/firestore';
-import { StatoPost, STATO_POST_LABELS, STATO_POST_COLORS, PIATTAFORMA_LABELS } from '@/types/post';
+import { StatoPost, STATO_POST_LABELS, STATO_POST_COLORS } from '@/types/post';
 import { StatoValidazione, STATO_VALIDAZIONE_LABELS, STATO_VALIDAZIONE_COLORS, getFileTypeInfo, Material, DestinazioneAsset } from '@/types/material';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Upload, ArrowUpRight, Check, Loader2, UploadCloud, X, CalendarDays, Clock, PieChart, Image as ImageIcon, Link as LinkIcon, ExternalLink, MessageSquare, History } from 'lucide-react';
+import { Upload, ArrowUpRight, Check, Loader2, X, CalendarDays, Clock, PieChart, Image as ImageIcon, Link as LinkIcon, MessageSquare, History, CreditCard, AlertTriangle } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -81,18 +81,14 @@ export default function ClienteDashboard() {
         stato: nuovoStato,
         autore_uid: user.uid,
         timestamp: Timestamp.now(),
-        nota: approvato ? "Approvato dal cliente" : "Revisione richiesta tramite feedback"
+        nota: approvato ? "Approvato dal cliente" : "Richiesta revisione dal cliente"
       })
-    }).catch(e => {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({ path: postRef.path, operation: 'update' }));
-    });
+    }).catch(e => errorEmitter.emit('permission-error', new FirestorePermissionError({ path: postRef.path, operation: 'update' })));
     
     toast({ 
-      title: approvato ? "Post approvato!" : "Richiesta revisione", 
-      description: approvato ? "L'agenzia procederà alla programmazione." : "Usa la sidebar dei commenti per specificare le modifiche." 
+      title: approvato ? "Post approvato!" : "Revisione richiesta", 
+      description: approvato ? "L'agenzia procederà alla programmazione." : "Usa i commenti per spiegare le modifiche." 
     });
-    
-    if (!approvato) setPostPerCommenti(postId);
   };
 
   const handleUpload = async () => {
@@ -110,7 +106,6 @@ export default function ClienteDashboard() {
             ruolo_caricatore: 'cliente',
             destinazione: destinazione,
             stato_validazione: 'in_attesa',
-            note_rifiuto: null,
             creato_il: serverTimestamp()
           })
         );
@@ -118,19 +113,17 @@ export default function ClienteDashboard() {
       } else {
         await addDoc(matColRef, {
           nome_file: 'Link Esterno Cliente',
-          url_storage: null,
           link_esterno: externalLink,
           caricato_da: user.uid,
           ruolo_caricatore: 'cliente',
           destinazione: destinazione,
           stato_validazione: 'in_attesa',
-          note_rifiuto: null,
           creato_il: serverTimestamp()
         });
       }
       setSelectedFiles([]);
       setExternalLink('');
-      toast({ title: "Materiale inviato!", description: "L'agenzia lo validerà a breve." });
+      toast({ title: "Asset inviato!", description: "L'agenzia lo validerà a breve." });
     } catch (e: any) {
       errorEmitter.emit('permission-error', new FirestorePermissionError({ path: matColRef.path, operation: 'create' }));
     } finally {
@@ -142,12 +135,11 @@ export default function ClienteDashboard() {
 
   const postTotali = client.post_totali || 0;
   const postUsati = posts?.length || 0;
-  const usagePercent = postTotali > 0 ? (postUsati / postTotali) * 100 : 0;
+  const usagePercent = (postUsati / (postTotali || 1)) * 100;
 
   const postsOnSelectedDate = posts?.filter((post: any) => {
     if (!post.data_pubblicazione || !selectedDate || typeof post.data_pubblicazione.toDate !== 'function') return false;
-    const pubDate = post.data_pubblicazione.toDate();
-    return pubDate.toDateString() === selectedDate.toDateString();
+    return post.data_pubblicazione.toDate().toDateString() === selectedDate.toDateString();
   }) || [];
 
   const daysWithPosts = posts?.filter((p: any) => p.data_pubblicazione && typeof p.data_pubblicazione.toDate === 'function').map((p: any) => p.data_pubblicazione.toDate().toDateString()) || [];
@@ -156,54 +148,58 @@ export default function ClienteDashboard() {
     <div className="space-y-8 max-w-7xl mx-auto">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-headline font-bold text-gray-900">Area Clienti AD next lab</h1>
-          <p className="text-muted-foreground">Benvenuto, {client.nome_azienda}.</p>
+          <h1 className="text-3xl font-headline font-bold text-gray-900">Area Riservata {client.nome_azienda}</h1>
+          <p className="text-muted-foreground">Monitora il tuo piano editoriale strategico.</p>
         </div>
-        {haPermesso('upload_materiali') && (
-          <Dialog>
-            <DialogTrigger asChild>
-              <Button className="bg-indigo-600 hover:bg-indigo-700 shadow-md gap-2 w-full md:w-auto h-12">
-                <Upload className="w-4 h-4" /> Invia nuovo Asset
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-md">
-              <DialogHeader>
-                <DialogTitle>Invia materiale all'agenzia</DialogTitle>
-                <DialogDescription>Limite 50MB per file. Usa i link per file più pesanti.</DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4 py-4">
-                <Tabs value={uploadType} onValueChange={(v: any) => setUploadType(v)}>
-                  <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="file">File Locale</TabsTrigger>
-                    <TabsTrigger value="link">Link Esterno</TabsTrigger>
-                  </TabsList>
-                  <TabsContent value="file" className="pt-4">
-                    <div onClick={() => fileInputRef.current?.click()} className="border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50">
-                      <input type="file" ref={fileInputRef} onChange={(e) => setSelectedFiles(Array.from(e.target.files || []))} className="hidden" multiple />
-                      <ImageIcon className="w-8 h-8 text-gray-300 mb-2" />
-                      <p className="text-xs text-gray-500">{selectedFiles.length > 0 ? `${selectedFiles.length} file selezionati` : "Clicca per caricare (max 50MB)"}</p>
-                    </div>
-                  </TabsContent>
-                  <TabsContent value="link" className="pt-4">
-                    <Input value={externalLink} onChange={(e) => setExternalLink(e.target.value)} placeholder="Link WeTransfer / Drive / Dropbox" />
-                  </TabsContent>
-                </Tabs>
-              </div>
-              <DialogFooter>
-                <Button onClick={handleUpload} disabled={isUploading} className="w-full bg-indigo-600">
-                  {isUploading ? <Loader2 className="animate-spin" /> : 'Invia Materiale'}
+        <div className="flex gap-2 w-full md:w-auto">
+          {haPermesso('upload_materiali') && (
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button className="bg-indigo-600 hover:bg-indigo-700 shadow-md gap-2 flex-1 md:flex-none">
+                  <Upload className="w-4 h-4" /> Invia Asset
                 </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        )}
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader><DialogTitle>Invia materiale all'agenzia</DialogTitle></DialogHeader>
+                <div className="space-y-4 py-4">
+                   <Tabs value={uploadType} onValueChange={(v: any) => setUploadType(v)}>
+                      <TabsList className="grid w-full grid-cols-2">
+                        <TabsTrigger value="file">File Locale</TabsTrigger>
+                        <TabsTrigger value="link">Link Esterno</TabsTrigger>
+                      </TabsList>
+                      <TabsContent value="file" className="pt-4 border-2 border-dashed rounded-xl p-8 text-center cursor-pointer hover:bg-gray-50" onClick={() => fileInputRef.current?.click()}>
+                        <input type="file" ref={fileInputRef} onChange={(e) => setSelectedFiles(Array.from(e.target.files || []))} className="hidden" multiple />
+                        <ImageIcon className="w-8 h-8 mx-auto text-gray-300 mb-2"/>
+                        <p className="text-xs text-gray-400">{selectedFiles.length > 0 ? `${selectedFiles.length} file pronti` : "Trascina o clicca (Max 50MB)"}</p>
+                      </TabsContent>
+                      <TabsContent value="link" className="pt-4">
+                        <Input value={externalLink} onChange={(e) => setExternalLink(e.target.value)} placeholder="Link WeTransfer / Drive" />
+                      </TabsContent>
+                   </Tabs>
+                   <Select value={destinazione} onValueChange={(v: any) => setDestinazione(v)}>
+                     <SelectTrigger><SelectValue placeholder="Destinazione asset"/></SelectTrigger>
+                     <SelectContent>
+                       <SelectItem value="social">Social Media</SelectItem>
+                       <SelectItem value="sito">Sito Web</SelectItem>
+                     </SelectContent>
+                   </Select>
+                </div>
+                <DialogFooter>
+                  <Button onClick={handleUpload} disabled={isUploading} className="w-full bg-indigo-600">
+                    {isUploading ? <Loader2 className="animate-spin" /> : 'Invia Materiale'}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="space-y-6">
-          <Card className="rounded-xl shadow-md overflow-hidden">
+          <Card className="rounded-xl shadow-md overflow-hidden border-indigo-100">
             <CardHeader className="bg-indigo-600 text-white">
-              <CardTitle className="text-lg font-headline flex items-center gap-2"><PieChart className="w-5 h-5" /> Piano Post Mensile</CardTitle>
+              <CardTitle className="text-lg font-headline flex items-center gap-2"><CreditCard className="w-5 h-5" /> Piano Post Mensile</CardTitle>
             </CardHeader>
             <CardContent className="pt-6 space-y-6">
               <div className="text-center">
@@ -218,14 +214,17 @@ export default function ClienteDashboard() {
               )}
             </CardContent>
           </Card>
-          <Calendar
-            mode="single"
-            selected={selectedDate}
-            onSelect={setSelectedDate}
-            className="rounded-xl border bg-white p-4"
-            modifiers={{ hasPost: (date) => daysWithPosts.includes(date.toDateString()) }}
-            modifiersClassNames={{ hasPost: "bg-indigo-100 text-indigo-900 font-bold" }}
-          />
+
+          <Card className="p-4 rounded-xl border-gray-200">
+            <Calendar
+              mode="single"
+              selected={selectedDate}
+              onSelect={setSelectedDate}
+              className="rounded-md"
+              modifiers={{ hasPost: (date) => daysWithPosts.includes(date.toDateString()) }}
+              modifiersClassNames={{ hasPost: "bg-indigo-100 text-indigo-900 font-bold" }}
+            />
+          </Card>
         </div>
 
         <div className="lg:col-span-2 space-y-6">
@@ -233,41 +232,27 @@ export default function ClienteDashboard() {
           {isPostsLoading ? <Skeleton className="h-48" /> : postsOnSelectedDate.length > 0 ? (
             <div className="space-y-6">
               {postsOnSelectedDate.map((post: any) => {
-                const materialAssociato = materials?.find(m => m.id === post.materiale_id);
+                const material = materials?.find(m => m.id === post.materiale_id);
                 return (
-                  <Card key={post.id} className="rounded-xl border-gray-200/60 overflow-hidden shadow-sm bg-white">
+                  <Card key={post.id} className="rounded-xl border-gray-200 overflow-hidden bg-white shadow-sm hover:shadow-md transition-shadow">
                     <div className="p-4 flex items-center justify-between border-b">
                       <div className="flex items-center gap-3">
-                        <Avatar className="h-10 w-10"><AvatarFallback className="bg-indigo-600 text-white font-bold">{client.nome_azienda.charAt(0)}</AvatarFallback></Avatar>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <h3 className="font-bold text-sm">{client.nome_azienda}</h3>
-                            <Badge className={`${STATO_POST_COLORS[post.stato].bg} ${STATO_POST_COLORS[post.stato].text} text-[9px]`}>{STATO_POST_LABELS[post.stato]}</Badge>
-                          </div>
-                          <p className="text-[10px] text-gray-400">Pianificato: {post.data_pubblicazione?.toDate().toLocaleString('it-IT')}</p>
-                        </div>
+                        <Badge className={`${STATO_POST_COLORS[post.stato].bg} ${STATO_POST_COLORS[post.stato].text}`}>{STATO_POST_LABELS[post.stato]}</Badge>
+                        <span className="text-xs text-gray-400">{post.data_pubblicazione?.toDate().toLocaleString()}</span>
                       </div>
-                      <div className="flex gap-2">
-                         <Button variant="ghost" size="icon" onClick={() => setPostPerCommenti(post.id)} className="text-indigo-600">
-                           <MessageSquare className="w-4 h-4" />
-                         </Button>
-                      </div>
+                      <Button variant="ghost" size="icon" onClick={() => setPostPerCommenti(post.id)} className="text-indigo-600"><MessageSquare className="w-4 h-4" /></Button>
                     </div>
-                    <div className="p-4 text-sm text-gray-700 whitespace-pre-wrap">{post.testo}</div>
-                    {materialAssociato && (
-                      <div className="aspect-video bg-gray-50 flex items-center justify-center overflow-hidden border-y">
-                        {materialAssociato.link_esterno ? (
-                          <div className="flex flex-col items-center gap-2">
-                            <LinkIcon className="w-8 h-8 text-blue-400" />
-                            <a href={materialAssociato.link_esterno} target="_blank" className="text-xs bg-blue-600 text-white px-4 py-1 rounded">Scarica Asset</a>
-                          </div>
-                        ) : <ImageIcon className="w-12 h-12 text-gray-200" />}
+                    <div className="p-4">
+                      <h4 className="font-bold mb-2">{post.titolo}</h4>
+                      <p className="text-sm text-gray-600 whitespace-pre-wrap">{post.testo}</p>
+                    </div>
+                    {material && (
+                      <div className="aspect-video bg-gray-50 flex flex-col items-center justify-center border-y">
+                        <ImageIcon className="w-12 h-12 text-gray-200 mb-2"/>
+                        <span className="text-[10px] text-gray-400 uppercase font-bold">{material.nome_file}</span>
                       </div>
                     )}
                     <CardFooter className="p-3 bg-gray-50 flex justify-end gap-2">
-                      <div className="mr-auto flex items-center gap-1 text-[10px] text-gray-400">
-                        <History className="w-3 h-3" /> v.{post.versione_corrente + 1}
-                      </div>
                       {haPermesso('approvazione_post') && post.stato === 'da_approvare' && (
                         <>
                           <Button variant="ghost" size="sm" className="text-red-600 font-bold" onClick={() => handleApprovazione(post.id, false)}><X className="w-4 h-4 mr-1" /> Revisione</Button>
@@ -279,18 +264,34 @@ export default function ClienteDashboard() {
                 );
               })}
             </div>
-          ) : <div className="text-center py-20 bg-gray-50 rounded-xl border-2 border-dashed text-gray-400">Nessun post per questa data.</div>}
+          ) : (
+            <div className="text-center py-20 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
+              <p className="text-gray-400 italic">Nessun post previsto per questa data.</p>
+            </div>
+          )}
+
+          <div className="pt-8">
+             <h2 className="text-xl font-headline font-bold mb-4">I Tuoi Asset</h2>
+             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                {materials?.map(mat => (
+                  <Card key={mat.id} className="p-3 flex items-center gap-3">
+                    <div className="p-2 bg-indigo-50 rounded">
+                      <FolderOpen className="w-4 h-4 text-indigo-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-bold truncate">{mat.nome_file}</p>
+                      <Badge className={`${STATO_VALIDAZIONE_COLORS[mat.stato_validazione].bg} ${STATO_VALIDAZIONE_COLORS[mat.stato_validazione].text} text-[8px]`}>
+                        {STATO_VALIDAZIONE_LABELS[mat.stato_validazione]}
+                      </Badge>
+                    </div>
+                  </Card>
+                ))}
+             </div>
+          </div>
         </div>
       </div>
 
-      {postPerCommenti && (
-        <CommentiSidebar 
-          clienteId={clienteId} 
-          postId={postPerCommenti} 
-          isOpen={!!postPerCommenti} 
-          onClose={() => setPostPerCommenti(null)} 
-        />
-      )}
+      {postPerCommenti && <CommentiSidebar clienteId={clienteId} postId={postPerCommenti} isOpen={!!postPerCommenti} onClose={() => setPostPerCommenti(null)} />}
     </div>
   );
 }

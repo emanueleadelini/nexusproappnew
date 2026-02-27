@@ -1,117 +1,62 @@
-# AD Next Lab - Manuale Tecnico Master (Nexus Agency)
+# AD Next Lab - Manuale Tecnico & Strategico (Nexus Agency)
 
-Questo documento contiene l'analisi ingegneristica completa, l'architettura e il codice sorgente logico della piattaforma AD Next Lab aggiornato allo Sprint 4. È destinato al team di sviluppo per la validazione pre-lancio e la valutazione della scalabilità SaaS.
-
----
-
-## 1. Architettura di Sistema
-- **Frontend**: Next.js 15 (App Router), React 19, Tailwind CSS, ShadCN UI.
-- **Backend**: Firebase 11 (Firestore, Authentication).
-- **AI Engine**: Genkit 1.x con Gemini 2.5 Flash.
-- **Pattern**: Multi-tenant basato su `cliente_id` con RBAC a 4 livelli: `super_admin`, `operatore`, `referente`, `collaboratore`.
+Questo documento contiene l'analisi ingegneristica completa, l'architettura e il codice sorgente logico della piattaforma AD Next Lab, aggiornato al report di audit pre-lancio. Il sistema è progettato per operare come una piattaforma SaaS (Software as a Service) per agenzie di comunicazione.
 
 ---
 
-## 2. Modelli Dati (Firestore)
-
-### 2.1 UserProfile (`/users/{uid}`)
-Definisce l'identità e i permessi dell'utente.
-- `ruolo`: `super_admin`, `operatore`, `referente`, `collaboratore`.
-- `cliente_id`: Collega l'utente a una specifica azienda cliente.
-- `permessi`: Array di stringhe (es. `creazione_post`, `uso_ai`).
-
-### 2.2 Client (`/clienti/{clienteId}`)
-Gestione dell'azienda cliente e dei crediti.
-- `post_totali`: Budget mensile di post.
-- `post_usati`: Contatore dei post creati nel mese.
-
-### 2.3 Post (`/clienti/{clienteId}/post/{postId}`)
-Contenuto strategico con workflow a 7 stati.
-- **Campi Core**: `titolo`, `testo`, `stato`, `piattaforma`, `formato`, `data_pubblicazione`.
-- **Versioning**: Gestito tramite array `versioni` e `versione_corrente`.
+## 1. Architettura di Sistema (Multi-tenant SaaS)
+La piattaforma utilizza un'architettura **Serverless Multi-tenant** basata su isolamento a livello di database.
+- **Tenant Isolation**: Ogni entità di business (`Post`, `Material`, `Commento`) è collegata a un `cliente_id`.
+- **RBAC a 4 Livelli**: 
+  - `super_admin`: Pieno controllo sistema e fatturazione.
+  - `operatore`: Produzione contenuti per tutti i clienti.
+  - `referente`: Manager lato cliente (approvazione e upload).
+  - `collaboratore`: Visualizzazione e upload per il cliente.
 
 ---
 
-## 3. Logiche di Business Core
+## 2. Modelli Dati & Sicurezza (Firestore)
 
-### 3.1 Sistema Crediti
-Ogni post creato incrementa `post_usati`. Il sistema impedisce la creazione se il limite è raggiunto, a meno di upgrade o permessi admin.
-
-### 3.2 Calendario Drag-and-Drop
-Implementato con `@dnd-kit`. Lo spostamento di un post sulla griglia aggiorna il campo `data_pubblicazione` su Firestore in modalità ottimistica.
-
-### 3.3 Analytics & Reporting
-Dashboard centralizzata per l'agenzia che aggrega l'utilizzo dei crediti e la saturazione dei piani per monitorare il fatturato e le necessità di upgrade dei clienti.
-
----
-
-## 4. Codice Sorgente Logico (Core Artifacts)
-
-### 4.1 Security Rules (`firestore.rules`)
+### 2.1 Security Rules (Produzione v5.0)
+Le regole di sicurezza garantiscono che nessun dato possa essere letto o scritto al di fuori dei limiti del tenant e del ruolo.
 ```javascript
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /{document=**} {
-      // TEST NUCLEARE: Accesso libero per debug ambiente Studio.
-      // In produzione sostituire con RBAC basato su UID e ruolo.
-      allow read, write: if true;
-    }
-  }
+// Esempio logica core:
+function isClientOf(clienteId) {
+  return request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.cliente_id == clienteId;
 }
 ```
 
-### 4.2 Inizializzazione Firebase (`src/firebase/index.ts`)
-```typescript
-import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
-import { firebaseConfig } from './config';
-
-export function initializeFirebase() {
-  const apps = getApps();
-  // Forza l'uso della config esplicita per evitare l'instradamento automatico di Studio verso l'emulatore.
-  const firebaseApp = !apps.length ? initializeApp(firebaseConfig) : getApp();
-  return {
-    firebaseApp,
-    auth: getAuth(firebaseApp),
-    firestore: getFirestore(firebaseApp)
-  };
-}
-```
-
-### 4.3 AI Post Generator Flow (`src/ai/flows/generate-post-ai-flow.ts`)
-```typescript
-import { ai } from '@/ai/genkit';
-import { z } from 'genkit';
-
-const generatePostPrompt = ai.definePrompt({
-  name: 'generatePostPrompt',
-  prompt: `Sei un social media manager esperto per AD next lab. Genera un post per {{{nomeAzienda}}} nel settore {{{settore}}}. Piattaforma: {{{piattaforma.label}}}. Tono: {{{tono.label}}}.`,
-  // ... schema di output per titolo e testo
-});
-```
-
-### 4.4 Definizione Tipi Post (`src/types/post.ts`)
-```typescript
-export type StatoPost = 'bozza' | 'revisione_interna' | 'da_approvare' | 'revisione' | 'approvato' | 'programmato' | 'pubblicato';
-export interface Post {
-  id: string;
-  titolo: string;
-  testo: string;
-  stato: StatoPost;
-  piattaforma: string;
-  versione_corrente: number;
-  storico_stati: Array<{ stato: string; timestamp: any }>;
-}
-```
+### 2.2 Entità Core
+- **UserProfile**: Identità e permessi RBAC.
+- **Client**: Configurazione tenant e budget crediti.
+- **Post**: Contenuto strategico con workflow a 7 stati e versioning integrato.
+- **Material**: Asset multimediali con workflow di validazione agenzia/cliente.
 
 ---
 
-## 5. Roadmap SaaS & Commercializzazione
-1.  **Onboarding**: Implementata la creazione automatica di Client + User Referente.
-2.  **Scalabilità**: La struttura multi-tenant permette di ospitare infiniti clienti senza interferenze.
-3.  **Monetizzazione**: Il sistema a crediti (`post_totali`) è pronto per essere collegato a un gateway di pagamento (es. Stripe) per upgrade automatici.
+## 3. Workflow Operativi & Business Logic
+
+### 3.1 Gestione Crediti Post
+Il sistema scala su un modello a consumo. Ogni `Post` creato incrementa un contatore `post_usati`. 
+- **Upgrade Flow**: Il cliente può richiedere post extra, l'agenzia valida e aggiorna il piano.
+- **Monetizzazione**: Predisposto per integrazione Stripe via Server Actions per upgrade automatici.
+
+### 3.2 Asset Management (Audit fix)
+- **Validazione**: Gli asset caricati dai clienti entrano in stato `in_attesa`. L'agenzia li valida o li rifiuta con nota tecnica.
+- **Isolamento**: Gli asset sono mappati per destinazione (`social`, `sito`, `offline`).
 
 ---
-*Documento generato per audit tecnico e go-live - Versione 3.0*
+
+## 4. AI Post Generator Engine
+Integrazione con **Gemini 2.5 Flash** via Genkit 1.x.
+- **Prompt Strategico**: Il motore AI conosce il settore del cliente, il tono di voce richiesto e le restrizioni della piattaforma social di destinazione.
+
+---
+
+## 5. Roadmap per il Lancio SaaS
+1. **Billing Integration**: Collegamento Stripe per pagamenti ricorrenti (SaaS Subscription).
+2. **Cloud Storage Integration**: Migrazione definitiva dei file pesanti su Firebase Storage con security rules speculari a Firestore.
+3. **Analisi Avanzata**: Reporting PDF mensile automatico per i clienti con performance post.
+
+---
+*Documento di Audit Tecnico - Versione 5.0 - Pronto per il Go-Live*
