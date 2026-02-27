@@ -7,26 +7,13 @@ import { getFirestore } from 'firebase/firestore'
 
 /**
  * Inizializza l'istanza Firebase per l'applicazione.
- * Supporta sia l'inizializzazione automatica in produzione (App Hosting)
- * che il fallback alla configurazione manuale in sviluppo.
- * 
- * NOTA: Non vengono utilizzati emulatori per garantire la compatibilità
- * con l'ambiente cloud di Firebase Studio.
+ * Forza l'uso di firebaseConfig per evitare che Firebase Studio instradi
+ * le chiamate verso l'emulatore locale (che potrebbe avere regole diverse o assenti).
  */
 export function initializeFirebase() {
   if (!getApps().length) {
-    let firebaseApp;
-    try {
-      // Tenta l'inizializzazione via variabili d'ambiente (Firebase App Hosting)
-      firebaseApp = initializeApp();
-    } catch (e) {
-      // Fallback alla configurazione esplicita per sviluppo locale
-      if (process.env.NODE_ENV === "production") {
-        console.warn('Automatic initialization failed. Falling back to firebase config object.', e);
-      }
-      firebaseApp = initializeApp(firebaseConfig);
-    }
-
+    // Utilizziamo sempre la configurazione esplicita per garantire la connessione al Cloud.
+    const firebaseApp = initializeApp(firebaseConfig);
     return getSdks(firebaseApp);
   }
 

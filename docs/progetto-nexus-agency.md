@@ -48,20 +48,18 @@ Ogni post creato (anche via AI) incrementa `post_usati`. L'eliminazione di un po
 
 ## 4. Codice Sorgente Logico (Core Snippets)
 
-### 4.1 Security Rules (Stato Attuale: Debug Mode)
-Attualmente impostate per permettere l'accesso totale durante la fase di analisi e debug dei permessi.
+### 4.1 Security Rules (V3 - Hybrid Token/Doc Path)
 ```javascript
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /{document=**} {
-      allow read, write: if true;
-    }
-  }
+function getUserRole() {
+  return request.auth.token.ruolo != null
+    ? request.auth.token.ruolo
+    : (exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data.ruolo
+        : 'guest');
 }
 ```
 
-### 4.2 Hook Reale-Time: useCollection
+### 4.2 Hook Real-Time: useCollection
 ```typescript
 export function useCollection<T>(memoizedQuery) {
   const [data, setData] = useState(null);
@@ -69,8 +67,7 @@ export function useCollection<T>(memoizedQuery) {
     if (!memoizedQuery) return;
     const unsubscribe = onSnapshot(memoizedQuery, (snapshot) => {
       setData(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })));
-    }, (error) => {
-      // Gestione centralizzata errori permessi
+    }, (serverError) => {
       errorEmitter.emit('permission-error', new FirestorePermissionError({ operation: 'list', path: '...' }));
     });
     return () => unsubscribe();
@@ -80,14 +77,7 @@ export function useCollection<T>(memoizedQuery) {
 ```
 
 ### 4.3 AI Flow: Generazione Post
-Utilizza Gemini 2.5 Flash per trasformare i requisiti del cliente in copy strategico.
-```typescript
-const generatePostPrompt = ai.definePrompt({
-  name: 'generatePostPrompt',
-  prompt: `Sei un SMM per AD next lab. Genera un post per {{{nomeAzienda}}}...`,
-  // ... input/output schema defined with Zod
-});
-```
+Utilizza Gemini 2.5 Flash per trasformare i requisiti del cliente in copy strategico adattato alla piattaforma e al tono di voce richiesto.
 
 ---
-*Documento generato per audit tecnico - Versione 1.1*
+*Documento generato per audit tecnico - Versione 1.2*
