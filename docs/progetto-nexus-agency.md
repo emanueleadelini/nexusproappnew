@@ -141,7 +141,7 @@ export const generateSocialPost = async (input) => {
 ---
 
 ## 5. Security Rules (firestore.rules)
-*(Attualmente in modalità di test aperto per debug)*
+*(Attualmente in modalità di test nucleare per debug)*
 ```javascript
 rules_version = '2';
 service cloud.firestore {
@@ -161,4 +161,4 @@ service cloud.firestore {
 - **Gestione Asset**: Limite hardware di 50MB per upload diretto. Oltre tale soglia, il sistema utilizza riferimenti a link esterni (Drive/WeTransfer) salvati nel metadato `link_esterno`.
 
 ---
-*Documento generato per audit tecnico - Versione 1.0*
+*Documento generato per audit tecnico - Versione 1.1*
