@@ -1,6 +1,6 @@
 # AD Next Lab - Manuale Tecnico Master (Nexus Agency)
 
-Questo documento contiene l'analisi ingegneristica completa, l'architettura e il codice sorgente logico della piattaforma AD Next Lab aggiornato allo Sprint 3.
+Questo documento contiene l'analisi ingegneristica completa, l'architettura e il codice sorgente logico della piattaforma AD Next Lab aggiornato allo Sprint 4.
 
 ---
 
@@ -40,8 +40,8 @@ Ogni post creato incrementa `post_usati`. Il sistema impedisce la creazione se i
 ### 3.2 Calendario Drag-and-Drop
 Implementato con `@dnd-kit`. Lo spostamento di un post sulla griglia aggiorna il campo `data_pubblicazione` su Firestore in modalità ottimistica.
 
-### 3.3 AI Flow: Generazione Post
-Utilizza Gemini 2.5 Flash per trasformare prompt in copy ottimizzato per piattaforma (Instagram, LinkedIn, etc.) e tono di voce.
+### 3.3 Analytics & Reporting
+Dashboard centralizzata per l'agenzia che aggrega l'utilizzo dei crediti e la saturazione dei piani per monitorare il fatturato e le necessità di upgrade dei clienti.
 
 ---
 
@@ -50,7 +50,7 @@ Utilizza Gemini 2.5 Flash per trasformare prompt in copy ottimizzato per piattaf
 - **Sprint 1 (Fondamenta)**: COMPLETATO. Architettura, Auth e RBAC.
 - **Sprint 2 (Content AI)**: COMPLETATO. Generazione post con Gemini e gestione Asset.
 - **Sprint 3 (Produttività)**: COMPLETATO. Calendario visuale con Drag-and-Drop.
-- **Sprint 4 (Analytics)**: PENDENTE. Reportistica avanzata sull'utilizzo dei crediti.
+- **Sprint 4 (Analytics)**: COMPLETATO. Reportistica avanzata sull'utilizzo dei crediti.
 
 ---
-*Documento generato per audit tecnico - Versione 2.1*
+*Documento generato per audit tecnico - Versione 2.2*

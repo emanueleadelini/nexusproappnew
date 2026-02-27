@@ -5,15 +5,17 @@ import { useRouter } from 'next/navigation';
 import { useUser, useFirestore, useAuth } from '@/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
-import { Users, LogOut, Loader2, Settings, ShieldCheck, ChevronLeft } from 'lucide-react';
+import { Users, LogOut, Loader2, Settings, ShieldCheck, BarChart3, PieChart } from 'lucide-react';
 import Link from 'next/link';
 import { NotificheBell } from '@/components/notifiche-bell';
+import { usePathname } from 'next/navigation';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const { user, isUserLoading } = useUser();
   const db = useFirestore();
   const auth = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
   const [isAuthorized, setIsAuthorized] = useState(false);
 
   useEffect(() => {
@@ -50,6 +52,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     );
   }
 
+  const navItems = [
+    { label: 'Clienti', href: '/admin', icon: Users },
+    { label: 'Analytics', href: '/admin/analytics', icon: BarChart3 },
+  ];
+
   return (
     <div className="min-h-screen bg-gray-50 flex">
       <aside className="hidden md:flex w-64 flex-col bg-white border-r border-gray-200/60 sticky top-0 h-screen">
@@ -61,11 +68,18 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </div>
         
         <nav className="flex-1 p-4 space-y-1 mt-4">
-          <Link href="/admin">
-            <Button variant="ghost" className="w-full justify-start gap-3 h-11 text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 font-semibold transition-colors">
-              <Users className="w-5 h-5" /> Clienti
-            </Button>
-          </Link>
+          {navItems.map((item) => (
+            <Link key={item.href} href={item.href}>
+              <Button 
+                variant="ghost" 
+                className={`w-full justify-start gap-3 h-11 font-semibold transition-colors ${
+                  pathname === item.href ? 'text-indigo-600 bg-indigo-50' : 'text-gray-600 hover:text-indigo-600 hover:bg-indigo-50'
+                }`}
+              >
+                <item.icon className="w-5 h-5" /> {item.label}
+              </Button>
+            </Link>
+          ))}
           <Button variant="ghost" className="w-full justify-start gap-3 h-11 text-gray-400 cursor-not-allowed">
             <Settings className="w-5 h-5" /> Impostazioni
           </Button>
@@ -103,11 +117,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </div>
 
         <nav className="md:hidden bg-white border-t border-gray-100 p-2 flex justify-around sticky bottom-0 z-20 shadow-[0_-2px_10px_rgba(0,0,0,0.05)]">
-          <Link href="/admin" className="p-3 text-indigo-600 flex flex-col items-center">
-            <Users className="w-6 h-6" />
-            <span className="text-[10px] font-bold mt-1 uppercase">Clienti</span>
-          </Link>
-          <NotificheBell />
+          {navItems.map((item) => (
+            <Link key={item.href} href={item.href} className={`p-3 flex flex-col items-center ${pathname === item.href ? 'text-indigo-600' : 'text-gray-400'}`}>
+              <item.icon className="w-6 h-6" />
+              <span className="text-[10px] font-bold mt-1 uppercase">{item.label}</span>
+            </Link>
+          ))}
           <button className="p-3 text-gray-300 flex flex-col items-center cursor-not-allowed">
             <Settings className="w-6 h-6" />
             <span className="text-[10px] font-bold mt-1 uppercase">Impostazioni</span>
