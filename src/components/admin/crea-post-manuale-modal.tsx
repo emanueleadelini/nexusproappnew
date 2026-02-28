@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useRef } from 'react';
@@ -8,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useFirestore, useUser } from '@/firebase';
-import { collection, addDoc, serverTimestamp, Timestamp, doc, updateDoc, increment } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, Timestamp, doc, updateDoc, increment, getDocs, query, where } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, FilePlus2, Calendar, UploadCloud, X, FileIcon, ImageIcon, AlertCircle, Share2, Layout } from 'lucide-react';
 import { errorEmitter } from '@/firebase/error-emitter';
@@ -112,15 +113,30 @@ export function CreaPostManualeModal({ isOpen, onClose, clienteId }: Props) {
           titolo: formData.titolo,
           testo: formData.testo,
           autore_uid: user.uid,
-          autore_nome: 'Admin', // In un caso reale userei il nome dal profilo
+          autore_nome: 'Admin',
           timestamp: timestamp
         }]
       };
 
-      await addDoc(postColRef, postData);
+      const newPostRef = await addDoc(postColRef, postData);
       await updateDoc(clientRef, { post_usati: increment(1) });
 
-      toast({ title: 'Post creato!', description: 'La bozza è stata aggiunta al PED.' });
+      // TRIGGER NOTIFICA: Trova il referente del cliente
+      const usersSnap = await getDocs(query(collection(db, 'users'), where('cliente_id', '==', clienteId), where('ruolo', '==', 'referente')));
+      for (const refDoc of usersSnap.docs) {
+        await addDoc(collection(db, 'users', refDoc.id, 'notifiche'), {
+          tipo: 'post_da_approvare',
+          messaggio: `L'agenzia ha creato un nuovo post: "${formData.titolo}". Controllalo nel feed!`,
+          destinatario_uid: refDoc.id,
+          cliente_id: clienteId,
+          riferimento_tipo: 'post',
+          riferimento_id: newPostRef.id,
+          letta: false,
+          creato_il: serverTimestamp()
+        });
+      }
+
+      toast({ title: 'Post creato!', description: 'Bozza aggiunta e cliente notificato.' });
       resetForm();
       onClose();
     } catch (e: any) {

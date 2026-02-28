@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -5,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useUser, useFirestore, useAuth } from '@/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
-import { Users, LogOut, Loader2, Settings, ShieldCheck, BarChart3, PieChart } from 'lucide-react';
+import { Users, LogOut, Loader2, Settings, ShieldCheck, BarChart3, Bell } from 'lucide-react';
 import Link from 'next/link';
 import { NotificheBell } from '@/components/notifiche-bell';
 import { usePathname } from 'next/navigation';
@@ -30,7 +31,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       const userDoc = await getDoc(doc(db, 'users', user.uid));
       if (userDoc.exists()) {
         const ruolo = userDoc.data().ruolo;
-        if (ruolo === 'super_admin' || ruolo === 'operatore') {
+        if (ruolo === 'super_admin' || ruolo === 'operatore' || ruolo === 'admin') {
           setIsAuthorized(true);
         } else {
           router.push('/login');
@@ -55,6 +56,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const navItems = [
     { label: 'Clienti', href: '/admin', icon: Users },
     { label: 'Analytics', href: '/admin/analytics', icon: BarChart3 },
+    { label: 'Notifiche', href: '/admin/notifiche', icon: Bell },
   ];
 
   return (
