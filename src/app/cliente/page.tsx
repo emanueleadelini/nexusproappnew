@@ -158,7 +158,7 @@ export default function ClienteDashboard() {
     }
   };
 
-  if (isClientLoading || !clienteId) return <div className="space-y-6 p-8"><Skeleton className="h-32 w-full" /><Skeleton className="h-64" /></div>;
+  if (isClientLoading || !clienteId || !client) return <div className="space-y-6 p-8"><Skeleton className="h-32 w-full" /><Skeleton className="h-64" /></div>;
 
   const postTotali = client?.post_totali || 0;
   const postUsati = posts?.length || 0;
@@ -208,7 +208,7 @@ export default function ClienteDashboard() {
                         <TabsTrigger value="link">Link Esterno</TabsTrigger>
                       </TabsList>
                       <TabsContent value="file" className="pt-4 border-2 border-dashed rounded-xl p-8 text-center cursor-pointer hover:bg-gray-50" onClick={() => fileInputRef.current?.click()}>
-                        <input type="file" fileInputRef={fileInputRef} onChange={(e) => setSelectedFiles(Array.from(e.target.files || []))} className="hidden" multiple />
+                        <input type="file" ref={fileInputRef} onChange={(e) => setSelectedFiles(Array.from(e.target.files || []))} className="hidden" multiple />
                         <ImageIcon className="w-8 h-8 mx-auto text-gray-300 mb-2"/>
                         <p className="text-xs text-gray-400">{selectedFiles.length > 0 ? `${selectedFiles.length} file pronti` : "Trascina o clicca (Max 50MB)"}</p>
                       </TabsContent>
