@@ -21,9 +21,9 @@ export function NotificheBell() {
 
   const notificationsQuery = useMemoFirebase(() => {
     if (!user || !db) return null;
+    // Percorso aggiornato: notifiche specifiche per l'utente loggato
     return query(
-      collection(db, 'notifiche'),
-      where('destinatario_uid', '==', user.uid),
+      collection(db, 'users', user.uid, 'notifiche'),
       orderBy('creato_il', 'desc'),
       limit(10)
     );
@@ -33,7 +33,8 @@ export function NotificheBell() {
   const unreadCount = notifications?.filter(n => !n.letta).length || 0;
 
   const handleNotificationClick = async (notification: Notifica) => {
-    const notificaRef = doc(db, 'notifiche', notification.id);
+    if (!user) return;
+    const notificaRef = doc(db, 'users', user.uid, 'notifiche', notification.id);
     
     if (!notification.letta) {
       updateDoc(notificaRef, { 
@@ -49,7 +50,6 @@ export function NotificheBell() {
     }
 
     if (notification.riferimento_tipo === 'post' && notification.cliente_id) {
-      // Determina il percorso base in base al ruolo dell'utente (admin o cliente)
       const path = window.location.pathname.startsWith('/admin') ? '/admin' : '/cliente';
       router.push(`${path}/clienti/${notification.cliente_id}?postId=${notification.riferimento_id}`);
     }
