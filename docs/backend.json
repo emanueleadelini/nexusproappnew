@@ -30,6 +30,35 @@
         "creato_il": { "type": "string", "format": "date-time" }
       }
     },
+    "Post": {
+      "title": "Post",
+      "type": "object",
+      "properties": {
+        "titolo": { "type": "string" },
+        "testo": { "type": "string" },
+        "stato": { "type": "string", "enum": ["bozza", "revisione_interna", "da_approvare", "revisione", "approvato", "programmato", "pubblicato"] },
+        "piattaforma": { "type": "string" },
+        "formato": { "type": "string" },
+        "materiale_id": { "type": "string" },
+        "tipo_pianificazione": { "type": "string", "enum": ["immediata", "programmata"] },
+        "scadenza_approvazione": { "type": "string", "format": "date-time" },
+        "data_pubblicazione": { "type": "string", "format": "date-time" },
+        "creato_il": { "type": "string", "format": "date-time" }
+      }
+    },
+    "Materiale": {
+      "title": "Materiale",
+      "type": "object",
+      "properties": {
+        "nome_file": { "type": "string" },
+        "url_storage": { "type": "string" },
+        "link_esterno": { "type": "string" },
+        "destinazione": { "type": "string", "enum": ["social", "sito", "offline", "strategico"] },
+        "note_cliente": { "type": "string" },
+        "stato_validazione": { "type": "string" },
+        "creato_il": { "type": "string", "format": "date-time" }
+      }
+    },
     "Notifica": {
       "title": "Notifica",
       "type": "object",
@@ -65,7 +94,21 @@
         "path": "/clienti/{clienteId}",
         "definition": {
           "entityName": "Client",
-          "description": "Main tenant/client data including logos and package flags."
+          "description": "Main tenant/client data."
+        }
+      },
+      {
+        "path": "/clienti/{clienteId}/post/{postId}",
+        "definition": {
+          "entityName": "Post",
+          "description": "Social media posts within the client's editorial calendar."
+        }
+      },
+      {
+        "path": "/clienti/{clienteId}/materiali/{materialeId}",
+        "definition": {
+          "entityName": "Materiale",
+          "description": "Creative assets and strategic documents."
         }
       }
     ]
