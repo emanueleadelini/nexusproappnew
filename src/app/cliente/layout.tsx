@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useUser, useFirestore, useAuth } from '@/firebase';
+import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
-import { LogOut, Loader2, UserCircle, Briefcase } from 'lucide-react';
+import { LogOut, Loader2, UserCircle, Briefcase, Avatar, AvatarImage, AvatarFallback } from 'lucide-react';
 import { NotificheBell } from '@/components/notifiche-bell';
 
 export default function ClienteLayout({ children }: { children: React.ReactNode }) {
@@ -15,7 +15,9 @@ export default function ClienteLayout({ children }: { children: React.ReactNode 
   const router = useRouter();
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [nomeAzienda, setNomeAzienda] = useState('');
+  const [clienteId, setClienteId] = useState<string | null>(null);
 
+  // Recupero iniziale per autorizzazione e clienteId
   useEffect(() => {
     if (isUserLoading) return;
 
@@ -27,10 +29,12 @@ export default function ClienteLayout({ children }: { children: React.ReactNode 
     const checkRole = async () => {
       const userDoc = await getDoc(doc(db, 'users', user.uid));
       if (userDoc.exists()) {
-        const ruolo = userDoc.data().ruolo;
+        const data = userDoc.data();
+        const ruolo = data.ruolo;
         if (ruolo === 'referente' || ruolo === 'collaboratore') {
           setIsAuthorized(true);
-          setNomeAzienda(userDoc.data().nomeAzienda || 'La tua Azienda');
+          setNomeAzienda(data.nomeAzienda || 'La tua Azienda');
+          setClienteId(data.cliente_id);
         } else {
           router.push('/login');
         }
@@ -40,6 +44,10 @@ export default function ClienteLayout({ children }: { children: React.ReactNode 
     };
     checkRole();
   }, [user, isUserLoading, db, router]);
+
+  // Sottoscrizione in tempo reale ai dati del cliente per il logo
+  const clientDocRef = useMemoFirebase(() => clienteId ? doc(db, 'clienti', clienteId) : null, [db, clienteId]);
+  const { data: clientData } = useDoc<any>(clientDocRef);
 
   if (isUserLoading || !isAuthorized) {
     return (
@@ -54,8 +62,15 @@ export default function ClienteLayout({ children }: { children: React.ReactNode 
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <header className="bg-white border-b border-gray-200/50 h-20 flex items-center justify-between px-6 md:px-12 sticky top-0 z-30 shadow-sm">
         <div className="flex items-center gap-6">
-          <div className="font-headline font-bold text-2xl text-indigo-600 flex items-center gap-2">
-            <Briefcase className="w-7 h-7" /> AD next lab
+          <div className="font-headline font-bold text-2xl text-indigo-600 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-white border border-gray-100 shadow-sm overflow-hidden flex items-center justify-center p-1.5">
+              {clientData?.logo_url ? (
+                <img src={clientData.logo_url} alt="Logo" className="w-full h-full object-contain" />
+              ) : (
+                <Briefcase className="w-6 h-6 text-indigo-500" />
+              )}
+            </div>
+            <span className="hidden sm:inline">AD next lab</span>
           </div>
           <div className="hidden md:block h-8 w-px bg-gray-200" />
           <div className="hidden md:flex items-center gap-3 text-sm text-gray-600 font-bold bg-gray-50 px-4 py-2 rounded-full border border-gray-100">
@@ -90,3 +105,5 @@ export default function ClienteLayout({ children }: { children: React.ReactNode 
     </div>
   );
 }
+
+import { useAuth } from '@/firebase';

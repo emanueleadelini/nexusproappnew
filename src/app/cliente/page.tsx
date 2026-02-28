@@ -1,7 +1,7 @@
 'use client';
 
 import { useUser, useFirestore, useMemoFirebase, useCollection, useDoc } from '@/firebase';
-import { collection, doc, query, orderBy, updateDoc, addDoc, getDoc, serverTimestamp, arrayUnion, Timestamp } from 'firebase/firestore';
+import { collection, doc, query, orderBy, updateDoc, addDoc, getDoc, serverTimestamp, arrayUnion, Timestamp, increment } from 'firebase/firestore';
 import { StatoPost, STATO_POST_LABELS, STATO_POST_COLORS, PIATTAFORMA_LABELS } from '@/types/post';
 import { StatoValidazione, STATO_VALIDAZIONE_LABELS, STATO_VALIDAZIONE_COLORS, getFileTypeInfo, Material, DestinazioneAsset } from '@/types/material';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
@@ -319,7 +319,13 @@ export default function ClienteDashboard() {
                     <div className="p-3 flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <Avatar className="h-8 w-8 border">
-                          {client.logo_url ? <AvatarImage src={client.logo_url} /> : <AvatarFallback>{client.nome_azienda?.charAt(0)}</AvatarFallback>}
+                          {client.logo_url ? (
+                            <AvatarImage src={client.logo_url} className="object-contain" />
+                          ) : (
+                            <AvatarFallback className="bg-indigo-600 text-white text-[10px] font-bold">
+                              {client.nome_azienda?.charAt(0)}
+                            </AvatarFallback>
+                          )}
                         </Avatar>
                         <div className="flex flex-col">
                           <span className="text-[12px] font-bold leading-none">{client?.nome_azienda}</span>
