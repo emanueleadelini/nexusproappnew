@@ -41,8 +41,10 @@ import { useState, useEffect, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Label } from '@/components/ui/label';
 import { CommentiSidebar } from '@/components/commenti-sidebar';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -67,7 +69,9 @@ export default function ClienteDashboard() {
   const [externalLink, setExternalLink] = useState('');
   const [uploadType, setUploadType] = useState<'file' | 'link'>('file');
   const [destinazione, setDestinazione] = useState<DestinazioneAsset>('social');
+  const [noteCliente, setNoteCliente] = useState('');
   const [isUploading, setIsUploading] = useState(false);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [postPerCommenti, setPostPerCommenti] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -126,6 +130,15 @@ export default function ClienteDashboard() {
 
   const handleUpload = async () => {
     if (!clienteId || !user) return;
+    if (uploadType === 'file' && selectedFiles.length === 0) {
+      toast({ variant: 'destructive', title: "Seleziona almeno un file" });
+      return;
+    }
+    if (uploadType === 'link' && !externalLink) {
+      toast({ variant: 'destructive', title: "Inserisci un link" });
+      return;
+    }
+
     setIsUploading(true);
     const matColRef = collection(db, 'clienti', clienteId, 'materiali');
     try {
@@ -136,6 +149,7 @@ export default function ClienteDashboard() {
           caricato_da: user.uid,
           ruolo_caricatore: 'cliente',
           destinazione,
+          note_cliente: noteCliente.trim() || null,
           stato_validazione: 'in_attesa',
           creato_il: serverTimestamp()
         })));
@@ -146,13 +160,17 @@ export default function ClienteDashboard() {
           caricato_da: user.uid,
           ruolo_caricatore: 'cliente',
           destinazione,
+          note_cliente: noteCliente.trim() || null,
           stato_validazione: 'in_attesa',
           creato_il: serverTimestamp()
         });
       }
       setSelectedFiles([]);
       setExternalLink('');
-      toast({ title: "Asset inviato!" });
+      setNoteCliente('');
+      setDestinazione('social');
+      setIsDialogOpen(false);
+      toast({ title: "Asset inviato con successo!" });
     } finally {
       setIsUploading(false);
     }
@@ -187,23 +205,58 @@ export default function ClienteDashboard() {
             <p className="text-muted-foreground">Strategia & Pianificazione Real-time</p>
           </div>
         </div>
-        <Dialog>
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button className="bg-indigo-600"><Upload className="w-4 h-4 mr-2" /> Invia Asset</Button>
           </DialogTrigger>
-          <DialogContent>
-            <DialogHeader><DialogTitle>Invia Materiale</DialogTitle></DialogHeader>
-            <div className="space-y-4 py-4">
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Invia Materiale all'Agenzia</DialogTitle>
+              <DialogDescription>Carica foto, video o link per i tuoi prossimi contenuti.</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-6 py-4">
               <Tabs value={uploadType} onValueChange={(v: any) => setUploadType(v)}>
-                <TabsList className="grid w-full grid-cols-2"><TabsTrigger value="file">File</TabsTrigger><TabsTrigger value="link">Link</TabsTrigger></TabsList>
-                <TabsContent value="file" className="pt-4 border-2 border-dashed rounded-xl p-8 text-center" onClick={() => fileInputRef.current?.click()}>
+                <TabsList className="grid w-full grid-cols-2"><TabsTrigger value="file">File Locale</TabsTrigger><TabsTrigger value="link">Link Cloud</TabsTrigger></TabsList>
+                <TabsContent value="file" className="pt-4 border-2 border-dashed rounded-xl p-8 text-center cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => fileInputRef.current?.click()}>
                   <input type="file" ref={fileInputRef} onChange={(e) => setSelectedFiles(Array.from(e.target.files || []))} className="hidden" multiple />
-                  <p className="text-xs text-gray-400">{selectedFiles.length > 0 ? `${selectedFiles.length} file pronti` : "Clicca per caricare"}</p>
+                  <Upload className="w-8 h-8 mx-auto mb-2 text-gray-300" />
+                  <p className="text-xs text-gray-400 font-medium">{selectedFiles.length > 0 ? `${selectedFiles.length} file pronti` : "Trascina o clicca per caricare"}</p>
                 </TabsContent>
-                <TabsContent value="link" className="pt-4"><Input value={externalLink} onChange={(e) => setExternalLink(e.target.value)} placeholder="Link Drive/WeTransfer" /></TabsContent>
+                <TabsContent value="link" className="pt-4"><Input value={externalLink} onChange={(e) => setExternalLink(e.target.value)} placeholder="Link Drive / WeTransfer / Dropbox" /></TabsContent>
               </Tabs>
+
+              <div className="space-y-4 border-t pt-4">
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold uppercase text-gray-500">Destinazione</Label>
+                  <Select value={destinazione} onValueChange={(v: any) => setDestinazione(v)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleziona destinazione" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="social">📱 Social Media (IG/FB/LI)</SelectItem>
+                      <SelectItem value="sito">🌐 Sito Web / E-commerce</SelectItem>
+                      <SelectItem value="offline">🖨️ Stampa / Materiale Offline</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold uppercase text-gray-500">Note o Istruzioni</Label>
+                  <Textarea 
+                    value={noteCliente} 
+                    onChange={(e) => setNoteCliente(e.target.value)} 
+                    placeholder="Es: Foto per il post di Natale, usate il filtro caldo..."
+                    className="min-h-[100px] text-sm"
+                  />
+                </div>
+              </div>
             </div>
-            <DialogFooter><Button onClick={handleUpload} disabled={isUploading} className="w-full">Invia Materiale</Button></DialogFooter>
+            <DialogFooter>
+              <Button variant="ghost" onClick={() => setIsDialogOpen(false)} disabled={isUploading}>Annulla</Button>
+              <Button onClick={handleUpload} disabled={isUploading} className="bg-indigo-600 flex-1">
+                {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Invia Materiale'}
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
@@ -264,6 +317,9 @@ export default function ClienteDashboard() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-bold truncate">{mat.nome_file}</p>
+                    {mat.note_cliente && (
+                      <p className="text-[9px] text-gray-500 italic line-clamp-1">"{mat.note_cliente}"</p>
+                    )}
                     <div className="flex justify-between items-center mt-1">
                       <span className="text-[9px] text-gray-400">{mat.creato_il?.toDate().toLocaleDateString()}</span>
                       <Badge className={`${STATO_VALIDAZIONE_COLORS[mat.stato_validazione].bg} ${STATO_VALIDAZIONE_COLORS[mat.stato_validazione].text} text-[8px] px-1 py-0`}>

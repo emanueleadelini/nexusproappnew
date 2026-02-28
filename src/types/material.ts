@@ -42,6 +42,7 @@ export interface Material {
   destinazione: DestinazioneAsset; 
   tipo_strategico?: 'piano_strategico' | 'piano_comunicazione' | 'business_plan' | 'business_model';
   note_rifiuto: string | null;
+  note_cliente?: string | null;
   creato_il: Timestamp;
 }
 
