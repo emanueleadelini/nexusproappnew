@@ -3,10 +3,8 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * CORE PHILOSOPHY V5.2 (SaaS Ready)
-     * This ruleset implements a robust multi-tenant RBAC model.
-     * Roles: super_admin, operatore, referente, collaboratore.
-     * Isolation: clients are siloed by cliente_id.
+     * NEXUS PRO RULES V5.3 (SaaS Ready)
+     * Robust multi-tenant RBAC with granular subcollection control.
      */
 
     // --- HELPER FUNCTIONS ---
@@ -63,9 +61,14 @@ service cloud.firestore {
       allow create, update, delete: if isSuperAdmin();
 
       match /post/{postId} {
+        // FIX: Clients can list their own posts
         allow get, list: if isClient(clienteId) || isAgency();
         allow create: if isAgency();
-        allow update: if isAgency() || (isReferente(clienteId) && resource.data.stato == 'da_approvare' && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stato', 'storico_stati', 'aggiornato_il']));
+        // Workflow Approval logic
+        allow update: if isAgency() || 
+          (isReferente(clienteId) && 
+           resource.data.stato == 'da_approvare' && 
+           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stato', 'storico_stati', 'aggiornato_il']));
         allow delete: if isAgency();
         
         match /commenti/{commentoId} {
@@ -82,7 +85,7 @@ service cloud.firestore {
     }
 
     match /notifiche/{notificaId} {
-      // FIX: allow list based on the destinatario_uid filter used in the query
+      // FIX: allow list based on filters
       allow list: if isSignedIn() && (request.query.filters.destinatario_uid == request.auth.uid || isAgency());
       allow get: if isSignedIn() && (resource.data.destinatario_uid == request.auth.uid || isAgency());
       allow create: if isSignedIn();

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -82,20 +81,21 @@ export function ModificaPostModal({ isOpen, onClose, clienteId, post }: Props) {
         aggiornato_il: serverTimestamp(),
       };
 
+      // NEXUS PRO: Salvataggio versione se il testo è cambiato
       if (isTextChanged) {
         updateData.versioni = arrayUnion({
-          titolo: formData.titolo,
-          testo: formData.testo,
+          titolo: post.titolo,
+          testo: post.testo,
           autore_uid: user.uid,
           autore_nome: 'Operatore Agenzia',
           timestamp: Timestamp.now(),
-          nota: "Aggiornamento manuale"
+          nota: "Versione precedente salvata automaticamente"
         });
-        updateData.versione_corrente = post.versione_corrente + 1;
+        updateData.versione_corrente = (post.versione_corrente || 0) + 1;
       }
 
       await updateDoc(postRef, updateData);
-      toast({ title: 'Post aggiornato', description: 'Le modifiche sono state salvate correttamente.' });
+      toast({ title: 'Post aggiornato', description: 'Bozza salvata e versione archiviata.' });
       onClose();
     } catch (error) {
       toast({ variant: 'destructive', title: 'Errore', description: 'Impossibile aggiornare il post.' });
@@ -109,9 +109,9 @@ export function ModificaPostModal({ isOpen, onClose, clienteId, post }: Props) {
       <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Edit3 className="w-5 h-5 text-indigo-600" /> Modifica Post
+            <Edit3 className="w-5 h-5 text-indigo-600" /> Modifica Strategica
           </DialogTitle>
-          <DialogDescription>Aggiorna i dettagli strategici e il contenuto del post.</DialogDescription>
+          <DialogDescription>Ogni modifica creerà una nuova versione nel log storico.</DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleUpdate} className="space-y-4 py-4">
@@ -141,12 +141,12 @@ export function ModificaPostModal({ isOpen, onClose, clienteId, post }: Props) {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="edit-titolo">Titolo Interno *</Label>
+            <Label htmlFor="edit-titolo">Titolo Interno</Label>
             <Input id="edit-titolo" value={formData.titolo} onChange={(e) => setFormData({...formData, titolo: e.target.value})} required />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="edit-testo">Testo del Post *</Label>
+            <Label htmlFor="edit-testo">Copy del Post</Label>
             <Textarea id="edit-testo" value={formData.testo} onChange={(e) => setFormData({...formData, testo: e.target.value})} className="min-h-[150px]" required />
           </div>
 
@@ -156,7 +156,7 @@ export function ModificaPostModal({ isOpen, onClose, clienteId, post }: Props) {
               <Input type="datetime-local" value={formData.data_pubblicazione} onChange={(e) => setFormData({...formData, data_pubblicazione: e.target.value})} />
             </div>
             <div className="space-y-2">
-              <Label className="flex items-center gap-1"><FileImage className="w-3 h-3" /> Asset Associato</Label>
+              <Label className="flex items-center gap-1"><FileImage className="w-3 h-3" /> Asset</Label>
               <Select value={formData.materiale_id} onValueChange={(val) => setFormData({...formData, materiale_id: val})}>
                 <SelectTrigger><SelectValue placeholder="Seleziona asset" /></SelectTrigger>
                 <SelectContent>
@@ -170,7 +170,7 @@ export function ModificaPostModal({ isOpen, onClose, clienteId, post }: Props) {
           <DialogFooter className="pt-4">
             <Button type="button" variant="ghost" onClick={onClose} disabled={loading}>Annulla</Button>
             <Button type="submit" disabled={loading} className="bg-indigo-600">
-              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Salva Modifiche'}
+              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Aggiorna Versione'}
             </Button>
           </DialogFooter>
         </form>

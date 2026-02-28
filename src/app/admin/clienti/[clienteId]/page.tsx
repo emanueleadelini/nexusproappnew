@@ -1,13 +1,13 @@
 'use client';
 
-import { useParams, useSearchParams, useRouter } from 'next/navigation';
-import { useFirestore, useMemoFirebase, useCollection, useDoc, useAuth } from '@/firebase';
+import { useParams, useRouter } from 'next/navigation';
+import { useFirestore, useMemoFirebase, useCollection, useDoc, useAuth, useUser } from '@/firebase';
 import { collection, doc, query, orderBy, updateDoc, serverTimestamp, deleteDoc, increment, arrayUnion, Timestamp, getDocs, where } from 'firebase/firestore';
 import { sendPasswordResetEmail } from 'firebase/auth';
-import { StatoPost, STATO_POST_LABELS, STATO_POST_COLORS, Post, PIATTAFORMA_LABELS } from '@/types/post';
-import { StatoValidazione, STATO_VALIDAZIONE_LABELS, STATO_VALIDAZIONE_COLORS, getFileTypeInfo, Material, DESTINAZIONE_LABELS } from '@/types/material';
+import { StatoPost, STATO_POST_LABELS, STATO_POST_COLORS, Post } from '@/types/post';
+import { Material, getFileTypeInfo, STATO_VALIDAZIONE_LABELS, STATO_VALIDAZIONE_COLORS, DESTINAZIONE_LABELS } from '@/types/material';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardHeader, CardFooter, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardFooter, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -15,9 +15,7 @@ import { Progress } from '@/components/ui/progress';
 import { 
   CalendarDays, 
   FolderOpen, 
-  Clock, 
   Sparkles, 
-  Plus, 
   ChevronLeft, 
   UploadCloud, 
   Edit3, 
@@ -27,10 +25,10 @@ import {
   List, 
   ShieldAlert, 
   KeyRound, 
-  Mail, 
   Download, 
   AlertTriangle,
-  Loader2
+  Loader2,
+  History
 } from 'lucide-react';
 import { useState } from 'react';
 import { GeneraBozzaModal } from '@/components/admin/genera-bozza-modal';
@@ -44,7 +42,6 @@ import { useToast } from '@/hooks/use-toast';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { usePermessi } from '@/hooks/use-permessi';
-import { useUser } from '@/firebase';
 import { CalendarioVisuale } from '@/components/admin/calendario-visuale';
 import {
   AlertDialog,
@@ -78,7 +75,6 @@ export default function ClienteDettaglio() {
   const { haPermesso } = usePermessi();
 
   const [isGeneraOpen, setIsGeneraOpen] = useState(false);
-  const [isManualeOpen, setIsManualeOpen] = useState(false);
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [isPianoOpen, setIsPianoOpen] = useState(false);
   const [isResetLoading, setIsResetLoading] = useState(false);
@@ -120,20 +116,28 @@ export default function ClienteDettaglio() {
 
   const handleResetPassword = async () => {
     if (!client?.email_riferimento) {
-      toast({ variant: 'destructive', title: "Errore", description: "Email di riferimento non trovata per questo cliente." });
+      toast({ variant: 'destructive', title: "Errore", description: "Email di riferimento non trovata." });
       return;
     }
-    if (!window.confirm(`Vuoi inviare un link di reset password a ${client.email_riferimento}?`)) return;
-
     setIsResetLoading(true);
     try {
       await sendPasswordResetEmail(auth, client.email_riferimento);
-      toast({ title: "Email inviata", description: `Il link di ripristino è stato inviato a ${client.email_riferimento}` });
+      toast({ title: "Email inviata", description: `Link inviato a ${client.email_riferimento}` });
     } catch (error: any) {
       toast({ variant: 'destructive', title: "Errore", description: "Impossibile inviare l'email." });
     } finally {
       setIsResetLoading(false);
     }
+  };
+
+  const deletePost = (post: Post) => {
+    if (!window.confirm("Eliminare definitivamente e riaccreditare?")) return;
+    deleteDoc(doc(db, 'clienti', clienteId, 'post', post.id));
+    // RIACCREDITO: Sottraiamo solo se non era ancora pubblicato
+    if (post.stato !== 'pubblicato') {
+      updateDoc(doc(db, 'clienti', clienteId), { post_usati: increment(-1) });
+    }
+    toast({ title: "Post eliminato e credito rimborsato" });
   };
 
   const handleExportData = async () => {
@@ -143,73 +147,39 @@ export default function ClienteDettaglio() {
         azienda: client,
         post: posts || [],
         materiali: materials || [],
-        esportato_il: new Date().toISOString(),
-        esportato_da: user?.email
+        esportato_il: new Date().toISOString()
       };
-
       const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `backup_nexus_${client.nome_azienda.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.json`;
-      document.body.appendChild(link);
+      link.download = `backup_${client.nome_azienda}.json`;
       link.click();
-      document.body.removeChild(link);
-      
-      toast({ title: "Esportazione completata", description: "Il file JSON è stato scaricato correttamente." });
-    } catch (error) {
-      toast({ variant: 'destructive', title: "Errore Export", description: "Impossibile generare l'archivio dati." });
+      toast({ title: "Backup completato" });
     } finally {
       setIsExporting(false);
     }
   };
 
   const handleDeleteClient = async () => {
-    if (!haPermesso('gestione_utenti')) return;
     setIsDeleting(true);
     try {
-      // 1. Trova gli utenti associati a questo cliente per revocare gli accessi Firestore
-      const usersQuery = query(collection(db, 'users'), where('cliente_id', '==', clienteId));
-      const usersSnap = await getDocs(usersQuery);
-      
-      // 2. Raccogliamo tutti i post e materiali per una pulizia profonda
-      const postSnap = await getDocs(collection(db, 'clienti', clienteId, 'post'));
-      const matSnap = await getDocs(collection(db, 'clienti', clienteId, 'materiali'));
-      
+      const usersSnap = await getDocs(query(collection(db, 'users'), where('cliente_id', '==', clienteId)));
       const deletePromises = [
-        ...usersSnap.docs.map(d => deleteDoc(d.ref)), // Cancella profili utenti (Revoca Accesso)
-        ...postSnap.docs.map(d => deleteDoc(d.ref)),
-        ...matSnap.docs.map(d => deleteDoc(d.ref)),
-        deleteDoc(doc(db, 'clienti', clienteId)) // Cancella l'azienda
+        ...usersSnap.docs.map(d => deleteDoc(d.ref)),
+        deleteDoc(doc(db, 'clienti', clienteId))
       ];
-
       await Promise.all(deletePromises);
-      
-      toast({ 
-        title: "Cliente Eliminato", 
-        description: "Dati e accessi Firestore rimossi definitivamente. Ricorda di eliminare manualmente l'email dalla console Auth se necessario." 
-      });
       router.push('/admin');
-    } catch (error) {
-      toast({ variant: 'destructive', title: "Errore Cancellazione", description: "Errore durante la rimozione del cliente." });
     } finally {
       setIsDeleting(false);
     }
   };
 
-  const deletePost = (postId: string) => {
-    if (!window.confirm("Eliminare definitivamente e riaccreditare?")) return;
-    deleteDoc(doc(db, 'clienti', clienteId, 'post', postId));
-    updateDoc(doc(db, 'clienti', clienteId), { post_usati: increment(-1) });
-    toast({ title: "Post eliminato" });
-  };
-
   if (isClientLoading) return <div className="p-8 space-y-4"><Skeleton className="h-12 w-1/3"/><Skeleton className="h-64"/></div>;
   if (!client) return <div className="p-8 text-center">Cliente non trovato.</div>;
 
-  const postUsati = posts?.length || 0;
-  const usagePercent = (postUsati / (client.post_totali || 1)) * 100;
-  const pendingAssets = materials?.filter(m => m.stato_validazione === 'in_attesa') || [];
+  const usagePercent = (client.post_usati / (client.post_totali || 1)) * 100;
 
   return (
     <div className="space-y-8">
@@ -219,19 +189,15 @@ export default function ClienteDettaglio() {
             <ChevronLeft className="w-4 h-4"/> Elenco Clienti
           </Link>
           <h1 className="text-4xl font-headline font-bold">{client.nome_azienda}</h1>
-          <p className="text-muted-foreground">{client.settore} • {client.email_riferimento}</p>
+          <p className="text-muted-foreground">{client.settore}</p>
         </div>
         <div className="flex gap-2">
-          {haPermesso('upload_materiali') && (
-            <Button variant="outline" onClick={() => setIsUploadOpen(true)} className="border-indigo-200 text-indigo-700">
-              <UploadCloud className="w-4 h-4 mr-2"/> Carica Asset
-            </Button>
-          )}
-          {haPermesso('uso_ai') && (
-            <Button onClick={() => setIsGeneraOpen(true)} className="bg-violet-600 hover:bg-violet-700 shadow-violet-100 shadow-lg">
-              <Sparkles className="w-4 h-4 mr-2"/> Genera Post AI
-            </Button>
-          )}
+          <Button variant="outline" onClick={() => setIsUploadOpen(true)} className="border-indigo-200 text-indigo-700">
+            <UploadCloud className="w-4 h-4 mr-2"/> Carica Asset
+          </Button>
+          <Button onClick={() => setIsGeneraOpen(true)} className="bg-violet-600 hover:bg-violet-700 shadow-lg">
+            <Sparkles className="w-4 h-4 mr-2"/> Genera Post AI
+          </Button>
         </div>
       </div>
 
@@ -247,7 +213,6 @@ export default function ClienteDettaglio() {
               </TabsTrigger>
               <TabsTrigger value="assets" className="data-[state=active]:border-b-2 border-indigo-600 rounded-none h-full px-6">
                 <FolderOpen className="w-4 h-4 mr-2"/> Archivio Asset 
-                {pendingAssets.length > 0 && <Badge className="ml-2 bg-amber-500">{pendingAssets.length}</Badge>}
               </TabsTrigger>
             </TabsList>
 
@@ -271,14 +236,19 @@ export default function ClienteDettaglio() {
                           <span className="text-xs text-gray-400">Pianificato: {formattedDate}</span>
                         </div>
                         <div className="flex gap-1">
+                          {post.versioni && post.versioni.length > 0 && (
+                            <Badge variant="outline" className="text-[9px] gap-1">
+                              <History className="w-2 h-2" /> v{post.versione_corrente + 1}
+                            </Badge>
+                          )}
                           <Button variant="ghost" size="icon" onClick={() => setPostPerCommenti(post.id)}><MessageSquare className="w-4 h-4"/></Button>
                           <Button variant="ghost" size="icon" onClick={() => setPostDaModificare(post)}><Edit3 className="w-4 h-4"/></Button>
-                          <Button variant="ghost" size="icon" className="text-red-400" onClick={() => deletePost(post.id)}><Trash2 className="w-4 h-4"/></Button>
+                          <Button variant="ghost" size="icon" className="text-red-400" onClick={() => deletePost(post)}><Trash2 className="w-4 h-4"/></Button>
                         </div>
                       </CardHeader>
                       <CardContent>
                         <h4 className="font-bold mb-1">{post.titolo}</h4>
-                        <p className="text-sm text-gray-600 line-clamp-3">{post.testo}</p>
+                        <p className="text-sm text-gray-600 line-clamp-2">{post.testo}</p>
                       </CardContent>
                       <CardFooter className="bg-gray-50/50 p-3 flex justify-end gap-2">
                          {TRANSIZIONI_PERMESSE[post.stato].map(next => (
@@ -300,7 +270,7 @@ export default function ClienteDettaglio() {
                     <Card key={mat.id} className="overflow-hidden group">
                       <div className="aspect-video bg-gray-100 flex flex-col items-center justify-center relative">
                         <type.icon className={`w-10 h-10 ${type.color} opacity-40`}/>
-                        <span className="text-[10px] mt-2 font-bold uppercase text-gray-400 px-4 text-center truncate w-full">{mat.nome_file}</span>
+                        <span className="text-[10px] mt-2 font-bold uppercase text-gray-400 px-4 truncate">{mat.nome_file}</span>
                       </div>
                       <CardHeader className="p-3">
                         <div className="flex justify-between items-center">
@@ -326,12 +296,12 @@ export default function ClienteDettaglio() {
             <CardContent className="pt-6 space-y-6">
               <div className="text-center bg-gray-50 rounded-xl p-4 border border-gray-100">
                 <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Residui Mensili</span>
-                <div className="text-5xl font-bold font-headline mt-1">{(client.post_totali || 0) - postUsati}</div>
+                <div className="text-5xl font-bold font-headline mt-1">{Math.max(0, (client.post_totali || 0) - (client.post_usati || 0))}</div>
               </div>
               <div className="space-y-2">
                 <div className="flex justify-between text-xs font-bold">
                   <span>Utilizzo</span>
-                  <span className={usagePercent > 80 ? 'text-red-600' : 'text-indigo-600'}>{postUsati} / {client.post_totali}</span>
+                  <span className={usagePercent > 80 ? 'text-red-600' : 'text-indigo-600'}>{client.post_usati} / {client.post_totali}</span>
                 </div>
                 <Progress value={usagePercent} className={`h-2 ${usagePercent > 80 ? '[&>div]:bg-red-500' : '[&>div]:bg-indigo-600'}`} />
               </div>
@@ -348,59 +318,40 @@ export default function ClienteDettaglio() {
             <CardContent className="space-y-4">
               <div className="p-3 bg-gray-50 rounded-lg border border-gray-100 space-y-3">
                 <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="w-full border-gray-200 text-gray-700 hover:bg-white h-9 font-bold text-[11px]"
-                  onClick={handleResetPassword}
-                  disabled={isResetLoading}
+                  variant="outline" size="sm" className="w-full border-gray-200 text-gray-700 h-9 font-bold text-[11px]"
+                  onClick={handleResetPassword} disabled={isResetLoading}
                 >
                   {isResetLoading ? <Loader2 className="w-3 h-3 animate-spin mr-2" /> : <KeyRound className="w-3 h-3 mr-2" />}
                   RESET PASSWORD
                 </Button>
 
                 <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="w-full border-indigo-100 text-indigo-600 hover:bg-indigo-50 h-9 font-bold text-[11px]"
-                  onClick={handleExportData}
-                  disabled={isExporting}
+                  variant="outline" size="sm" className="w-full border-indigo-100 text-indigo-600 h-9 font-bold text-[11px]"
+                  onClick={handleExportData} disabled={isExporting}
                 >
                   {isExporting ? <Loader2 className="w-3 h-3 animate-spin mr-2" /> : <Download className="w-3 h-3 mr-2" />}
-                  SCARICA ARCHIVIO (JSON)
+                  SCARICA BACKUP (JSON)
                 </Button>
 
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="w-full text-red-600 hover:bg-red-50 hover:text-red-700 h-9 font-bold text-[11px] mt-2"
-                      disabled={isDeleting}
-                    >
-                      {isDeleting ? <Loader2 className="w-3 h-3 animate-spin mr-2" /> : <Trash2 className="w-3 h-3 mr-2" />}
-                      ELIMINA CLIENTE
+                    <Button variant="ghost" size="sm" className="w-full text-red-600 h-9 font-bold text-[11px] mt-2" disabled={isDeleting}>
+                      <Trash2 className="w-3 h-3 mr-2" /> ELIMINA CLIENTE
                     </Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent>
                     <AlertDialogHeader>
-                      <AlertDialogTitle className="flex items-center gap-2 text-red-600">
-                        <AlertTriangle className="w-5 h-5" /> Attenzione: Azione Irreversibile
-                      </AlertDialogTitle>
+                      <AlertDialogTitle>Sei assolutamente sicuro?</AlertDialogTitle>
                       <AlertDialogDescription>
-                        Stai per cancellare definitivamente l'azienda <strong>{client.nome_azienda}</strong> e tutti i relativi contenuti (Post, Commenti, Materiali). Verranno rimossi anche i profili di accesso dei referenti. Ti consigliamo di scaricare l'archivio prima di procedere.
+                        Questa azione cancellerà definitamente l'azienda <strong>{client.nome_azienda}</strong> e tutti i relativi dati.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel>Annulla</AlertDialogCancel>
-                      <AlertDialogAction onClick={handleDeleteClient} className="bg-red-600 hover:bg-red-700">
-                        Sì, elimina tutto
-                      </AlertDialogAction>
+                      <AlertDialogAction onClick={handleDeleteClient} className="bg-red-600">Elimina Tutto</AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>
                 </AlertDialog>
-              </div>
-              <div className="flex items-center gap-2 text-[10px] text-gray-400 px-1">
-                <Mail className="w-3 h-3" /> {client.email_riferimento}
               </div>
             </CardContent>
           </Card>
@@ -408,7 +359,6 @@ export default function ClienteDettaglio() {
       </div>
 
       <GeneraBozzaModal isOpen={isGeneraOpen} onClose={() => setIsGeneraOpen(false)} clienteId={clienteId} clienteNome={client.nome_azienda} clienteSettore={client.settore || ''} />
-      <CreaPostManualeModal isOpen={isManualeOpen} onClose={() => setIsManualeOpen(false)} clienteId={clienteId} />
       <ModificaPostModal isOpen={!!postDaModificare} onClose={() => setPostDaModificare(null)} clienteId={clienteId} post={postDaModificare} />
       <ModificaPianoModal isOpen={isPianoOpen} onClose={() => setIsPianoOpen(false)} clienteId={clienteId} postTotaliAttuali={client.post_totali} />
       <CaricaMaterialeModal isOpen={isUploadOpen} onClose={() => setIsUploadOpen(false)} clienteId={clienteId} />

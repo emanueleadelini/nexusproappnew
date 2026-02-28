@@ -77,16 +77,10 @@ export interface Post {
   aggiornato_il: Timestamp;
   materiale_id?: string | null;
   
-  // Sprint 1A New Fields
+  // Pro Features (Sprint 1C)
   piattaforma: PiattaformaPost;
   formato: FormatoPost;
-  campagna_id?: string;
   tags?: string[];
-  link_esterno_post?: string;
-  cta?: string;
-  ora_pubblicazione?: string;
-  operatore_assegnato?: string;
-  note_revisione?: string;
   numero_revisioni: number;
   storico_stati: StoricoStato[];
   versioni: VersionePost[];
