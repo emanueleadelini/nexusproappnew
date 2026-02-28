@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { query, collection, orderBy, limit, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
-import { Bell, Check, Clock, MessageSquare, FileText, AlertTriangle, History, RefreshCw, Sparkles } from 'lucide-react';
+import { Bell, Check, Clock, MessageSquare, FileText, AlertTriangle, History, RefreshCw, Sparkles, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
