@@ -3,7 +3,7 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * NEXUS PRO RULES V5.3 (SaaS Ready)
+     * NEXUS PRO RULES V5.2 (SaaS Ready)
      * Robust multi-tenant RBAC with granular subcollection control.
      */
 
@@ -61,14 +61,15 @@ service cloud.firestore {
       allow create, update, delete: if isSuperAdmin();
 
       match /post/{postId} {
-        // FIX: Clients can list their own posts
         allow get, list: if isClient(clienteId) || isAgency();
         allow create: if isAgency();
-        // Workflow Approval logic
+        
+        // Workflow di approvazione: il referente può SOLO cambiare lo stato e loggare la transizione
         allow update: if isAgency() || 
           (isReferente(clienteId) && 
            resource.data.stato == 'da_approvare' && 
            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stato', 'storico_stati', 'aggiornato_il']));
+        
         allow delete: if isAgency();
         
         match /commenti/{commentoId} {
@@ -85,7 +86,7 @@ service cloud.firestore {
     }
 
     match /notifiche/{notificaId} {
-      // FIX: allow list based on filters
+      // Permette il listato se filtrato per destinatario o se l'utente è dell'agenzia
       allow list: if isSignedIn() && (request.query.filters.destinatario_uid == request.auth.uid || isAgency());
       allow get: if isSignedIn() && (resource.data.destinatario_uid == request.auth.uid || isAgency());
       allow create: if isSignedIn();

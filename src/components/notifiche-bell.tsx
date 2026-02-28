@@ -49,7 +49,9 @@ export function NotificheBell() {
     }
 
     if (notification.riferimento_tipo === 'post' && notification.cliente_id) {
-      router.push(`/admin/clienti/${notification.cliente_id}?postId=${notification.riferimento_id}`);
+      // Determina il percorso base in base al ruolo dell'utente (admin o cliente)
+      const path = window.location.pathname.startsWith('/admin') ? '/admin' : '/cliente';
+      router.push(`${path}/clienti/${notification.cliente_id}?postId=${notification.riferimento_id}`);
     }
   };
 

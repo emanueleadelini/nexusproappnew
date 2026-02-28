@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
@@ -159,7 +158,7 @@ export default function ClienteDettaglio() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `backup_${client.nome_azienda}.json`;
+      link.download = `backup_${client?.nome_azienda || 'cliente'}.json`;
       link.click();
       toast({ title: "Backup completato" });
     } finally {
@@ -350,10 +349,12 @@ export default function ClienteDettaglio() {
                   </AlertDialogTrigger>
                   <AlertDialogContent>
                     <AlertDialogHeader>
-                      <AlertDialogTitle>Sei assolutamente sicuro?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        Questa azione cancellerà definitamente l'azienda <strong>{client.nome_azienda}</strong> e tutti i relativi dati.
-                      </AlertDialogDescription>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Sei assolutamente sicuro?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Questa azione cancellerà definitamente l'azienda <strong>{client.nome_azienda}</strong> e tutti i relativi dati.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel>Annulla</AlertDialogCancel>
