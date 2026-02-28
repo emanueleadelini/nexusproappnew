@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
@@ -84,17 +85,22 @@ export default function ClienteDettaglio() {
   const [postDaModificare, setPostDaModificare] = useState<Post | null>(null);
   const [postPerCommenti, setPostPerCommenti] = useState<string | null>(null);
 
-  const clientDocRef = useMemoFirebase(() => doc(db, 'clienti', clienteId), [db, clienteId]);
+  const clientDocRef = useMemoFirebase(() => {
+    if (!user) return null;
+    return doc(db, 'clienti', clienteId);
+  }, [db, clienteId, user]);
   const { data: client, isLoading: isClientLoading } = useDoc<any>(clientDocRef);
 
   const postsQuery = useMemoFirebase(() => {
+    if (!user) return null;
     return query(collection(db, 'clienti', clienteId, 'post'), orderBy('creato_il', 'desc'));
-  }, [db, clienteId]);
+  }, [db, clienteId, user]);
   const { data: posts, isLoading: isPostsLoading } = useCollection<Post>(postsQuery);
 
   const materialsQuery = useMemoFirebase(() => {
+    if (!user) return null;
     return query(collection(db, 'clienti', clienteId, 'materiali'), orderBy('creato_il', 'desc'));
-  }, [db, clienteId]);
+  }, [db, clienteId, user]);
   const { data: materials, isLoading: isMaterialsLoading } = useCollection<Material>(materialsQuery);
 
   const handleTransizione = (post: Post, nuovoStato: StatoPost) => {

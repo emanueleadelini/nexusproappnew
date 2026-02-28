@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { useFirestore, useCollection, useMemoFirebase, useUser } from '@/firebase';
 import { collection, query, orderBy, limit } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -17,17 +18,19 @@ import {
   Cell,
   Legend
 } from 'recharts';
-import { BarChart3, TrendingUp, Users, CreditCard, CheckCircle2, AlertCircle, PieChart } from 'lucide-react';
+import { BarChart3, TrendingUp, Users, CheckCircle2, AlertCircle, PieChart } from 'lucide-react';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 
 const COLORS = ['#6366f1', '#a855f7', '#ec4899', '#f97316', '#22c55e', '#ef4444'];
 
 export default function AnalyticsPage() {
   const db = useFirestore();
+  const { user } = useUser();
   
   const clientsQuery = useMemoFirebase(() => {
+    if (!user) return null;
     return query(collection(db, 'clienti'), orderBy('nome_azienda'));
-  }, [db]);
+  }, [db, user]);
 
   const { data: clients, isLoading: isClientsLoading } = useCollection<any>(clientsQuery);
 
@@ -56,7 +59,7 @@ export default function AnalyticsPage() {
     totali: { label: "Budget Totale", color: "hsl(var(--muted))" },
   };
 
-  if (isClientsLoading) {
+  if (isClientsLoading || !user) {
     return (
       <div className="space-y-8">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

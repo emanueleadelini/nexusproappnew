@@ -1,8 +1,8 @@
+
 'use client';
 
-import { useFirestore, useMemoFirebase, useCollection } from '@/firebase';
+import { useFirestore, useMemoFirebase, useCollection, useUser } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
-import { Client } from '@/types/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Building2, ChevronRight, PieChart, Plus } from 'lucide-react';
@@ -13,11 +13,13 @@ import Link from 'next/link';
 
 export default function AdminDashboard() {
   const db = useFirestore();
+  const { user } = useUser();
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   
   const clientsQuery = useMemoFirebase(() => {
+    if (!user) return null;
     return query(collection(db, 'clienti'), orderBy('nome_azienda'));
-  }, [db]);
+  }, [db, user]);
 
   const { data: clients, isLoading, error } = useCollection<any>(clientsQuery);
 
