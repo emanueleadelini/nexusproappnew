@@ -1,8 +1,9 @@
+
 'use client';
 
-import { useParams, useSearchParams } from 'next/navigation';
+import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import { useFirestore, useMemoFirebase, useCollection, useDoc, useAuth } from '@/firebase';
-import { collection, doc, query, orderBy, updateDoc, serverTimestamp, deleteDoc, increment, arrayUnion, Timestamp } from 'firebase/firestore';
+import { collection, doc, query, orderBy, updateDoc, serverTimestamp, deleteDoc, increment, arrayUnion, Timestamp, getDocs } from 'firebase/firestore';
 import { sendPasswordResetEmail } from 'firebase/auth';
 import { StatoPost, STATO_POST_LABELS, STATO_POST_COLORS, Post, PIATTAFORMA_LABELS } from '@/types/post';
 import { StatoValidazione, STATO_VALIDAZIONE_LABELS, STATO_VALIDAZIONE_COLORS, getFileTypeInfo, Material, DESTINAZIONE_LABELS } from '@/types/material';
@@ -12,8 +13,27 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
-import { CalendarDays, FolderOpen, Clock, Sparkles, Plus, ChevronLeft, UploadCloud, Edit3, Image as ImageIcon, Trash2, MessageSquare, History, LayoutGrid, List, CheckCircle2, XCircle, ShieldAlert, KeyRound, Mail } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { 
+  CalendarDays, 
+  FolderOpen, 
+  Clock, 
+  Sparkles, 
+  Plus, 
+  ChevronLeft, 
+  UploadCloud, 
+  Edit3, 
+  Trash2, 
+  MessageSquare, 
+  LayoutGrid, 
+  List, 
+  ShieldAlert, 
+  KeyRound, 
+  Mail, 
+  Download, 
+  AlertTriangle,
+  Loader2
+} from 'lucide-react';
+import { useState } from 'react';
 import { GeneraBozzaModal } from '@/components/admin/genera-bozza-modal';
 import { CreaPostManualeModal } from '@/components/admin/crea-post-manuale-modal';
 import { ModificaPostModal } from '@/components/admin/modifica-post-modal';
@@ -27,6 +47,17 @@ import { FirestorePermissionError } from '@/firebase/errors';
 import { usePermessi } from '@/hooks/use-permessi';
 import { useUser } from '@/firebase';
 import { CalendarioVisuale } from '@/components/admin/calendario-visuale';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 const TRANSIZIONI_PERMESSE: Record<StatoPost, StatoPost[]> = {
   bozza: ["revisione_interna", "da_approvare"],
@@ -40,6 +71,7 @@ const TRANSIZIONI_PERMESSE: Record<StatoPost, StatoPost[]> = {
 
 export default function ClienteDettaglio() {
   const { clienteId } = useParams() as { clienteId: string };
+  const router = useRouter();
   const auth = useAuth();
   const db = useFirestore();
   const { user } = useUser();
@@ -51,6 +83,8 @@ export default function ClienteDettaglio() {
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [isPianoOpen, setIsPianoOpen] = useState(false);
   const [isResetLoading, setIsResetLoading] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [postDaModificare, setPostDaModificare] = useState<Post | null>(null);
   const [postPerCommenti, setPostPerCommenti] = useState<string | null>(null);
 
@@ -90,7 +124,6 @@ export default function ClienteDettaglio() {
       toast({ variant: 'destructive', title: "Errore", description: "Email di riferimento non trovata per questo cliente." });
       return;
     }
-
     if (!window.confirm(`Vuoi inviare un link di reset password a ${client.email_riferimento}?`)) return;
 
     setIsResetLoading(true);
@@ -98,9 +131,64 @@ export default function ClienteDettaglio() {
       await sendPasswordResetEmail(auth, client.email_riferimento);
       toast({ title: "Email inviata", description: `Il link di ripristino è stato inviato a ${client.email_riferimento}` });
     } catch (error: any) {
-      toast({ variant: 'destructive', title: "Errore", description: "Impossibile inviare l'email. Verifica che l'indirizzo sia corretto." });
+      toast({ variant: 'destructive', title: "Errore", description: "Impossibile inviare l'email." });
     } finally {
       setIsResetLoading(false);
+    }
+  };
+
+  const handleExportData = async () => {
+    setIsExporting(true);
+    try {
+      // Raccogliamo tutti i dati correnti
+      const exportData = {
+        azienda: client,
+        post: posts || [],
+        materiali: materials || [],
+        esportato_il: new Date().toISOString(),
+        esportato_da: user?.email
+      };
+
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `backup_nexus_${client.nome_azienda.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      toast({ title: "Esportazione completata", description: "Il file JSON è stato scaricato correttamente." });
+    } catch (error) {
+      toast({ variant: 'destructive', title: "Errore Export", description: "Impossibile generare l'archivio dati." });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleDeleteClient = async () => {
+    if (!haPermesso('gestione_utenti')) return;
+    setIsDeleting(true);
+    try {
+      // 1. Cancelliamo i documenti correlati (best effort client-side)
+      // Nota: In produzione questo verrebbe gestito da una Cloud Function ricorsiva
+      const postSnap = await getDocs(collection(db, 'clienti', clienteId, 'post'));
+      const matSnap = await getDocs(collection(db, 'clienti', clienteId, 'materiali'));
+      
+      const deletePromises = [
+        ...postSnap.docs.map(d => deleteDoc(d.ref)),
+        ...matSnap.docs.map(d => deleteDoc(d.ref)),
+        deleteDoc(doc(db, 'clienti', clienteId))
+      ];
+
+      await Promise.all(deletePromises);
+      
+      toast({ title: "Cliente Eliminato", description: "Tutti i dati del tenant sono stati rimossi." });
+      router.push('/admin');
+    } catch (error) {
+      toast({ variant: 'destructive', title: "Errore Cancellazione", description: "Errore durante la rimozione del cliente." });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -246,25 +334,65 @@ export default function ClienteDettaglio() {
             </CardContent>
           </Card>
 
-          <Card className="rounded-xl shadow-sm border-red-100 bg-red-50/20">
+          <Card className="rounded-xl shadow-sm border-gray-100 bg-white">
             <CardHeader>
-              <CardTitle className="text-sm font-bold uppercase tracking-widest text-red-600 flex items-center gap-2">
+              <CardTitle className="text-sm font-bold uppercase tracking-widest text-gray-900 flex items-center gap-2">
                 <ShieldAlert className="w-4 h-4" /> Gestione Account
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="p-3 bg-white rounded-lg border border-red-100">
-                <p className="text-[11px] text-gray-500 mb-3">Come Admin, puoi resettare l'accesso del cliente inviando un link sicuro alla sua email.</p>
+              <div className="p-3 bg-gray-50 rounded-lg border border-gray-100 space-y-3">
                 <Button 
                   variant="outline" 
                   size="sm" 
-                  className="w-full border-red-200 text-red-600 hover:bg-red-50 h-9 font-bold text-[11px]"
+                  className="w-full border-gray-200 text-gray-700 hover:bg-white h-9 font-bold text-[11px]"
                   onClick={handleResetPassword}
                   disabled={isResetLoading}
                 >
-                  {isResetLoading ? <Clock className="w-3 h-3 animate-spin mr-2" /> : <KeyRound className="w-3 h-3 mr-2" />}
-                  INVIA RESET PASSWORD
+                  {isResetLoading ? <Loader2 className="w-3 h-3 animate-spin mr-2" /> : <KeyRound className="w-3 h-3 mr-2" />}
+                  RESET PASSWORD
                 </Button>
+
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="w-full border-indigo-100 text-indigo-600 hover:bg-indigo-50 h-9 font-bold text-[11px]"
+                  onClick={handleExportData}
+                  disabled={isExporting}
+                >
+                  {isExporting ? <Loader2 className="w-3 h-3 animate-spin mr-2" /> : <Download className="w-3 h-3 mr-2" />}
+                  SCARICA ARCHIVIO (JSON)
+                </Button>
+
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="w-full text-red-600 hover:bg-red-50 hover:text-red-700 h-9 font-bold text-[11px] mt-2"
+                      disabled={isDeleting}
+                    >
+                      {isDeleting ? <Loader2 className="w-3 h-3 animate-spin mr-2" /> : <Trash2 className="w-3 h-3 mr-2" />}
+                      ELIMINA CLIENTE
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle className="flex items-center gap-2 text-red-600">
+                        <AlertTriangle className="w-5 h-5" /> Attenzione: Azione Irreversibile
+                      </AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Stai per cancellare definitivamente l'azienda <strong>{client.nome_azienda}</strong> e tutti i relativi contenuti (Post, Commenti, Materiali). Ti consigliamo di scaricare l'archivio prima di procedere.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Annulla</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleDeleteClient} className="bg-red-600 hover:bg-red-700">
+                        Sì, elimina tutto
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </div>
               <div className="flex items-center gap-2 text-[10px] text-gray-400 px-1">
                 <Mail className="w-3 h-3" /> {client.email_riferimento}
@@ -283,3 +411,4 @@ export default function ClienteDettaglio() {
     </div>
   );
 }
+
