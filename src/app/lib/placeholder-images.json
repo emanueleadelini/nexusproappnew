@@ -18,6 +18,24 @@
       "description": "Client profile 2",
       "imageUrl": "https://picsum.photos/seed/client2/100/100",
       "imageHint": "modern business logo"
+    },
+    {
+      "id": "post-food",
+      "description": "Social post food example",
+      "imageUrl": "https://picsum.photos/seed/food1/800/800",
+      "imageHint": "gourmet food dish"
+    },
+    {
+      "id": "post-tech",
+      "description": "Social post tech example",
+      "imageUrl": "https://picsum.photos/seed/tech1/800/800",
+      "imageHint": "modern workspace setup"
+    },
+    {
+      "id": "post-lifestyle",
+      "description": "Social post lifestyle example",
+      "imageUrl": "https://picsum.photos/seed/life1/800/800",
+      "imageHint": "lifestyle fashion photography"
     }
   ]
 }

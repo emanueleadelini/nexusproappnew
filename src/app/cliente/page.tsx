@@ -1,16 +1,38 @@
+
 'use client';
 
 import { useUser, useFirestore, useMemoFirebase, useCollection, useDoc } from '@/firebase';
 import { collection, doc, query, orderBy, updateDoc, addDoc, getDoc, serverTimestamp, arrayUnion, Timestamp } from 'firebase/firestore';
-import { StatoPost, STATO_POST_LABELS, STATO_POST_COLORS } from '@/types/post';
+import { StatoPost, STATO_POST_LABELS, STATO_POST_COLORS, PIATTAFORMA_LABELS } from '@/types/post';
 import { StatoValidazione, STATO_VALIDAZIONE_LABELS, STATO_VALIDAZIONE_COLORS, getFileTypeInfo, Material, DestinazioneAsset } from '@/types/material';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Upload, ArrowUpRight, Check, Loader2, X, CalendarDays, Clock, PieChart, Image as ImageIcon, Link as LinkIcon, MessageSquare, History, CreditCard, AlertTriangle, FolderOpen } from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { 
+  Upload, 
+  ArrowUpRight, 
+  Check, 
+  Loader2, 
+  X, 
+  CalendarDays, 
+  Clock, 
+  PieChart, 
+  Image as ImageIcon, 
+  Link as LinkIcon, 
+  MessageSquare, 
+  History, 
+  CreditCard, 
+  AlertTriangle, 
+  FolderOpen,
+  Heart,
+  MessageCircle,
+  Send,
+  Bookmark,
+  MoreHorizontal
+} from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -23,6 +45,8 @@ import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { usePermessi } from '@/hooks/use-permessi';
 import { useSearchParams } from 'next/navigation';
+import Image from 'next/image';
+import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 export default function ClienteDashboard() {
   const { user } = useUser();
@@ -144,6 +168,9 @@ export default function ClienteDashboard() {
 
   const daysWithPosts = posts?.filter((p: any) => p.data_pubblicazione && typeof p.data_pubblicazione.toDate === 'function').map((p: any) => p.data_pubblicazione.toDate().toDateString()) || [];
 
+  // Placeholder images for posts
+  const postPlaceholders = PlaceHolderImages.filter(img => img.id.startsWith('post-'));
+
   return (
     <div className="space-y-8 max-w-7xl mx-auto">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -228,42 +255,88 @@ export default function ClienteDashboard() {
         </div>
 
         <div className="lg:col-span-2 space-y-6">
-          <h2 className="text-xl font-headline font-bold">Calendario Editoriale</h2>
+          <h2 className="text-xl font-headline font-bold">Instagram Preview Feed</h2>
           {isPostsLoading ? <Skeleton className="h-48" /> : postsOnSelectedDate.length > 0 ? (
-            <div className="space-y-6">
-              {postsOnSelectedDate.map((post: any) => {
+            <div className="space-y-8 max-w-[500px] mx-auto">
+              {postsOnSelectedDate.map((post: any, index: number) => {
                 const material = materials?.find(m => m.id === post.materiale_id);
                 const formattedDate = post.data_pubblicazione && typeof post.data_pubblicazione.toDate === 'function'
-                  ? post.data_pubblicazione.toDate().toLocaleString()
-                  : 'Data non definita';
+                  ? post.data_pubblicazione.toDate().toLocaleString('it-IT', { day: 'numeric', month: 'long' })
+                  : 'Prossimamente';
                 
+                // Determinazione dell'immagine da mostrare
+                const placeholder = postPlaceholders[index % postPlaceholders.length];
+                const imageSrc = material?.url_storage || placeholder?.imageUrl;
+
                 return (
-                  <Card key={post.id} className="rounded-xl border-gray-200 overflow-hidden bg-white shadow-sm hover:shadow-md transition-shadow">
-                    <div className="p-4 flex items-center justify-between border-b">
+                  <Card key={post.id} className="rounded-xl border-gray-200 overflow-hidden bg-white shadow-sm border-none sm:border">
+                    {/* Header Post */}
+                    <div className="p-3 flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <Badge className={`${STATO_POST_COLORS[post.stato].bg} ${STATO_POST_COLORS[post.stato].text}`}>{STATO_POST_LABELS[post.stato]}</Badge>
-                        <span className="text-xs text-gray-400">{formattedDate}</span>
+                        <Avatar className="h-8 w-8 border">
+                          <AvatarImage src={PlaceHolderImages.find(img => img.id === 'client-avatar-1')?.imageUrl} />
+                          <AvatarFallback className="bg-indigo-100 text-indigo-700 font-bold text-[10px] uppercase">
+                            {client?.nome_azienda?.charAt(0)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex flex-col">
+                          <span className="text-[12px] font-bold leading-none">{client?.nome_azienda}</span>
+                          <span className="text-[10px] text-gray-500">{PIATTAFORMA_LABELS[post.piattaforma || 'instagram']}</span>
+                        </div>
                       </div>
-                      <Button variant="ghost" size="icon" onClick={() => setPostPerCommenti(post.id)} className="text-indigo-600"><MessageSquare className="w-4 h-4" /></Button>
+                      <Badge className={`${STATO_POST_COLORS[post.stato].bg} ${STATO_POST_COLORS[post.stato].text} text-[10px] px-2 py-0 h-5`}>
+                        {STATO_POST_LABELS[post.stato]}
+                      </Badge>
                     </div>
-                    <div className="p-4">
-                      <h4 className="font-bold mb-2">{post.titolo}</h4>
-                      <p className="text-sm text-gray-600 whitespace-pre-wrap">{post.testo}</p>
-                    </div>
-                    {material && (
-                      <div className="aspect-video bg-gray-50 flex flex-col items-center justify-center border-y">
-                        <ImageIcon className="w-12 h-12 text-gray-200 mb-2"/>
-                        <span className="text-[10px] text-gray-400 uppercase font-bold">{material.nome_file}</span>
-                      </div>
-                    )}
-                    <CardFooter className="p-3 bg-gray-50 flex justify-end gap-2">
-                      {haPermesso('approvazione_post') && post.stato === 'da_approvare' && (
-                        <>
-                          <Button variant="ghost" size="sm" className="text-red-600 font-bold" onClick={() => handleApprovazione(post.id, false)}><X className="w-4 h-4 mr-1" /> Revisione</Button>
-                          <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 font-bold" onClick={() => handleApprovazione(post.id, true)}><Check className="w-4 h-4 mr-1" /> Approva Post</Button>
-                        </>
+
+                    {/* Media Post */}
+                    <div className="aspect-square bg-gray-50 relative group">
+                      {imageSrc ? (
+                        <Image 
+                          src={imageSrc} 
+                          alt={post.titolo} 
+                          fill 
+                          className="object-cover"
+                          data-ai-hint={placeholder?.imageHint || "social post image"}
+                        />
+                      ) : (
+                        <div className="flex flex-col items-center justify-center h-full text-gray-300">
+                          <ImageIcon className="w-12 h-12 mb-2"/>
+                          <span className="text-[10px] uppercase font-bold">In attesa di asset</span>
+                        </div>
                       )}
-                    </CardFooter>
+                    </div>
+
+                    {/* Actions Post */}
+                    <div className="p-3">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-4">
+                          <Heart className="w-6 h-6 hover:text-red-500 cursor-pointer transition-colors" />
+                          <MessageCircle className="w-6 h-6 hover:text-indigo-600 cursor-pointer transition-colors" onClick={() => setPostPerCommenti(post.id)} />
+                          <Send className="w-6 h-6" />
+                        </div>
+                        <Bookmark className="w-6 h-6" />
+                      </div>
+
+                      {/* Content Post */}
+                      <div className="space-y-2">
+                        <p className="text-sm font-bold">{client?.nome_azienda} <span className="font-normal ml-1">{post.titolo}</span></p>
+                        <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">{post.testo}</p>
+                        <p className="text-[10px] text-gray-400 uppercase tracking-tighter">{formattedDate}</p>
+                      </div>
+                    </div>
+
+                    {/* Footer / CTA Approvazione */}
+                    {haPermesso('approvazione_post') && post.stato === 'da_approvare' && (
+                      <CardFooter className="p-3 bg-gray-50/50 border-t flex gap-2">
+                        <Button variant="outline" size="sm" className="flex-1 text-red-600 border-red-100 hover:bg-red-50 font-bold h-9" onClick={() => handleApprovazione(post.id, false)}>
+                          <X className="w-4 h-4 mr-1" /> Revisione
+                        </Button>
+                        <Button size="sm" className="flex-1 bg-emerald-600 hover:bg-emerald-700 font-bold h-9" onClick={() => handleApprovazione(post.id, true)}>
+                          <Check className="w-4 h-4 mr-1" /> Approva Post
+                        </Button>
+                      </CardFooter>
+                    )}
                   </Card>
                 );
               })}
@@ -275,9 +348,9 @@ export default function ClienteDashboard() {
           )}
 
           <div className="pt-8">
-             <h2 className="text-xl font-headline font-bold mb-4">I Tuoi Asset</h2>
+             <h2 className="text-xl font-headline font-bold mb-4">I Tuoi Asset Recenti</h2>
              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                {materials?.map(mat => (
+                {materials?.slice(0, 6).map(mat => (
                   <Card key={mat.id} className="p-3 flex items-center gap-3">
                     <div className="p-2 bg-indigo-50 rounded">
                       <FolderOpen className="w-4 h-4 text-indigo-600" />
