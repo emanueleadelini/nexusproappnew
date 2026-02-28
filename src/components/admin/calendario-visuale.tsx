@@ -43,15 +43,17 @@ import { useFirestore, useUser } from '@/firebase';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { useToast } from '@/hooks/use-toast';
+import { usePermessi } from '@/hooks/use-permessi';
 
 interface Props {
   clienteId: string;
   posts: Post[];
   onAddPost?: () => void;
+  readOnly?: boolean;
 }
 
 // Componente per il singolo post trascinabile nella griglia
-function DraggablePostCard({ post, isOverlay = false }: { post: Post; isOverlay?: boolean }) {
+function DraggablePostCard({ post, disabled = false }: { post: Post; disabled?: boolean }) {
   const {
     attributes,
     listeners,
@@ -59,7 +61,7 @@ function DraggablePostCard({ post, isOverlay = false }: { post: Post; isOverlay?
     transform,
     transition,
     isDragging
-  } = useSortable({ id: post.id });
+  } = useSortable({ id: post.id, disabled });
 
   const style = {
     transform: CSS.Translate.toString(transform),
@@ -71,11 +73,10 @@ function DraggablePostCard({ post, isOverlay = false }: { post: Post; isOverlay?
     <div
       ref={setNodeRef}
       style={style}
-      {...attributes}
-      {...listeners}
-      className={`mb-1 p-1.5 rounded text-[10px] border cursor-grab active:cursor-grabbing transition-all hover:shadow-sm ${STATO_POST_COLORS[post.stato].bg} ${STATO_POST_COLORS[post.stato].text} border-current/10 flex items-center gap-1 group`}
+      {...(!disabled ? { ...attributes, ...listeners } : {})}
+      className={`mb-1 p-1.5 rounded text-[10px] border transition-all hover:shadow-sm ${STATO_POST_COLORS[post.stato].bg} ${STATO_POST_COLORS[post.stato].text} border-current/10 flex items-center gap-1 group ${disabled ? 'cursor-default' : 'cursor-grab active:cursor-grabbing'}`}
     >
-      <GripVertical className="w-3 h-3 opacity-30 group-hover:opacity-100" />
+      {!disabled && <GripVertical className="w-3 h-3 opacity-30 group-hover:opacity-100" />}
       <span className="truncate font-bold uppercase flex-1">{post.titolo}</span>
       <Badge variant="outline" className="text-[7px] py-0 px-1 border-current/20 opacity-70">
         {PIATTAFORMA_LABELS[post.piattaforma] ? PIATTAFORMA_LABELS[post.piattaforma].charAt(0) : 'P'}
@@ -85,10 +86,11 @@ function DraggablePostCard({ post, isOverlay = false }: { post: Post; isOverlay?
 }
 
 // Zona di rilascio per il singolo giorno del calendario
-function CalendarDayCell({ date, posts }: { date: Date; posts: Post[] }) {
+function CalendarDayCell({ date, posts, disabled = false }: { date: Date; posts: Post[]; disabled?: boolean }) {
   const { setNodeRef, isOver } = useDroppable({
     id: format(date, 'yyyy-MM-dd'),
-    data: { date }
+    data: { date },
+    disabled
   });
 
   const isToday = isSameDay(date, new Date());
@@ -104,19 +106,22 @@ function CalendarDayCell({ date, posts }: { date: Date; posts: Post[] }) {
       </div>
       <div className="flex-1 overflow-y-auto space-y-1 custom-scrollbar max-h-[100px]">
         {posts.map(post => (
-          <DraggablePostCard key={post.id} post={post} />
+          <DraggablePostCard key={post.id} post={post} disabled={disabled} />
         ))}
       </div>
     </div>
   );
 }
 
-export function CalendarioVisuale({ clienteId, posts, onAddPost }: Props) {
+export function CalendarioVisuale({ clienteId, posts, onAddPost, readOnly }: Props) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [activeId, setActiveId] = useState<string | null>(null);
   const db = useFirestore();
   const { user } = useUser();
+  const { isAdmin } = usePermessi();
   const { toast } = useToast();
+
+  const isReadOnly = readOnly !== undefined ? readOnly : !isAdmin;
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -137,10 +142,12 @@ export function CalendarioVisuale({ clienteId, posts, onAddPost }: Props) {
   }, [posts, activeId]);
 
   const handleDragStart = (event: DragStartEvent) => {
+    if (isReadOnly) return;
     setActiveId(event.active.id as string);
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
+    if (isReadOnly) return;
     const { active, over } = event;
     setActiveId(null);
 
@@ -205,11 +212,11 @@ export function CalendarioVisuale({ clienteId, posts, onAddPost }: Props) {
              {['bozza', 'da_approvare', 'approvato', 'pubblicato'].map(s => (
                <div key={s} className="flex items-center gap-1.5">
                  <div className={`h-2 w-2 rounded-full ${STATO_POST_COLORS[s as any]?.bg?.replace('bg-', 'bg-') || 'bg-gray-300'}`}></div>
-                 <span className="text-[10px] font-bold text-gray-400 uppercase">{STATO_POST_LABELS[s as any]}</span>
+                 <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">{STATO_POST_LABELS[s as any]}</span>
                </div>
              ))}
            </div>
-           {onAddPost && (
+           {onAddPost && isAdmin && (
              <Button onClick={onAddPost} className="h-9 bg-indigo-600 hover:bg-indigo-700 font-bold text-xs gap-2">
                <Plus className="w-3 h-3" /> Nuovo Post
              </Button>
@@ -218,7 +225,7 @@ export function CalendarioVisuale({ clienteId, posts, onAddPost }: Props) {
       </div>
 
       <DndContext 
-        sensors={sensors} 
+        sensors={isReadOnly ? [] : sensors} 
         collisionDetection={closestCenter} 
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
@@ -240,14 +247,14 @@ export function CalendarioVisuale({ clienteId, posts, onAddPost }: Props) {
                 return isSameDay(p.data_pubblicazione.toDate(), day);
               });
               return (
-                <CalendarDayCell key={day.toISOString()} date={day} posts={postsInDay} />
+                <CalendarDayCell key={day.toISOString()} date={day} posts={postsInDay} disabled={isReadOnly} />
               );
             })}
           </div>
         </div>
 
         <DragOverlay>
-          {activePost ? (
+          {activePost && !isReadOnly ? (
             <div className={`p-2 rounded text-[10px] border shadow-xl opacity-90 ${STATO_POST_COLORS[activePost.stato].bg} ${STATO_POST_COLORS[activePost.stato].text} border-current/20 w-40 font-bold uppercase`}>
               {activePost.titolo}
             </div>
