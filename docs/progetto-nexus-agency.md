@@ -1,52 +1,102 @@
 # Nexus Agency (AD Next Lab) - Manuale Tecnico Master v5.2
 
-Questo documento rappresenta la documentazione definitiva per l'analisi tecnica e commerciale della piattaforma AD Next Lab. Progettata come soluzione SaaS multi-tenant per agenzie di comunicazione.
+Questo documento rappresenta la documentazione tecnica e commerciale definitiva per il progetto **AD Next Lab**. È stato progettato per essere una soluzione SaaS (Software as a Service) multi-tenant per agenzie di comunicazione.
 
 ---
 
 ## 1. Architettura di Sistema
-La piattaforma utilizza uno stack moderno basato su **Next.js 15**, **React 19** e **Firebase Cloud**.
-- **Isolamento Multi-tenant**: Ogni cliente è identificato da un `cliente_id` univoco. Tutti i dati (Post, Materiali, Commenti) sono filtrati tramite questo ID a livello di Security Rules.
-- **RBAC (Role-Based Access Control)**:
-  - `super_admin`: Controllo totale su sistema, clienti e fatturazione.
-  - `operatore`: Produzione contenuti per tutti i clienti dell'agenzia.
-  - `referente`: Manager lato cliente con poteri di approvazione e upload.
-  - `collaboratore`: Visualizzatore lato cliente con possibilità di upload e commento.
+La piattaforma utilizza uno stack moderno e scalabile:
+- **Frontend/Backend**: Next.js 15 (App Router) + React 19.
+- **Database & Auth**: Firebase Cloud (Firestore + Authentication).
+- **Intelligenza Artificiale**: Genkit 1.x con Google Gemini 2.5 Flash per la generazione di copy strategici.
+- **UI Framework**: Tailwind CSS + ShadCN UI per un design professionale e responsive.
+
+### Isolamento Multi-tenant
+Ogni cliente è isolato tramite un `cliente_id`. Le Security Rules di Firestore impediscono l'accesso ai dati tra tenant diversi. Un utente di tipo `referente` vede solo i dati della propria azienda.
 
 ---
 
-## 2. Sicurezza & Data Isolation (Firestore)
-Le Security Rules (V5.2 Production) garantiscono che nessun utente possa leggere o modificare dati al di fuori del proprio perimetro.
+## 2. Ruoli e Permessi (RBAC)
+Il sistema implementa 4 livelli di accesso definiti in `src/types/user.ts`:
 
-### Logica di Accesso & Cancellazione:
-1. **Accesso**: Filtrato per `ruolo` e `cliente_id` memorizzati nel profilo Firestore dell'utente.
-2. **Cancellazione Tenant**: L'operazione di eliminazione di un cliente rimuove ricorsivamente il documento dell'azienda, tutti i post, i materiali e i profili utente Firestore associati. 
-   - *Nota Tecnica*: La cancellazione del profilo Firestore revoca istantaneamente l'accesso all'app. L'email nel modulo Auth di Firebase persiste finché non rimossa manualmente dalla console (standard di sicurezza Firebase Client SDK).
-
----
-
-## 3. Workflow Operativi
-
-### 3.1 Editorial Calendar (Produttività)
-Sistema dinamico basato su `dnd-kit` per il riposizionamento dei post nel PED. Lo stato di un post segue un workflow blindato:
-1. `bozza` -> 2. `revisione_interna` -> 3. `da_approvare` -> 4. `revisione` -> 5. `approvato` -> 6. `programmato` -> 7. `pubblicato`.
-
-### 3.2 Workflow di Approvazione (Security)
-Il **Referente** può solo modificare lo stato del post da `da_approvare` a `approvato` o `revisione`. Non ha il permesso di alterare i testi o le immagini strategiche prodotte dall'agenzia.
-
-### 3.3 Credit System (Monetizzazione SaaS)
-Ogni cliente ha un limite di `post_totali` mensili. Il sistema monitora i `post_usati` in tempo reale. Predisposto per integrazione gateway pagamenti per l'acquisto di pacchetti post extra.
+- **super_admin**: Controllo totale (gestione agenzia, fatturazione, cancellazione clienti).
+- **operatore**: Produzione contenuti, gestione calendari per tutti i clienti, validazione asset.
+- **referente**: Manager lato cliente. Può caricare asset, commentare e approvare/rifiutare post.
+- **collaboratore**: Visualizzatore lato cliente. Può commentare e caricare materiali ma non approva i post.
 
 ---
 
-## 4. AI Post Generator Engine
-Integrazione con **Gemini 2.5 Flash** tramite **Genkit 1.x**.
-- **Prompt strategico**: L'IA genera copy personalizzati basati su settore, tono di voce e piattaforma social, garantendo coerenza di brand.
+## 3. Codice Core e Logiche di Business
+
+### 3.1 Security Rules (V5.2 Production-Ready)
+Le regole garantiscono che nessun dato possa essere letto o scritto senza autorizzazione.
+
+```javascript
+// Estratto firestore.rules
+match /clienti/{clienteId} {
+  allow get: if isClientOf(clienteId) || isAgency();
+  allow list: if isAgency();
+  
+  match /post/{postId} {
+    allow get, list: if isClientOf(clienteId) || isAgency();
+    // Solo l'agenzia crea i post
+    allow create: if isAgency();
+    // Il cliente (referente) può solo cambiare lo stato in 'approvato' o 'revisione'
+    allow update: if isAgency() || 
+      (isReferente(clienteId) && resource.data.stato == 'da_approvare' && 
+       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stato', 'storico_stati', 'aggiornato_il']));
+  }
+}
+```
+
+### 3.2 Workflow Editoriale (I 7 Stati)
+Un post segue un percorso blindato per garantire la qualità:
+1. `bozza` (Interno)
+2. `revisione_interna` (Interno)
+3. `da_approvare` (Visibile al cliente)
+4. `revisione` (Rimandato dal cliente)
+5. `approvato` (Pronto per l'uscita)
+6. `programmato` (In coda sui tool di posting)
+7. `pubblicato` (Storico)
+
+### 3.3 Motore AI (Genkit Flow)
+La generazione dei post avviene tramite prompt ingegnerizzati che tengono conto del tono di voce e della piattaforma.
+
+```typescript
+// src/ai/flows/generate-post-ai-flow.ts
+const generatePostPrompt = ai.definePrompt({
+  name: 'generatePostPrompt',
+  prompt: `Sei un social media manager esperto... 
+  Genera un post per {{{nomeAzienda}}} nel settore {{{settore}}}. 
+  Piattaforma: {{{piattaforma.label}}}, Tono: {{{tono.label}}}.`
+});
+```
 
 ---
 
-## 5. Esportazione e Backup
-La piattaforma permette all'Admin di scaricare un archivio JSON completo di un cliente prima della cancellazione, garantendo la portabilità dei dati e la conformità GDPR.
+## 4. Strategia Commerciale SaaS
+
+### 4.1 Monetizzazione (Credit System)
+Il sistema è predisposto per un modello a consumo:
+- **Piano Starter**: 5 post/mese.
+- **Piano Professional**: 15 post/mese.
+- **Piano Agency**: Post illimitati.
+Il campo `post_totali` nel documento `clienti` blocca la creazione di nuovi post se il limite viene raggiunto.
+
+### 4.2 Onboarding Clienti
+L'amministratore crea un cliente in 30 secondi tramite il modulo "Aggiungi Cliente", che genera automaticamente:
+1. Documento Azienda.
+2. Account Authentication per il referente.
+3. Profilo permessi personalizzato.
+
+### 4.3 Offboarding e Backup
+Prima di cancellare un cliente (funzione "Elimina Cliente"), l'Admin può scaricare un dump JSON completo. Questo garantisce la conformità GDPR e la portabilità dei dati per il cliente che decide di lasciare l'agenzia.
 
 ---
-*Documento di Audit Tecnico - Versione 5.2 - Pronto per la fase di Go-Live Commerciale*
+
+## 5. Roadmap Go-Live
+1. **Configurazione Admin**: Eseguire `/setup-admin` per inizializzare il primo Super User.
+2. **Integrazione Pagamenti**: Collegare il tasto "Richiedi Upgrade" a un checkout di Stripe.
+3. **App Hosting**: Deploy su Firebase App Hosting per scalabilità automatica.
+
+*Documento di Proprietà Intellettuale - Nexus Agency (AD Next Lab) - 2024*
