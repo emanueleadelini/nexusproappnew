@@ -37,11 +37,12 @@ export function ModificaPostModal({ isOpen, onClose, clienteId, post }: Props) {
   const { toast } = useToast();
 
   const materialsQuery = useMemoFirebase(() => {
+    if (!user || !clienteId) return null;
     return query(
       collection(db, 'clienti', clienteId, 'materiali'),
       where('stato_validazione', '==', 'validato')
     );
-  }, [db, clienteId]);
+  }, [db, clienteId, user]);
   
   const { data: materials } = useCollection<Material>(materialsQuery);
 

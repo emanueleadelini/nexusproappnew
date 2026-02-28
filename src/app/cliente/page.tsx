@@ -72,8 +72,12 @@ export default function ClienteDashboard() {
   useEffect(() => {
     if (user) {
       const fetchProfile = async () => {
-        const userDoc = await getDoc(doc(db, 'users', user.uid));
-        if (userDoc.exists()) setClienteId(userDoc.data().cliente_id);
+        try {
+          const userDoc = await getDoc(doc(db, 'users', user.uid));
+          if (userDoc.exists()) setClienteId(userDoc.data().cliente_id);
+        } catch (e) {
+          console.error("Errore fetch profilo:", e);
+        }
       };
       fetchProfile();
     }
@@ -83,17 +87,22 @@ export default function ClienteDashboard() {
     if (postIdFromUrl) setPostPerCommenti(postIdFromUrl);
   }, [postIdFromUrl]);
 
-  const clientDocRef = useMemoFirebase(() => clienteId ? doc(db, 'clienti', clienteId) : null, [db, clienteId]);
+  const clientDocRef = useMemoFirebase(() => {
+    if (!user || !clienteId) return null;
+    return doc(db, 'clienti', clienteId);
+  }, [db, clienteId, user]);
   const { data: client, isLoading: isClientLoading } = useDoc<any>(clientDocRef);
 
   const postsQuery = useMemoFirebase(() => {
-    return clienteId ? query(collection(db, 'clienti', clienteId, 'post'), orderBy('creato_il', 'desc')) : null;
-  }, [db, clienteId]);
+    if (!user || !clienteId) return null;
+    return query(collection(db, 'clienti', clienteId, 'post'), orderBy('creato_il', 'desc'));
+  }, [db, clienteId, user]);
   const { data: posts, isLoading: isPostsLoading } = useCollection<any>(postsQuery);
 
   const materialsQuery = useMemoFirebase(() => {
-    return clienteId ? query(collection(db, 'clienti', clienteId, 'materiali'), orderBy('creato_il', 'desc')) : null;
-  }, [db, clienteId]);
+    if (!user || !clienteId) return null;
+    return query(collection(db, 'clienti', clienteId, 'materiali'), orderBy('creato_il', 'desc'));
+  }, [db, clienteId, user]);
   const { data: materials, isLoading: isMaterialsLoading } = useCollection<Material>(materialsQuery);
 
   const handleApprovazione = (postId: string, approvato: boolean) => {

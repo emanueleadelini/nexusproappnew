@@ -31,11 +31,12 @@ export function CommentiSidebar({ clienteId, postId, isOpen, onClose }: Props) {
   const [loading, setLoading] = useState(false);
 
   const commentiQuery = useMemoFirebase(() => {
+    if (!user || !clienteId || !postId) return null;
     return query(
       collection(db, 'clienti', clienteId, 'post', postId, 'commenti'),
       orderBy('creato_il', 'asc')
     );
-  }, [db, clienteId, postId]);
+  }, [db, clienteId, postId, user]);
 
   const { data: commenti } = useCollection<Commento>(commentiQuery);
 
@@ -58,11 +59,7 @@ export function CommentiSidebar({ clienteId, postId, isOpen, onClose }: Props) {
       await addDoc(collection(db, 'clienti', clienteId, 'post', postId, 'commenti'), commentoData);
       
       // LOGICA NOTIFICHE V5.3: Determina destinatari
-      // 1. Se commenta il cliente (referente/collab), notifica l'agenzia (tutti gli operatore/admin)
-      // 2. Se commenta l'agenzia, notifica il referente del cliente
-      
       if (ruolo === 'referente' || ruolo === 'collaboratore') {
-        // Notifica l'Agenzia (cerchiamo il primo admin disponibile)
         const adminsSnap = await getDocs(query(collection(db, 'users'), where('ruolo', '==', 'super_admin')));
         for (const adminDoc of adminsSnap.docs) {
           await addDoc(collection(db, 'users', adminDoc.id, 'notifiche'), {
@@ -77,7 +74,6 @@ export function CommentiSidebar({ clienteId, postId, isOpen, onClose }: Props) {
           });
         }
       } else {
-        // Notifica il Referente del cliente
         const clientUsersSnap = await getDocs(query(collection(db, 'users'), where('cliente_id', '==', clienteId), where('ruolo', '==', 'referente')));
         for (const clientUserDoc of clientUsersSnap.docs) {
           await addDoc(collection(db, 'users', clientUserDoc.id, 'notifiche'), {

@@ -57,7 +57,10 @@ export function GeneraBozzaModal({ isOpen, onClose, clienteId, clienteNome, clie
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // NEXUS PRO: Controllo crediti AI
-  const clientRef = useMemoFirebase(() => doc(db, 'clienti', clienteId), [db, clienteId]);
+  const clientRef = useMemoFirebase(() => {
+    if (!user || !clienteId) return null;
+    return doc(db, 'clienti', clienteId);
+  }, [db, clienteId, user]);
   const { data: client } = useDoc<any>(clientRef);
 
   const canGenerate = client ? client.post_usati < client.post_totali : false;

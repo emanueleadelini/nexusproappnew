@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
+import { useUser, useFirestore, useDoc, useMemoFirebase, useAuth } from '@/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
-import { LogOut, Loader2, UserCircle, Briefcase, Avatar, AvatarImage, AvatarFallback } from 'lucide-react';
+import { LogOut, Loader2, UserCircle, Briefcase } from 'lucide-react';
 import { NotificheBell } from '@/components/notifiche-bell';
 
 export default function ClienteLayout({ children }: { children: React.ReactNode }) {
@@ -27,26 +27,33 @@ export default function ClienteLayout({ children }: { children: React.ReactNode 
     }
 
     const checkRole = async () => {
-      const userDoc = await getDoc(doc(db, 'users', user.uid));
-      if (userDoc.exists()) {
-        const data = userDoc.data();
-        const ruolo = data.ruolo;
-        if (ruolo === 'referente' || ruolo === 'collaboratore') {
-          setIsAuthorized(true);
-          setNomeAzienda(data.nomeAzienda || 'La tua Azienda');
-          setClienteId(data.cliente_id);
+      try {
+        const userDoc = await getDoc(doc(db, 'users', user.uid));
+        if (userDoc.exists()) {
+          const data = userDoc.data();
+          const ruolo = data.ruolo;
+          if (ruolo === 'referente' || ruolo === 'collaboratore') {
+            setIsAuthorized(true);
+            setNomeAzienda(data.nomeAzienda || 'La tua Azienda');
+            setClienteId(data.cliente_id);
+          } else {
+            router.push('/login');
+          }
         } else {
           router.push('/login');
         }
-      } else {
-        router.push('/login');
+      } catch (e) {
+        console.error("Errore verifica ruolo:", e);
       }
     };
     checkRole();
   }, [user, isUserLoading, db, router]);
 
   // Sottoscrizione in tempo reale ai dati del cliente per il logo
-  const clientDocRef = useMemoFirebase(() => clienteId ? doc(db, 'clienti', clienteId) : null, [db, clienteId]);
+  const clientDocRef = useMemoFirebase(() => {
+    if (!user || !clienteId) return null;
+    return doc(db, 'clienti', clienteId);
+  }, [db, clienteId, user]);
   const { data: clientData } = useDoc<any>(clientDocRef);
 
   if (isUserLoading || !isAuthorized) {
@@ -105,5 +112,3 @@ export default function ClienteLayout({ children }: { children: React.ReactNode 
     </div>
   );
 }
-
-import { useAuth } from '@/firebase';
