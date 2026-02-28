@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -9,15 +8,15 @@ import { doc, getDoc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { useToast } from '@/hooks/use-toast';
-import { Loader2, ShieldCheck, Settings } from 'lucide-react';
+import { ShieldCheck, Eye, EyeOff, Loader2 } from 'lucide-react';
 import Link from 'next/link';
+import { useToast } from '@/hooks/use-toast';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
   const auth = useAuth();
   const db = useFirestore();
   const router = useRouter();
@@ -25,120 +24,110 @@ export default function LoginPage() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
+    setLoading(true);
 
     try {
       const { user } = await signInWithEmailAndPassword(auth, email, password);
       const userDoc = await getDoc(doc(db, 'users', user.uid));
       
       if (userDoc.exists()) {
-        const userData = userDoc.data();
-        const role = userData.ruolo;
-
-        if (role === 'super_admin' || role === 'operatore' || role === 'admin') {
-          toast({ title: "Bentornato in Agenzia", description: "Accesso all'area gestionale effettuato." });
+        const ruolo = userDoc.data().ruolo;
+        if (ruolo === 'super_admin' || ruolo === 'operatore' || ruolo === 'admin') {
           router.push('/admin');
-        } else if (role === 'referente' || role === 'collaboratore' || role === 'cliente') {
-          toast({ title: "Area Cliente", description: `Benvenuto, ${userData.nomeAzienda || 'Cliente'}` });
-          router.push('/cliente');
         } else {
-          throw new Error('Ruolo non autorizzato.');
+          router.push('/cliente');
         }
       } else {
-        await auth.signOut();
-        throw new Error('Utente non censito nel sistema. Contatta l\'assistenza.');
+        router.push('/cliente');
       }
-    } catch (error: any) {
-      let message = 'Errore imprevisto. Riprova più tardi.';
-      
-      switch (error.code) {
-        case 'auth/user-not-found':
-          message = "Nessun account associato a questa email.";
-          break;
-        case 'auth/wrong-password':
-          message = "Password errata. Riprova.";
-          break;
-        case 'auth/invalid-credential':
-          message = "Credenziali non valide. Controlla email e password.";
-          break;
-        case 'auth/invalid-email':
-          message = "Il formato dell'email non è valido.";
-          break;
-        case 'auth/user-disabled':
-          message = "Questo account è stato disabilitato. Contatta l'agenzia.";
-          break;
-        case 'auth/too-many-requests':
-          message = "Troppi tentativi. Riprova tra qualche minuto.";
-          break;
-      }
-      
-      toast({ 
-        variant: 'destructive', 
-        title: 'Accesso negato', 
-        description: message 
+    } catch (err: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Accesso negato',
+        description: 'Email o password non validi. Riprova.'
       });
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
-      <div className="w-full max-w-md space-y-4">
-        <Card className="shadow-2xl border-indigo-100 rounded-xl overflow-hidden">
-          <CardHeader className="space-y-1 bg-white border-b border-gray-100 p-8">
-            <div className="flex justify-center mb-4">
-              <div className="bg-indigo-600 p-3 rounded-2xl">
-                <ShieldCheck className="w-8 h-8 text-white" />
+    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Background effects */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-indigo-600/10 blur-[150px] rounded-full" />
+      <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-purple-600/10 blur-[120px] rounded-full" />
+
+      <div className="w-full max-w-md relative z-10">
+        <div className="text-center mb-10">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-2xl mb-6 shadow-xl shadow-indigo-500/20">
+            <ShieldCheck className="w-8 h-8 text-white" />
+          </div>
+          <h1 className="text-3xl font-headline font-bold text-white mb-2">
+            AD next lab <span className="text-indigo-500">Pro</span>
+          </h1>
+          <p className="text-slate-400">Accedi al tuo Hub Digitale</p>
+        </div>
+
+        <div className="glass-card rounded-3xl p-8 space-y-6">
+          <form onSubmit={handleLogin} className="space-y-5">
+            <div className="space-y-2">
+              <Label htmlFor="email" className="text-slate-300 font-medium">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="nome@azienda.it"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="bg-slate-900/50 border-white/10 text-white placeholder:text-slate-500 h-12 rounded-xl focus:border-indigo-500 focus:ring-indigo-500/20"
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="password" size="sm" className="text-slate-300 font-medium">Password</Label>
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="bg-slate-900/50 border-white/10 text-white placeholder:text-slate-500 h-12 rounded-xl pr-10 focus:border-indigo-500 focus:ring-indigo-500/20"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                >
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
               </div>
             </div>
-            <CardTitle className="text-3xl font-headline font-bold text-center text-gray-900">AD next lab</CardTitle>
-            <CardDescription className="text-center text-gray-500 font-medium">Area Riservata Gestionale</CardDescription>
-          </CardHeader>
-          <CardContent className="p-8">
-            <form onSubmit={handleLogin} className="space-y-6">
-              <div className="space-y-2">
-                <Label htmlFor="email" className="text-sm font-semibold text-gray-700">Email</Label>
-                <Input 
-                  id="email" 
-                  type="email" 
-                  value={email} 
-                  onChange={(e) => setEmail(e.target.value)} 
-                  required 
-                  placeholder="nome@adnextlab.it"
-                  className="rounded-lg border-gray-200 focus:ring-indigo-500"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="password" size="sm" className="text-sm font-semibold text-gray-700">Password</Label>
-                <Input 
-                  id="password" 
-                  type="password" 
-                  value={password} 
-                  onChange={(e) => setPassword(e.target.value)} 
-                  required 
-                  className="rounded-lg border-gray-200 focus:ring-indigo-500"
-                />
-              </div>
-              <Button 
-                type="submit" 
-                className="w-full bg-indigo-600 hover:bg-indigo-700 h-12 text-base font-bold transition-all shadow-lg shadow-indigo-200" 
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Accesso in corso...</>
-                ) : (
-                  'Entra nell\'area'
-                )}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-        <div className="text-center">
-          <Link href="/setup-admin" className="text-xs text-gray-400 hover:text-indigo-600 flex items-center justify-center gap-1 transition-colors">
-            <Settings className="w-3 h-3" /> Prima volta? Configura l'admin qui.
-          </Link>
+
+            <Button
+              type="submit"
+              disabled={loading}
+              className="w-full gradient-primary h-12 rounded-xl font-bold text-lg shadow-xl shadow-indigo-500/20"
+            >
+              {loading ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                'Accedi'
+              )}
+            </Button>
+          </form>
+
+          <div className="text-center pt-4 border-t border-white/5">
+            <Link href="/" className="text-slate-500 hover:text-indigo-400 text-sm font-medium transition-colors">
+              ← Torna al sito
+            </Link>
+          </div>
         </div>
+
+        <p className="text-center text-slate-600 text-xs mt-8">
+          Problemi di accesso? Contatta il supporto tecnico
+        </p>
       </div>
     </div>
   );

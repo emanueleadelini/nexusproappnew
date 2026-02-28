@@ -1,392 +1,211 @@
 'use client';
 
-import { useUser, useFirestore, useMemoFirebase, useCollection, useDoc } from '@/firebase';
-import { collection, doc, query, orderBy, updateDoc, addDoc, getDoc, serverTimestamp, arrayUnion, Timestamp } from 'firebase/firestore';
-import { StatoPost } from '@/types/post';
-import { Material, DestinazioneAsset, STATO_VALIDAZIONE_LABELS, STATO_VALIDAZIONE_COLORS } from '@/types/material';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useState, useEffect } from 'react';
+import { useUser, useFirestore, useCollection, useDoc, useMemoFirebase } from '@/firebase';
+import { query, collection, where, orderBy, doc, updateDoc, serverTimestamp, arrayUnion, Timestamp } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Progress } from '@/components/ui/progress';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { 
-  Upload, 
-  Loader2, 
+  Heart, 
+  MessageCircle, 
+  Send, 
+  Bookmark, 
+  MoreHorizontal, 
+  Check, 
   X, 
-  CalendarDays, 
-  Clock, 
-  CreditCard, 
-  ShieldCheck, 
-  Briefcase, 
-  Download,
+  Clock,
+  AlertCircle,
   Timer,
   LayoutGrid,
-  FolderOpen
+  Zap,
+  Info
 } from 'lucide-react';
-import { useState, useEffect, useRef } from 'react';
-import { useToast } from '@/hooks/use-toast';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Label } from '@/components/ui/label';
-import { CommentiSidebar } from '@/components/commenti-sidebar';
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
-import { usePermessi } from '@/hooks/use-permessi';
-import { useSearchParams } from 'next/navigation';
-import { CalendarioVisuale } from '@/components/admin/calendario-visuale';
+import { formatDistanceToNow } from 'date-fns';
+import { it } from 'date-fns/locale';
 import { FeedInstagramPreview } from '@/components/feed-instagram-preview';
+import { useToast } from '@/hooks/use-toast';
 
-export default function ClienteDashboard() {
+export default function ClienteFeedPage() {
   const { user } = useUser();
   const db = useFirestore();
   const { toast } = useToast();
-  const { haPermesso } = usePermessi();
-  const searchParams = useSearchParams();
-  const postIdFromUrl = searchParams.get('postId');
-  
-  const [clienteId, setClienteId] = useState<string | null>(null);
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-  const [externalLink, setExternalLink] = useState('');
-  const [uploadType, setUploadType] = useState<'file' | 'link'>('file');
-  const [destinazione, setDestinazione] = useState<DestinazioneAsset>('social');
-  const [noteCliente, setNoteCliente] = useState('');
-  const [isUploading, setIsUploading] = useState(false);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [postPerCommenti, setPostPerCommenti] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [selectedPost, setSelectedPost] = useState<any | null>(null);
+  const [noteModifica, setNoteModifica] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    if (user) {
-      const fetchProfile = async () => {
-        try {
-          const userDoc = await getDoc(doc(db, 'users', user.uid));
-          if (userDoc.exists()) setClienteId(userDoc.data().cliente_id);
-        } catch (e) {}
-      };
-      fetchProfile();
-    }
-  }, [user, db]);
-
-  useEffect(() => {
-    if (postIdFromUrl) {
-      setPostPerCommenti(postIdFromUrl);
-      // Scroll al post se presente
-      setTimeout(() => {
-        const element = document.getElementById(`post-${postIdFromUrl}`);
-        if (element) {
-          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-      }, 800);
-    }
-  }, [postIdFromUrl]);
+  const clienteId = user?.cliente_id;
 
   const clientDocRef = useMemoFirebase(() => {
-    if (!user || !clienteId) return null;
+    if (!clienteId) return null;
     return doc(db, 'clienti', clienteId);
-  }, [db, clienteId, user]);
-  const { data: client, isLoading: isClientLoading } = useDoc<any>(clientDocRef);
+  }, [db, clienteId]);
+  const { data: clientData, isLoading: isClientLoading } = useDoc<any>(clientDocRef);
 
   const postsQuery = useMemoFirebase(() => {
-    if (!user || !clienteId) return null;
-    return query(collection(db, 'clienti', clienteId, 'post'), orderBy('creato_il', 'desc'));
-  }, [db, clienteId, user]);
+    if (!clienteId) return null;
+    return query(
+      collection(db, 'clienti', clienteId, 'post'),
+      where('stato', 'in', ['da_approvare', 'approvato', 'programmato', 'pubblicato']),
+      orderBy('creato_il', 'desc')
+    );
+  }, [db, clienteId]);
+
   const { data: posts, isLoading: isPostsLoading } = useCollection<any>(postsQuery);
 
-  const materialsQuery = useMemoFirebase(() => {
-    if (!user || !clienteId) return null;
-    return query(collection(db, 'clienti', clienteId, 'materiali'), orderBy('creato_il', 'desc'));
-  }, [db, clienteId, user]);
-  const { data: materials } = useCollection<Material>(materialsQuery);
-
-  const handleApprovazione = (postId: string, approvato: boolean) => {
+  const handleApprova = async (post: any) => {
     if (!clienteId || !user) return;
-    const postRef = doc(db, 'clienti', clienteId, 'post', postId);
-    const nuovoStato = approvato ? 'approvato' : 'revisione';
-    
-    updateDoc(postRef, { 
-      stato: nuovoStato, 
-      aggiornato_il: serverTimestamp(),
-      storico_stati: arrayUnion({
-        stato: nuovoStato,
-        autore_uid: user.uid,
-        timestamp: Timestamp.now(),
-        nota: approvato ? "Approvato dal cliente (Silenzio Assenso evitato)" : "Revisione richiesta dal cliente"
-      })
-    }).catch(e => errorEmitter.emit('permission-error', new FirestorePermissionError({ path: postRef.path, operation: 'update' })));
-    
-    toast({ title: approvato ? "Post approvato!" : "Revisione richiesta" });
-  };
-
-  const handleUpload = async () => {
-    if (!clienteId || !user) return;
-    if (uploadType === 'file' && selectedFiles.length === 0) {
-      toast({ variant: 'destructive', title: "Seleziona almeno un file" });
-      return;
-    }
-    if (uploadType === 'link' && !externalLink) {
-      toast({ variant: 'destructive', title: "Inserisci un link" });
-      return;
-    }
-
-    setIsUploading(true);
-    const matColRef = collection(db, 'clienti', clienteId, 'materiali');
+    setLoading(true);
     try {
-      if (uploadType === 'file') {
-        await Promise.all(selectedFiles.map(file => addDoc(matColRef, {
-          nome_file: file.name,
-          url_storage: null,
-          caricato_da: user.uid,
-          ruolo_caricatore: 'cliente',
-          destinazione,
-          note_cliente: noteCliente.trim() || null,
-          stato_validazione: 'in_attesa',
-          creato_il: serverTimestamp()
-        })));
-      } else {
-        await addDoc(matColRef, {
-          nome_file: 'Link Esterno Cliente',
-          link_esterno: externalLink,
-          caricato_da: user.uid,
-          ruolo_caricatore: 'cliente',
-          destinazione,
-          note_cliente: noteCliente.trim() || null,
-          stato_validazione: 'in_attesa',
-          creato_il: serverTimestamp()
-        });
-      }
-      setSelectedFiles([]);
-      setExternalLink('');
-      setNoteCliente('');
-      setDestinazione('social');
-      setIsDialogOpen(false);
-      toast({ title: "Asset inviato con successo!" });
+      const postRef = doc(db, 'clienti', clienteId, 'post', post.id);
+      await updateDoc(postRef, {
+        stato: 'approvato',
+        aggiornato_il: serverTimestamp(),
+        storico_stati: arrayUnion({
+          stato: 'approvato',
+          timestamp: Timestamp.now(),
+          autore_uid: user.uid,
+          nota: 'Approvato dal cliente nel feed'
+        })
+      });
+      toast({ title: "Post Approvato!", description: "Il team procederà con la programmazione." });
+    } catch (e) {
+      console.error(e);
     } finally {
-      setIsUploading(false);
+      setLoading(false);
     }
   };
 
-  if (isClientLoading || !clienteId || !client) return <div className="space-y-6 p-8"><Skeleton className="h-32 w-full" /><Skeleton className="h-64" /></div>;
+  const handleRifiuta = async () => {
+    if (!selectedPost || !noteModifica.trim() || !clienteId || !user) return;
+    setLoading(true);
+    try {
+      const postRef = doc(db, 'clienti', clienteId, 'post', selectedPost.id);
+      await updateDoc(postRef, {
+        stato: 'revisione',
+        aggiornato_il: serverTimestamp(),
+        storico_stati: arrayUnion({
+          stato: 'revisione',
+          timestamp: Timestamp.now(),
+          autore_uid: user.uid,
+          nota: noteModifica
+        })
+      });
+      
+      // Notifica all'agenzia
+      await updateDoc(doc(db, 'clienti', clienteId), {
+        richiesta_attenzione: true
+      });
 
-  const postTotali = client?.post_totali || 0;
-  const postUsati = posts?.length || 0;
-  const usagePercent = (postUsati / (postTotali || 1)) * 100;
+      setSelectedPost(null);
+      setNoteModifica('');
+      toast({ title: "Richiesta inviata", description: "L'agenzia prenderà in carico le modifiche." });
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const strategicDocs = materials?.filter(m => m.destinazione === 'strategico' && m.stato_validazione === 'validato') || [];
+  if (isClientLoading || isPostsLoading) {
+    return (
+      <div className="max-w-lg mx-auto space-y-8 pt-8 px-4">
+        {[1, 2].map(i => (
+          <div key={i} className="space-y-4">
+            <Skeleton className="h-12 w-full rounded-xl bg-white/5" />
+            <Skeleton className="aspect-square w-full rounded-2xl bg-white/5" />
+            <Skeleton className="h-24 w-full rounded-xl bg-white/5" />
+          </div>
+        ))}
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-8 max-w-7xl mx-auto">
-      {/* Header e Sidebar */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div className="flex items-center gap-4">
-          <div className="w-16 h-16 rounded-2xl bg-white border border-gray-100 shadow-sm overflow-hidden flex items-center justify-center p-2">
-            {client.logo_url ? (
-              <img src={client.logo_url} alt="Logo" className="w-full h-full object-contain" />
-            ) : (
-              <Avatar className="h-full w-full rounded-none">
-                <AvatarFallback className="bg-indigo-600 text-white font-bold">
-                  {client.nome_azienda?.charAt(0)}
-                </AvatarFallback>
-              </Avatar>
-            )}
-          </div>
-          <div>
-            <h1 className="text-3xl font-headline font-bold">Area Riservata {client?.nome_azienda}</h1>
-            <p className="text-muted-foreground">Strategia & Pianificazione Real-time</p>
+    <div className="min-h-screen bg-slate-950 py-12 px-4 relative">
+      <div className="max-w-lg mx-auto space-y-10">
+        {/* Header Feed */}
+        <div className="text-center space-y-2 animate-in fade-in slide-in-from-top-4 duration-700">
+          <h2 className="text-3xl font-headline font-bold text-white">Hub Contenuti</h2>
+          <p className="text-slate-400 text-sm font-medium">Strategia & Approvazione Real-time</p>
+          <div className="pt-4 flex justify-center">
+            <Badge variant="outline" className="bg-indigo-500/10 text-indigo-400 border-indigo-500/20 px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest">
+              <Zap className="w-3 h-3 mr-1.5 fill-current" /> Silenzio Assenso Attivo
+            </Badge>
           </div>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="bg-indigo-600 shadow-lg shadow-indigo-100"><Upload className="w-4 h-4 mr-2" /> Invia Asset</Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>Invia Materiale all'Agenzia</DialogTitle>
-              <DialogDescription>Carica foto, video o link per i tuoi prossimi contenuti.</DialogDescription>
-            </DialogHeader>
-            <div className="space-y-6 py-4">
-              <Tabs value={uploadType} onValueChange={(v: any) => setUploadType(v)}>
-                <TabsList className="grid w-full grid-cols-2"><TabsTrigger value="file">File Locale</TabsTrigger><TabsTrigger value="link">Link Cloud</TabsTrigger></TabsList>
-                <TabsContent value="file" className="pt-4 border-2 border-dashed rounded-xl p-8 text-center cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => fileInputRef.current?.click()}>
-                  <input type="file" ref={fileInputRef} onChange={(e) => setSelectedFiles(Array.from(e.target.files || []))} className="hidden" multiple />
-                  <Upload className="w-8 h-8 mx-auto mb-2 text-gray-300" />
-                  <p className="text-xs text-gray-400 font-medium">{selectedFiles.length > 0 ? `${selectedFiles.length} file pronti` : "Trascina o clicca per caricare"}</p>
-                </TabsContent>
-                <TabsContent value="link" className="pt-4"><Input value={externalLink} onChange={(e) => setExternalLink(e.target.value)} placeholder="Link Drive / WeTransfer / Dropbox" /></TabsContent>
-              </Tabs>
 
-              <div className="space-y-4 border-t pt-4">
-                <div className="space-y-2">
-                  <Label className="text-xs font-bold uppercase text-gray-500">Destinazione</Label>
-                  <Select value={destinazione} onValueChange={(v: any) => setDestinazione(v)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleziona destinazione" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="social">📱 Social Media (IG/FB/LI)</SelectItem>
-                      <SelectItem value="sito">🌐 Sito Web / E-commerce</SelectItem>
-                      <SelectItem value="offline">🖨️ Stampa / Materiale Offline</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-xs font-bold uppercase text-gray-500">Note o Istruzioni</Label>
-                  <Textarea 
-                    value={noteCliente} 
-                    onChange={(e) => setNoteCliente(e.target.value)} 
-                    placeholder="Es: Foto per il post di Natale, usate il filtro caldo..."
-                    className="min-h-[100px] text-sm"
-                  />
-                </div>
-              </div>
+        <div className="space-y-12 pb-20">
+          {posts?.map((post) => (
+            <div key={post.id} className="animate-in fade-in slide-in-from-bottom-6 duration-1000">
+              <FeedInstagramPreview
+                post={post}
+                clienteNome={clientData?.nome_azienda || 'La tua Azienda'}
+                clienteLogo={clientData?.logo_url}
+                showActions={post.stato === 'da_approvare'}
+                onApprove={() => handleApprova(post)}
+                onReject={() => setSelectedPost(post)}
+                onComment={() => setSelectedPost(post)}
+              />
             </div>
-            <DialogFooter>
-              <Button variant="ghost" onClick={() => setIsDialogOpen(false)} disabled={isUploading}>Annulla</Button>
-              <Button onClick={handleUpload} disabled={isUploading} className="bg-indigo-600 flex-1">
-                {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Invia Materiale'}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
+          ))}
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-        <div className="space-y-6">
-          {/* Card Stato Piano */}
-          <Card className="rounded-xl border-indigo-100 shadow-md">
-            <CardHeader className="bg-indigo-600 text-white"><CardTitle className="text-lg flex items-center gap-2"><CreditCard className="w-5 h-5" /> Piano Mensile</CardTitle></CardHeader>
-            <CardContent className="pt-6">
-              <div className="text-center mb-4">
-                <span className="text-[10px] font-bold text-gray-400 uppercase">Post Rimanenti</span>
-                <div className="text-5xl font-bold">{Math.max(0, postTotali - postUsati)} / {postTotali}</div>
+          {(!posts || posts.length === 0) && (
+            <div className="text-center py-24 glass-card rounded-[2.5rem] border-dashed border-white/10">
+              <div className="w-20 h-20 mx-auto mb-6 bg-slate-800/50 rounded-full flex items-center justify-center">
+                <Check className="w-10 h-10 text-emerald-500/50" />
               </div>
-              <Progress value={usagePercent} className="h-2" />
-            </CardContent>
-          </Card>
-
-          {/* Area Strategica */}
-          <Card className="rounded-xl shadow-md border-gray-100">
-            <CardHeader className="bg-gray-900 text-white"><CardTitle className="text-sm uppercase flex items-center gap-2"><ShieldCheck className="w-4 h-4" /> Strategia</CardTitle></CardHeader>
-            <CardContent className="p-0">
-              <div className="divide-y divide-gray-100">
-                {['piano_strategico', 'piano_comunicazione', 'business_plan', 'business_model'].map(id => {
-                  const hasAccess = id === 'piano_strategico' || id === 'piano_comunicazione' || (id === 'business_plan' && client.include_business_plan) || (id === 'business_model' && client.include_business_model);
-                  const doc = strategicDocs.find(d => d.tipo_strategico === id);
-                  
-                  return (
-                    <div key={id} className={`p-4 flex items-center justify-between transition-colors ${!hasAccess ? 'opacity-40 grayscale bg-gray-50' : 'hover:bg-gray-50'}`}>
-                      <div className="flex items-center gap-3">
-                        <Briefcase className="w-4 h-4 text-indigo-600" />
-                        <span className="text-xs font-bold capitalize">{id.replace('_', ' ')}</span>
-                      </div>
-                      {hasAccess ? (
-                        doc ? <Download className="w-4 h-4 text-indigo-600 cursor-pointer" /> : <Clock className="w-4 h-4 text-gray-300" />
-                      ) : (
-                        <Badge variant="outline" className="text-[8px] uppercase">Upgrade</Badge>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Sezione Asset */}
-          <Card className="rounded-xl shadow-md border-gray-100">
-            <CardHeader>
-              <CardTitle className="text-sm uppercase flex items-center gap-2">
-                <FolderOpen className="w-4 h-4 text-indigo-600" /> I Tuoi Asset
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {materials?.filter(m => m.destinazione !== 'strategico').slice(0, 5).map(mat => (
-                <div key={mat.id} className="p-3 flex items-center gap-3 bg-gray-50 rounded-lg border border-gray-100">
-                  <div className="p-2 bg-indigo-50 rounded">
-                    <FolderOpen className="w-4 h-4 text-indigo-600" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-bold truncate">{mat.nome_file}</p>
-                    {mat.note_cliente && (
-                      <p className="text-[9px] text-gray-500 italic line-clamp-1">"{mat.note_cliente}"</p>
-                    )}
-                    <div className="flex justify-between items-center mt-1">
-                      <span className="text-[9px] text-gray-400">{mat.creato_il?.toDate().toLocaleDateString()}</span>
-                      <Badge className={`${STATO_VALIDAZIONE_COLORS[mat.stato_validazione].bg} ${STATO_VALIDAZIONE_COLORS[mat.stato_validazione].text} text-[8px] px-1 py-0 border-none`}>
-                        {STATO_VALIDAZIONE_LABELS[mat.stato_validazione]}
-                      </Badge>
-                    </div>
-                  </div>
-                </div>
-              ))}
-              {(!materials || materials.filter(m => m.destinazione !== 'strategico').length === 0) && (
-                <p className="text-xs text-gray-400 italic text-center py-4">Nessun asset caricato.</p>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="lg:col-span-3">
-          <Tabs defaultValue="feed">
-            <TabsList className="bg-transparent border-b rounded-none h-12 w-full justify-start p-0 mb-6">
-              <TabsTrigger value="feed" className="data-[state=active]:border-b-2 border-indigo-600 px-6 font-bold flex gap-2">
-                <LayoutGrid className="w-4 h-4" /> Preview Feed
-              </TabsTrigger>
-              <TabsTrigger value="calendar" className="data-[state=active]:border-b-2 border-indigo-600 px-6 font-bold flex gap-2">
-                <CalendarDays className="w-4 h-4" /> Calendario Editoriale
-              </TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="feed" className="space-y-6">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-headline font-bold">Simulazione Instagram</h2>
-                <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 animate-pulse">
-                  <Timer className="w-3 h-3 mr-1" /> Silenzio Assenso Attivo (24h)
-                </Badge>
-              </div>
-
-              {isPostsLoading ? <Skeleton className="h-64 w-full" /> : posts && posts.length > 0 ? (
-                <div className="space-y-8 max-w-[500px] mx-auto pb-20">
-                  {posts.filter(p => p.stato !== 'bozza').map((post: any) => {
-                    const material = materials?.find(m => m.id === post.materiale_id);
-                    return (
-                      <div 
-                        key={post.id} 
-                        id={`post-${post.id}`} 
-                        className={`transition-all duration-1000 ${post.id === postIdFromUrl ? 'ring-4 ring-indigo-500 ring-offset-4 rounded-xl' : ''}`}
-                      >
-                        <FeedInstagramPreview
-                          post={post}
-                          clienteNome={client.nome_azienda}
-                          clienteLogo={client.logo_url}
-                          showActions={haPermesso('approvazione_post') && post.stato === 'da_approvare'}
-                          materialUrl={material?.url_storage}
-                          onApprove={() => handleApprovazione(post.id, true)}
-                          onReject={() => handleApprovazione(post.id, false)}
-                          onComment={() => setPostPerCommenti(post.id)}
-                        />
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="text-center py-20 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
-                  <p className="text-gray-400 italic">Nessun post caricato nel feed.</p>
-                </div>
-              )}
-            </TabsContent>
-
-            <TabsContent value="calendar">
-               {posts && <CalendarioVisuale clienteId={clienteId} posts={posts} readOnly={true} />}
-            </TabsContent>
-          </Tabs>
+              <h3 className="text-white font-bold text-lg">Tutto approvato!</h3>
+              <p className="text-slate-500 text-sm mt-2">Nessun nuovo contenuto in attesa di revisione.</p>
+            </div>
+          )}
         </div>
       </div>
 
-      {postPerCommenti && clienteId && <CommentiSidebar clienteId={clienteId} postId={postPerCommenti} isOpen={!!postPerCommenti} onClose={() => setPostPerCommenti(null)} />}
+      {/* Dialog Modifiche */}
+      <Dialog open={!!selectedPost} onOpenChange={() => setSelectedPost(null)}>
+        <DialogContent className="bg-slate-900 border-white/10 text-white rounded-3xl max-w-sm sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-headline font-bold">Feedback Strategico</DialogTitle>
+            <DialogDescription className="text-slate-400">
+              Indica chiaramente quali modifiche desideri apportare al post <span className="text-indigo-400 font-bold">"{selectedPost?.titolo}"</span>.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-6 py-4">
+            <div className="space-y-2">
+              <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1">Le tue note</label>
+              <Textarea
+                value={noteModifica}
+                onChange={(e) => setNoteModifica(e.target.value)}
+                placeholder="Es: Cambia il tono della call-to-action, usa un font più leggibile..."
+                className="bg-slate-800/50 border-white/10 text-white min-h-[120px] rounded-2xl focus:ring-indigo-500/20"
+              />
+            </div>
+            
+            <div className="bg-amber-500/10 border border-amber-500/20 p-4 rounded-2xl flex gap-3">
+              <Info className="w-5 h-5 text-amber-400 shrink-0" />
+              <p className="text-[11px] text-amber-200 leading-relaxed">
+                Inviando questa richiesta, il post tornerà in stato di <span className="font-bold">Revisione Interna</span>. Il nostro team riceverà una notifica immediata.
+              </p>
+            </div>
+          </div>
+          <DialogFooter className="gap-3 sm:gap-0">
+            <Button variant="ghost" onClick={() => setSelectedPost(null)} className="text-slate-400 hover:text-white rounded-xl">
+              Annulla
+            </Button>
+            <Button 
+              onClick={handleRifiuta}
+              disabled={!noteModifica.trim() || loading}
+              className="bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl px-8"
+            >
+              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Invia Feedback'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

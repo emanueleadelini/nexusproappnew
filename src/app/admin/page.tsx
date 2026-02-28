@@ -1,111 +1,211 @@
-
 'use client';
 
-import { useFirestore, useMemoFirebase, useCollection, useUser } from '@/firebase';
-import { collection, query, orderBy } from 'firebase/firestore';
+import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, query, orderBy, limit, where, collectionGroup } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Building2, ChevronRight, PieChart, Plus } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { useState } from 'react';
-import { AggiungiClienteModal } from '@/components/admin/aggiungi-cliente-modal';
+import { Skeleton } from '@/components/ui/skeleton';
+import { 
+  Users, 
+  FileText, 
+  Clock, 
+  TrendingUp, 
+  Plus, 
+  ArrowRight, 
+  CheckCircle2,
+  PieChart,
+  Calendar,
+  AlertCircle
+} from 'lucide-react';
 import Link from 'next/link';
+import { STATO_POST_LABELS, STATO_POST_COLORS } from '@/types/post';
 
 export default function AdminDashboard() {
-  const db = useFirestore();
   const { user } = useUser();
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  
+  const db = useFirestore();
+
+  // Query Clienti
   const clientsQuery = useMemoFirebase(() => {
     if (!user) return null;
-    return query(collection(db, 'clienti'), orderBy('nome_azienda'));
+    return query(collection(db, 'clienti'), orderBy('creato_il', 'desc'), limit(5));
   }, [db, user]);
+  const { data: clients, isLoading: isClientsLoading } = useCollection<any>(clientsQuery);
 
-  const { data: clients, isLoading, error } = useCollection<any>(clientsQuery);
+  // Query Post in attesa (cross-client)
+  const pendingPostsQuery = useMemoFirebase(() => {
+    if (!user) return null;
+    return query(
+      collectionGroup(db, 'post'), 
+      where('stato', '==', 'da_approvare'),
+      limit(5)
+    );
+  }, [db, user]);
+  const { data: pendingPosts, isLoading: isPostsLoading } = useCollection<any>(pendingPostsQuery);
 
-  if (error) {
+  const totalUsed = clients?.reduce((acc: number, c: any) => acc + (c.post_usati || 0), 0) || 0;
+
+  if (isClientsLoading) {
     return (
-      <div className="text-center py-12">
-        <p className="text-red-600">Errore nel caricamento dei clienti.</p>
+      <div className="space-y-8">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-32 rounded-2xl bg-white/5" />)}
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <Skeleton className="h-[400px] rounded-2xl bg-white/5" />
+          <Skeleton className="h-[400px] rounded-2xl bg-white/5" />
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
+    <div className="space-y-8">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
         <div>
-          <h2 className="text-3xl font-headline font-bold">I Tuoi Clienti</h2>
-          <p className="text-muted-foreground">Gestisci le aziende e i loro piani editoriali.</p>
+          <h1 className="text-4xl font-headline font-bold text-white mb-2">Benvenuto, Admin</h1>
+          <p className="text-slate-400">Ecco cosa sta succedendo nel tuo Hub oggi.</p>
         </div>
-        <Button onClick={() => setIsAddModalOpen(true)} className="bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-100 gap-2">
-          <Plus className="w-4 h-4" /> Aggiungi Cliente
-        </Button>
+        <Link href="/admin/clienti">
+          <Button className="gradient-primary h-12 px-6 rounded-xl font-bold shadow-lg shadow-indigo-500/20 gap-2">
+            <Plus className="w-5 h-5" /> Nuovo Cliente
+          </Button>
+        </Link>
       </div>
 
-      {isLoading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[1, 2, 3].map((i) => <Skeleton key={i} className="h-48 rounded-xl" />)}
-        </div>
-      ) : clients && clients.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {clients.map((client) => {
-            const usagePercent = client.post_totali > 0 ? (client.post_usati / client.post_totali) * 100 : 0;
-            return (
-              <Link key={client.id} href={`/admin/clienti/${client.id}`}>
-                <Card className="hover:border-indigo-400 transition-colors cursor-pointer group rounded-xl border-gray-200/50">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold">
-                        {client.nome_azienda?.charAt(0).toUpperCase() || '?'}
-                      </div>
-                      <CardTitle className="text-lg font-headline font-semibold group-hover:text-indigo-600 transition-colors">
-                        {client.nome_azienda}
-                      </CardTitle>
-                    </div>
-                    <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-indigo-600 transition-colors" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      <div className="text-sm text-muted-foreground italic">
-                        {client.settore || 'Settore non specificato'}
-                      </div>
-                      <div className="space-y-2">
-                        <div className="flex justify-between text-xs font-medium">
-                          <span className="flex items-center gap-1"><PieChart className="w-3 h-3" /> Crediti Post</span>
-                          <span className={usagePercent > 80 ? "text-red-600 font-bold" : ""}>
-                            {client.post_usati} / {client.post_totali}
-                          </span>
-                        </div>
-                        <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
-                          <div 
-                            className={`h-full transition-all ${usagePercent > 80 ? 'bg-red-500' : 'bg-indigo-600'}`} 
-                            style={{ width: `${Math.min(usagePercent, 100)}%` }}
-                          />
-                        </div>
-                      </div>
-                      <div className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">
-                        {client.email_riferimento}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </Link>
-            );
-          })}
-        </div>
-      ) : (
-        <div className="text-center py-24 bg-white rounded-xl border-2 border-dashed">
-          <Building2 className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-lg font-medium">Nessun cliente trovato</h3>
-          <p className="text-muted-foreground">Inizia aggiungendo un nuovo cliente per gestire i suoi post.</p>
-          <Button onClick={() => setIsAddModalOpen(true)} variant="outline" className="mt-4 border-indigo-600 text-indigo-600 hover:bg-indigo-50">
-            Aggiungi il tuo primo cliente
-          </Button>
-        </div>
-      )}
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <Card className="glass-card border-none overflow-hidden group">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="w-12 h-12 bg-indigo-500/20 rounded-2xl flex items-center justify-center text-indigo-400 group-hover:scale-110 transition-transform">
+                <Users className="w-6 h-6" />
+              </div>
+              <Badge variant="outline" className="text-[10px] text-indigo-400 border-indigo-500/20 font-black">+2</Badge>
+            </div>
+            <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-1">Clienti Attivi</p>
+            <p className="text-3xl font-bold text-white">{clients?.length || 0}</p>
+          </CardContent>
+        </Card>
 
-      <AggiungiClienteModal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} />
+        <Card className="glass-card border-none overflow-hidden group">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="w-12 h-12 bg-amber-500/20 rounded-2xl flex items-center justify-center text-amber-400 group-hover:scale-110 transition-transform">
+                <Clock className="w-6 h-6" />
+              </div>
+              <Badge variant="outline" className="text-[10px] text-amber-400 border-amber-500/20 font-black">Urgent</Badge>
+            </div>
+            <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-1">In Approvazione</p>
+            <p className="text-3xl font-bold text-white">{pendingPosts?.length || 0}</p>
+          </CardContent>
+        </Card>
+
+        <Card className="glass-card border-none overflow-hidden group">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="w-12 h-12 bg-emerald-500/20 rounded-2xl flex items-center justify-center text-emerald-400 group-hover:scale-110 transition-transform">
+                <FileText className="w-6 h-6" />
+              </div>
+              <Badge variant="outline" className="text-[10px] text-emerald-400 border-emerald-500/20 font-black">Monthly</Badge>
+            </div>
+            <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-1">Post Prodotti</p>
+            <p className="text-3xl font-bold text-white">{totalUsed}</p>
+          </CardContent>
+        </Card>
+
+        <Card className="glass-card border-none overflow-hidden group">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="w-12 h-12 bg-purple-500/20 rounded-2xl flex items-center justify-center text-purple-400 group-hover:scale-110 transition-transform">
+                <TrendingUp className="w-6 h-6" />
+              </div>
+              <Badge variant="outline" className="text-[10px] text-purple-400 border-purple-500/20 font-black">Live</Badge>
+            </div>
+            <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-1">Health Score</p>
+            <p className="text-3xl font-bold text-white">98%</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Ultimi Clienti */}
+        <Card className="glass-card border-none">
+          <CardHeader className="flex flex-row items-center justify-between border-b border-white/5 pb-6">
+            <CardTitle className="text-lg font-headline flex items-center gap-2">
+              <Users className="w-5 h-5 text-indigo-400" /> Ultimi Clienti Aggiunti
+            </CardTitle>
+            <Link href="/admin/clienti">
+              <Button variant="ghost" size="sm" className="text-xs text-indigo-400 hover:text-white transition-colors">
+                Vedi tutti <ArrowRight className="w-4 h-4 ml-1" />
+              </Button>
+            </Link>
+          </CardHeader>
+          <CardContent className="pt-6 px-0">
+            <div className="divide-y divide-white/5">
+              {clients?.map((client: any) => (
+                <div key={client.id} className="p-4 flex items-center justify-between hover:bg-white/5 transition-colors cursor-pointer group">
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-xl bg-slate-800 border border-white/10 flex items-center justify-center font-bold text-indigo-400">
+                      {client.nome_azienda.charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-white group-hover:text-indigo-400 transition-colors">{client.nome_azienda}</p>
+                      <p className="text-[10px] text-slate-500 uppercase font-black">{client.settore || 'Servizi'}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs font-bold text-white">{client.post_usati} / {client.post_totali}</p>
+                    <p className="text-[9px] text-slate-500 uppercase tracking-tighter">Crediti Post</p>
+                  </div>
+                </div>
+              ))}
+              {(!clients || clients.length === 0) && (
+                <div className="p-10 text-center text-slate-500 italic text-sm">Nessun cliente censito.</div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Post in Attesa */}
+        <Card className="glass-card border-none">
+          <CardHeader className="flex flex-row items-center justify-between border-b border-white/5 pb-6">
+            <CardTitle className="text-lg font-headline flex items-center gap-2">
+              <AlertCircle className="w-5 h-5 text-amber-400" /> Workflow in Attesa
+            </CardTitle>
+            <Badge className="bg-amber-500/20 text-amber-400 border-none px-2 py-0.5 text-[10px] font-black uppercase">
+              {pendingPosts?.length || 0} Task
+            </Badge>
+          </CardHeader>
+          <CardContent className="pt-6 px-0">
+            <div className="divide-y divide-white/5">
+              {pendingPosts?.map((post: any) => (
+                <div key={post.id} className="p-4 flex items-center justify-between hover:bg-white/5 transition-colors group">
+                  <div className="flex items-center gap-4">
+                    <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse shadow-lg shadow-amber-500/50" />
+                    <div className="min-w-0">
+                      <p className="text-sm font-bold text-white truncate max-w-[200px]">{post.titolo}</p>
+                      <p className="text-[10px] text-slate-500 uppercase font-black flex items-center gap-1">
+                        <Calendar className="w-3 h-3" /> {post.piattaforma}
+                      </p>
+                    </div>
+                  </div>
+                  <Button size="sm" variant="ghost" className="h-8 text-[10px] font-bold uppercase text-indigo-400 hover:bg-indigo-500 hover:text-white rounded-lg">
+                    Gestisci
+                  </Button>
+                </div>
+              ))}
+              {(!pendingPosts || pendingPosts.length === 0) && (
+                <div className="p-16 text-center flex flex-col items-center justify-center space-y-3">
+                  <CheckCircle2 className="w-12 h-12 text-emerald-500/30" />
+                  <p className="text-slate-500 italic text-sm">Tutti i workflow sono aggiornati!</p>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

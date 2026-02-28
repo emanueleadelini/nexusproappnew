@@ -5,8 +5,9 @@ import { useRouter } from 'next/navigation';
 import { useUser, useFirestore, useDoc, useMemoFirebase, useAuth } from '@/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
-import { LogOut, Loader2, UserCircle, Briefcase, ShieldCheck } from 'lucide-react';
+import { LogOut, Loader2, UserCircle, Briefcase, ShieldCheck, LayoutGrid, Calendar, Bell } from 'lucide-react';
 import { NotificheBell } from '@/components/notifiche-bell';
+import Link from 'next/link';
 
 export default function ClienteLayout({ children }: { children: React.ReactNode }) {
   const { user, isUserLoading } = useUser();
@@ -14,7 +15,6 @@ export default function ClienteLayout({ children }: { children: React.ReactNode 
   const auth = useAuth();
   const router = useRouter();
   const [isAuthorized, setIsAuthorized] = useState(false);
-  const [nomeAzienda, setNomeAzienda] = useState('');
   const [clienteId, setClienteId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -31,9 +31,8 @@ export default function ClienteLayout({ children }: { children: React.ReactNode 
         if (userDoc.exists()) {
           const data = userDoc.data();
           const ruolo = data.ruolo;
-          if (ruolo === 'referente' || ruolo === 'collaboratore') {
+          if (ruolo === 'referente' || ruolo === 'collaboratore' || ruolo === 'cliente') {
             setIsAuthorized(true);
-            setNomeAzienda(data.nomeAzienda || 'La tua Azienda');
             setClienteId(data.cliente_id);
           } else {
             router.push('/login');
@@ -49,9 +48,9 @@ export default function ClienteLayout({ children }: { children: React.ReactNode 
   }, [user, isUserLoading, db, router]);
 
   const clientDocRef = useMemoFirebase(() => {
-    if (!user || !clienteId) return null;
+    if (!clienteId) return null;
     return doc(db, 'clienti', clienteId);
-  }, [db, clienteId, user]);
+  }, [db, clienteId]);
   const { data: clientData } = useDoc<any>(clientDocRef);
 
   if (isUserLoading || !isAuthorized) {
@@ -67,23 +66,19 @@ export default function ClienteLayout({ children }: { children: React.ReactNode 
     <div className="min-h-screen bg-slate-950 flex flex-col">
       <header className="bg-slate-900/50 backdrop-blur-xl border-b border-white/5 h-20 flex items-center justify-between px-6 md:px-12 sticky top-0 z-30 shadow-2xl">
         <div className="flex items-center gap-6">
-          <div className="font-headline font-bold text-xl text-white flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-slate-800 border border-white/10 shadow-inner overflow-hidden flex items-center justify-center p-1">
+          <Link href="/cliente" className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-slate-800 border border-white/10 shadow-inner overflow-hidden flex items-center justify-center p-1 group hover:border-indigo-500/50 transition-colors">
               {clientData?.logo_url ? (
                 <img src={clientData.logo_url} alt="Logo" className="w-full h-full object-contain" />
               ) : (
-                <ShieldCheck className="w-6 h-6 text-indigo-500" />
+                <ShieldCheck className="w-6 h-6 text-indigo-500 group-hover:scale-110 transition-transform" />
               )}
             </div>
             <div className="flex flex-col">
-              <span className="leading-tight">AD next lab</span>
-              <span className="text-[10px] text-indigo-400 uppercase tracking-widest font-black">Nexus Pro</span>
+              <span className="text-white font-headline font-bold leading-tight">Nexus Pro</span>
+              <span className="text-[10px] text-indigo-400 uppercase tracking-widest font-black">Client Hub</span>
             </div>
-          </div>
-          <div className="hidden md:block h-8 w-px bg-white/10" />
-          <div className="hidden md:flex items-center gap-3 text-xs text-slate-300 font-bold bg-white/5 px-4 py-2 rounded-full border border-white/5">
-             <UserCircle className="w-4 h-4 text-indigo-400" /> {nomeAzienda}
-          </div>
+          </Link>
         </div>
         
         <div className="flex items-center gap-4">
@@ -91,7 +86,7 @@ export default function ClienteLayout({ children }: { children: React.ReactNode 
           <Button 
             variant="ghost" 
             size="sm" 
-            className="text-slate-400 font-bold gap-2 hover:bg-red-500/10 hover:text-red-400 transition-all rounded-lg" 
+            className="text-slate-400 font-bold gap-2 hover:bg-red-500/10 hover:text-red-400 transition-all rounded-lg h-10" 
             onClick={() => auth.signOut()}
           >
             <LogOut className="w-4 h-4" /> 
@@ -100,11 +95,26 @@ export default function ClienteLayout({ children }: { children: React.ReactNode 
         </div>
       </header>
       
-      <main className="flex-1 p-4 md:p-12 max-w-7xl mx-auto w-full animate-in fade-in duration-700">
+      <main className="flex-1 max-w-7xl mx-auto w-full">
         {children}
       </main>
 
-      <footer className="bg-slate-900/30 border-t border-white/5 p-8 text-center text-slate-500 text-[10px] font-bold uppercase tracking-widest">
+      <nav className="md:hidden bg-slate-900/80 backdrop-blur-xl border-t border-white/5 fixed bottom-0 left-0 right-0 h-16 flex items-center justify-around z-40 px-6">
+        <Link href="/cliente" className="flex flex-col items-center gap-1 text-indigo-400">
+          <LayoutGrid className="w-5 h-5" />
+          <span className="text-[9px] font-black uppercase">Feed</span>
+        </Link>
+        <Link href="/cliente/notifiche" className="flex flex-col items-center gap-1 text-slate-500 hover:text-white transition-colors">
+          <Bell className="w-5 h-5" />
+          <span className="text-[9px] font-black uppercase">Notifiche</span>
+        </Link>
+        <button onClick={() => auth.signOut()} className="flex flex-col items-center gap-1 text-slate-500">
+          <LogOut className="w-5 h-5" />
+          <span className="text-[9px] font-black uppercase">Esci</span>
+        </button>
+      </nav>
+
+      <footer className="bg-slate-900/30 border-t border-white/5 p-8 text-center text-slate-500 text-[10px] font-bold uppercase tracking-widest pb-24 md:pb-8">
         &copy; {new Date().getFullYear()} AD next lab Hub Digitale &bull; Progettato per l'eccellenza digitale
       </footer>
     </div>

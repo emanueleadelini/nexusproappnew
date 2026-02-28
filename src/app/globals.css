@@ -32,7 +32,7 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground font-body;
+    @apply bg-background text-foreground font-body antialiased;
   }
   h1, h2, h3, h4, h5, h6 {
     @apply font-headline font-semibold tracking-tight;
@@ -40,7 +40,7 @@
 }
 
 .glass-card {
-  @apply bg-white/5 backdrop-blur-md border border-white/10 shadow-2xl;
+  @apply bg-slate-900/50 backdrop-blur-xl border border-white/10 shadow-2xl;
 }
 
 .gradient-text {
@@ -48,5 +48,15 @@
 }
 
 .gradient-primary {
-  @apply bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500;
+  @apply bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 transition-all duration-300;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  @apply bg-white/10 rounded-full hover:bg-white/20;
 }
