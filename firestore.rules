@@ -6,44 +6,23 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function userHasRole(role) {
+    function getUserRole() {
       let userDoc = get(/databases/$(database)/documents/users/$(request.auth.uid));
-      return userDoc != null && userDoc.data.ruolo == role;
+      return userDoc.exists ? userDoc.data.ruolo : null;
     }
 
-    function userHasClienteId(clientId) {
+    function getUserClienteId() {
       let userDoc = get(/databases/$(database)/documents/users/$(request.auth.uid));
-      return userDoc != null && userDoc.data.cliente_id == clientId;
-    }
-
-    function isSuperAdmin() {
-      // Unico admin globale per AD Next Lab
-      return isSignedIn() && request.auth.token.email == 'emanueleadelini@gmail.com';
+      return userDoc.exists ? userDoc.data.cliente_id : null;
     }
 
     function isAgency() {
-      return isSuperAdmin() || (isSignedIn() && userHasRole('operatore'));
+      let role = getUserRole();
+      return role == 'admin' || role == 'super_admin' || role == 'operatore' || request.auth.token.email == 'emanueleadelini@gmail.com';
     }
 
-    function isReferente(clientId) {
-      return isSignedIn() && userHasRole('referente') && userHasClienteId(clientId);
-    }
-
-    function isCollaboratore(clientId) {
-      return isSignedIn() && userHasRole('collaboratore') && userHasClienteId(clientId);
-    }
-
-    function isClient(clientId) {
-      return isReferente(clientId) || isCollaboratore(clientId);
-    }
-
-    // --- COLLECTION GROUP (per Admin Dashboard) ---
-    match /{path=**}/post/{postId} {
-      allow list: if isAgency();
-    }
-
-    match /{path=**}/notifiche/{notificaId} {
-      allow list: if isAgency();
+    function isClientOf(clienteId) {
+      return getUserClienteId() == clienteId;
     }
 
     // --- USERS ---
@@ -51,8 +30,8 @@ service cloud.firestore {
       allow get: if isSignedIn() && (request.auth.uid == uid || isAgency());
       allow list: if isAgency();
       allow create: if isSignedIn();
-      allow update: if (request.auth.uid == uid) || isSuperAdmin();
-      allow delete: if isSuperAdmin();
+      allow update: if (request.auth.uid == uid) || isAgency();
+      allow delete: if isAgency();
 
       match /notifiche/{notificaId} {
         allow read: if request.auth.uid == uid || isAgency();
@@ -64,27 +43,27 @@ service cloud.firestore {
 
     // --- CLIENTI ---
     match /clienti/{clienteId} {
-      allow get: if isClient(clienteId) || isAgency();
+      allow get: if isAgency() || isClientOf(clienteId);
       allow list: if isAgency();
-      allow create, update, delete: if isSuperAdmin();
+      allow create, update, delete: if isAgency();
 
       // POST subcollection
       match /post/{postId} {
-        allow get, list: if isClient(clienteId) || isAgency();
+        allow get, list: if isAgency() || isClientOf(clienteId);
         allow create: if isAgency();
-        allow update: if isAgency() || isClient(clienteId);
+        allow update: if isAgency() || isClientOf(clienteId);
         allow delete: if isAgency();
         
         match /commenti/{commentoId} {
-          allow read, write: if isClient(clienteId) || isAgency();
+          allow read, write: if isAgency() || isClientOf(clienteId);
         }
       }
 
       // MATERIALI subcollection
       match /materiali/{materialeId} {
-        allow get, list: if isClient(clienteId) || isAgency();
-        allow create: if isClient(clienteId) || isAgency();
-        allow update: if isAgency() || isClient(clienteId);
+        allow get, list: if isAgency() || isClientOf(clienteId);
+        allow create: if isAgency() || isClientOf(clienteId);
+        allow update: if isAgency();
         allow delete: if isAgency();
       }
     }

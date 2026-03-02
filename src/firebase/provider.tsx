@@ -92,7 +92,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
     return () => unsubscribeData();
   }, [authState.user, firestore]);
 
-  // QUERY GLOBALI PROTETTE (IDENTITY-AWARE)
+  // QUERY GLOBALI PROTETTE (SOLO PER ADMIN)
   const isAdmin = authState.user?.email === ADMIN_EMAIL;
   
   const usersQuery = useMemoFirebase(() => {

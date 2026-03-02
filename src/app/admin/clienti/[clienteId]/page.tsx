@@ -170,12 +170,12 @@ export default function ClienteDettaglio() {
   };
 
   if (isClientLoading) return <div className="p-8"><Skeleton className="h-64"/></div>;
-  if (!client) return <div className="p-8 text-center"><p className="text-slate-500 font-bold">Cliente non trovato.</p></div>;
+  if (!client) return <div className="p-8 text-center"><p className="text-slate-900 font-bold">Cliente non trovato.</p></div>;
 
   const usagePercent = (client.post_usati / (client.post_totali || 1)) * 100;
   
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
+    <div className="space-y-8 animate-in fade-in duration-500 bg-slate-50 min-h-screen p-2 md:p-0">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
         <div className="flex items-center gap-4">
           <div className="w-16 h-16 rounded-2xl bg-white border border-slate-200 flex items-center justify-center overflow-hidden shadow-sm">
@@ -189,19 +189,19 @@ export default function ClienteDettaglio() {
         <div className="flex flex-wrap gap-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="h-11 rounded-xl gap-2 font-bold text-slate-600 border-slate-200">
+              <Button variant="outline" className="h-11 rounded-xl gap-2 font-bold text-slate-900 border-slate-200 bg-white">
                 <Settings className="w-4 h-4" /> Gestione Account
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56 rounded-xl shadow-xl border-slate-100 p-2">
+            <DropdownMenuContent align="end" className="w-56 rounded-xl shadow-xl border-slate-100 p-2 bg-white">
               <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 p-2">Opzioni Tenant</DropdownMenuLabel>
-              <DropdownMenuItem onClick={handleResetPassword} className="rounded-lg gap-3 p-3 cursor-pointer">
+              <DropdownMenuItem onClick={handleResetPassword} className="rounded-lg gap-3 p-3 cursor-pointer hover:bg-slate-50">
                 <KeyRound className="w-4 h-4 text-indigo-600" />
-                <span className="text-sm font-bold text-slate-700">Reset Password</span>
+                <span className="text-sm font-bold text-slate-900">Reset Password</span>
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleDownloadAll} className="rounded-lg gap-3 p-3 cursor-pointer">
+              <DropdownMenuItem onClick={handleDownloadAll} className="rounded-lg gap-3 p-3 cursor-pointer hover:bg-slate-50">
                 <Download className="w-4 h-4 text-emerald-600" />
-                <span className="text-sm font-bold text-slate-700">Scarica Tutto</span>
+                <span className="text-sm font-bold text-slate-900">Scarica Tutto</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <AlertDialog>
@@ -218,7 +218,7 @@ export default function ClienteDettaglio() {
                   </AlertDialogHeader>
                   <AlertDialogFooter className="gap-3">
                     <AlertDialogCancel className="rounded-xl font-bold">Annulla</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleDeleteClient} className="bg-red-600 hover:bg-red-700 rounded-xl font-bold px-8">
+                    <AlertDialogAction onClick={handleDeleteClient} className="bg-red-600 hover:bg-red-700 rounded-xl font-bold px-8 text-white">
                       {isDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Elimina'}
                     </AlertDialogAction>
                   </AlertDialogFooter>
@@ -227,8 +227,8 @@ export default function ClienteDettaglio() {
             </DropdownMenuContent>
           </DropdownMenu>
 
-          <Button variant="outline" onClick={() => setIsCaricaMaterialeOpen(true)} className="h-11 border-slate-200 text-slate-700 rounded-xl font-bold px-6 hover:bg-slate-50"><FolderOpen className="w-4 h-4 mr-2"/> Carica Asset</Button>
-          <Button variant="outline" onClick={() => setIsCreaManualeOpen(true)} className="h-11 border-indigo-600 text-indigo-700 rounded-xl font-bold px-6 hover:bg-indigo-50"><Plus className="w-4 h-4 mr-2"/> Nuovo Post</Button>
+          <Button variant="outline" onClick={() => setIsCaricaMaterialeOpen(true)} className="h-11 border-slate-200 text-slate-900 bg-white rounded-xl font-bold px-6 hover:bg-slate-50"><FolderOpen className="w-4 h-4 mr-2"/> Carica Asset</Button>
+          <Button variant="outline" onClick={() => setIsCreaManualeOpen(true)} className="h-11 border-indigo-600 text-indigo-700 bg-white rounded-xl font-bold px-6 hover:bg-indigo-50"><Plus className="w-4 h-4 mr-2"/> Nuovo Post</Button>
           <Button onClick={() => setIsGeneraOpen(true)} className="h-11 gradient-primary shadow-lg shadow-indigo-500/20 rounded-xl font-bold px-6"><Sparkles className="w-4 h-4 mr-2"/> Genera AI</Button>
         </div>
       </div>
@@ -286,7 +286,7 @@ export default function ClienteDettaglio() {
             </TabsContent>
 
             <TabsContent value="visual">
-              <div className="glass-card p-6 rounded-[2.5rem] border-none shadow-sm">
+              <div className="glass-card p-6 rounded-[2.5rem] border-none shadow-sm bg-white">
                 {posts && <CalendarioVisuale clienteId={clienteId} posts={posts} onAddPost={() => setIsCreaManualeOpen(true)} />}
               </div>
             </TabsContent>
@@ -381,7 +381,7 @@ export default function ClienteDettaglio() {
         </div>
 
         <div className="space-y-6">
-          <Card className="glass-card border-none rounded-[2.5rem] overflow-hidden shadow-sm">
+          <Card className="glass-card border-none rounded-[2.5rem] overflow-hidden shadow-sm bg-white">
             <CardHeader className="bg-indigo-600 p-8"><CardTitle className="text-white text-lg font-headline flex items-center gap-2"><Zap className="w-5 h-5 fill-white" /> Crediti Piano</CardTitle></CardHeader>
             <CardContent className="p-8 space-y-8">
               <div className="text-center p-6 bg-slate-50 rounded-3xl border border-slate-100">

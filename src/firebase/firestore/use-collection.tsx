@@ -43,7 +43,7 @@ export function useCollection<T = any>(
       return;
     }
 
-    // GUARDIA 2: Protezione percorsi "unknown"
+    // GUARDIA 2: Protezione percorsi non validi o "unknown"
     try {
       const path = (memoizedTargetRefOrQuery as any).type === 'collection'
         ? (memoizedTargetRefOrQuery as CollectionReference).path
@@ -55,7 +55,7 @@ export function useCollection<T = any>(
         return;
       }
     } catch (e) {
-      // Ignora errori di parsing del path
+      // Silenzia errori di parsing del path
     }
 
     if (unsubscribeRef.current) unsubscribeRef.current();
@@ -75,9 +75,9 @@ export function useCollection<T = any>(
         setIsLoading(false);
       },
       (err: FirestoreError) => {
-        // GUARDIA 3: Silenzio assenso durante caricamento o transizioni
+        // GUARDIA 3: Silenzio assenso durante caricamento o transizioni di auth
         if (err.code === 'permission-denied') {
-          console.warn('useCollection: Permesso negato silenziato per evitare crash visivi.');
+          console.warn('useCollection: Permesso negato silenziato (fase di caricamento auth).');
           setData(null);
           setIsLoading(false);
           return;
