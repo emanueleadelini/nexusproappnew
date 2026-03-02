@@ -3,8 +3,8 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * NEXUS PRO DEFINITIVE RULES V5.8
-     * Supporto per Collection Group, Multi-tenancy e Identity-Aware Gating.
+     * NEXUS PRO DEFINITIVE RULES V6.0
+     * Supporto per multi-tenancy e prevenzione crash.
      */
 
     // --- HELPER FUNCTIONS ---
@@ -19,7 +19,8 @@ service cloud.firestore {
     }
 
     function isSuperAdmin() {
-      return isSignedIn() && (getUserData().ruolo == 'super_admin' || getUserData().ruolo == 'admin');
+      let data = getUserData();
+      return isSignedIn() && (data.ruolo == 'super_admin' || data.ruolo == 'admin');
     }
 
     function isOperatore() {
@@ -30,25 +31,16 @@ service cloud.firestore {
       return isSuperAdmin() || isOperatore();
     }
 
-    function isReferente(clientId) {
-      let data = getUserData();
-      return isSignedIn() && data.ruolo == 'referente' && data.cliente_id == clientId;
-    }
-
-    function isCollaboratore(clientId) {
-      let data = getUserData();
-      return isSignedIn() && data.ruolo == 'collaboratore' && data.cliente_id == clientId;
-    }
-
     function isClient(clientId) {
-      return isReferente(clientId) || isCollaboratore(clientId);
+      let data = getUserData();
+      return isSignedIn() && (data.ruolo == 'referente' || data.ruolo == 'collaboratore' || data.ruolo == 'cliente') && data.cliente_id == clientId;
     }
 
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    // --- COLLECTION GROUP RULES (Necessarie per Dashboard Admin) ---
+    // --- COLLECTION GROUP RULES ---
     
     match /{path=**}/post/{postId} {
       allow list: if isAgency();
@@ -70,7 +62,7 @@ service cloud.firestore {
       match /notifiche/{notificaId} {
         allow read: if isOwner(uid) || isAgency();
         allow create: if isSignedIn(); 
-        allow update: if isOwner(uid) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['letta', 'letta_il']);
+        allow update: if isOwner(uid);
         allow delete: if isAgency();
       }
     }
@@ -83,10 +75,7 @@ service cloud.firestore {
       match /post/{postId} {
         allow get, list: if isClient(clienteId) || isAgency();
         allow create: if isAgency();
-        allow update: if isAgency() || 
-          (isReferente(clienteId) && 
-           resource.data.stato == 'da_approvare' && 
-           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stato', 'storico_stati', 'aggiornato_il']));
+        allow update: if isAgency() || isClient(clienteId);
         allow delete: if isAgency();
         
         match /commenti/{commentoId} {
@@ -97,7 +86,7 @@ service cloud.firestore {
       match /materiali/{materialeId} {
         allow get, list: if isClient(clienteId) || isAgency();
         allow create: if isClient(clienteId) || isAgency();
-        allow update: if isAgency() || (isReferente(clientId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stato_validazione', 'note_rifiuto']));
+        allow update: if isAgency() || isClient(clienteId);
         allow delete: if isAgency();
       }
     }
