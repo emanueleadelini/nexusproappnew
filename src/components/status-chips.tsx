@@ -5,14 +5,14 @@ import { StatoPost, STATO_POST_LABELS } from "@/types/post";
 import { StatoValidazione, STATO_VALIDAZIONE_LABELS } from "@/types/material";
 
 export function PostStatoChip({ stato }: { stato: StatoPost }) {
-  // Stili ad alta visibilità per Dark Mode
+  // Stili ad alta visibilità per Light Mode
   const styles: Record<string, string> = {
-    bozza: 'bg-slate-800 text-slate-300 border-slate-700',
-    revisione_interna: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-    da_approvare: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
-    revisione: 'bg-red-500/20 text-red-400 border-red-500/30',
-    approvato: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
-    programmato: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
+    bozza: 'bg-slate-100 text-slate-600 border-slate-200',
+    revisione_interna: 'bg-blue-50 text-blue-700 border-blue-100',
+    da_approvare: 'bg-amber-50 text-amber-700 border-amber-100',
+    revisione: 'bg-red-50 text-red-700 border-red-100',
+    approvato: 'bg-emerald-50 text-emerald-700 border-emerald-100',
+    programmato: 'bg-purple-50 text-purple-700 border-purple-100',
     pubblicato: 'bg-indigo-600 text-white border-transparent',
   };
 
@@ -27,9 +27,9 @@ export function PostStatoChip({ stato }: { stato: StatoPost }) {
 
 export function MaterialeStatoChip({ stato }: { stato: StatoValidazione }) {
   const styles: Record<string, string> = {
-    in_attesa: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
-    validato: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
-    rifiutato: 'bg-red-500/20 text-red-400 border-red-500/30',
+    in_attesa: 'bg-amber-50 text-amber-700 border-amber-100',
+    validato: 'bg-emerald-50 text-emerald-700 border-emerald-100',
+    rifiutato: 'bg-red-50 text-red-700 border-red-100',
   };
 
   const label = STATO_VALIDAZIONE_LABELS[stato] || stato;

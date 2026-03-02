@@ -115,9 +115,9 @@ export default function ClienteFeedPage() {
       <div className="max-w-lg mx-auto space-y-8 pt-8 px-4">
         {[1, 2].map(i => (
           <div key={i} className="space-y-4">
-            <Skeleton className="h-12 w-full rounded-xl bg-white/5" />
-            <Skeleton className="aspect-square w-full rounded-2xl bg-white/5" />
-            <Skeleton className="h-24 w-full rounded-xl bg-white/5" />
+            <Skeleton className="h-12 w-full rounded-xl bg-slate-100" />
+            <Skeleton className="aspect-square w-full rounded-2xl bg-slate-100" />
+            <Skeleton className="h-24 w-full rounded-xl bg-slate-100" />
           </div>
         ))}
       </div>
@@ -125,13 +125,13 @@ export default function ClienteFeedPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 py-12 px-4 relative">
+    <div className="min-h-screen bg-slate-50 py-12 px-4 relative">
       <div className="max-w-lg mx-auto space-y-10">
         <div className="text-center space-y-2 animate-in fade-in slide-in-from-top-4 duration-700">
-          <h2 className="text-3xl font-headline font-bold text-white">Hub Contenuti</h2>
-          <p className="text-slate-400 text-sm font-medium">Strategia & Approvazione Real-time</p>
+          <h2 className="text-3xl font-headline font-bold text-slate-900">Hub Contenuti</h2>
+          <p className="text-slate-500 font-bold">Strategia & Approvazione Real-time</p>
           <div className="pt-4 flex justify-center">
-            <Badge variant="outline" className="bg-indigo-500/10 text-indigo-400 border-indigo-500/20 px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest">
+            <Badge variant="outline" className="bg-white text-indigo-600 border-indigo-100 px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm">
               <Zap className="w-3 h-3 mr-1.5 fill-current" /> Silenzio Assenso Attivo (24h)
             </Badge>
           </div>
@@ -142,7 +142,7 @@ export default function ClienteFeedPage() {
             <div 
               key={post.id} 
               id={`post-${post.id}`}
-              className={`animate-in fade-in slide-in-from-bottom-6 duration-1000 transition-all ${post.id === highlightPostId ? 'ring-2 ring-indigo-500 rounded-[2rem] p-2 bg-indigo-500/5' : ''}`}
+              className={`animate-in fade-in slide-in-from-bottom-6 duration-1000 transition-all ${post.id === highlightPostId ? 'ring-2 ring-indigo-600 rounded-[2rem] p-2 bg-indigo-50' : ''}`}
             >
               <FeedInstagramPreview
                 post={post}
@@ -157,45 +157,45 @@ export default function ClienteFeedPage() {
           ))}
 
           {(!posts || posts.length === 0) && (
-            <div className="text-center py-24 glass-card rounded-[2.5rem] border-dashed border-white/10">
-              <div className="w-20 h-20 mx-auto mb-6 bg-slate-800/50 rounded-full flex items-center justify-center">
-                <Check className="w-10 h-10 text-emerald-500/50" />
+            <div className="text-center py-24 bg-white rounded-[2.5rem] border border-slate-200 shadow-sm">
+              <div className="w-20 h-20 mx-auto mb-6 bg-slate-50 rounded-full flex items-center justify-center">
+                <Check className="w-10 h-10 text-emerald-500" />
               </div>
-              <h3 className="text-white font-bold text-lg">Tutto approvato!</h3>
-              <p className="text-slate-500 text-sm mt-2">Nessun nuovo contenuto in attesa di revisione.</p>
+              <h3 className="text-slate-900 font-bold text-lg">Tutto approvato!</h3>
+              <p className="text-slate-500 font-medium mt-2">Nessun nuovo contenuto in attesa di revisione.</p>
             </div>
           )}
         </div>
       </div>
 
       <Dialog open={!!selectedPost} onOpenChange={() => setSelectedPost(null)}>
-        <DialogContent className="bg-slate-900 border-white/10 text-white rounded-3xl max-w-sm sm:max-w-md">
+        <DialogContent className="bg-white border-slate-200 text-slate-900 rounded-3xl max-w-sm sm:max-w-md shadow-2xl">
           <DialogHeader>
-            <DialogTitle className="text-xl font-headline font-bold">Feedback Strategico</DialogTitle>
-            <DialogDescription className="text-slate-400">
+            <DialogTitle className="text-xl font-headline font-bold text-slate-900">Feedback Strategico</DialogTitle>
+            <DialogDescription className="text-slate-500 font-medium">
               Indica chiaramente quali modifiche desideri apportare al post.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-6 py-4">
             <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1">Le tue note</label>
+              <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Le tue note</label>
               <Textarea
                 value={noteModifica}
                 onChange={(e) => setNoteModifica(e.target.value)}
                 placeholder="Es: Cambia il tono della call-to-action..."
-                className="bg-slate-800/50 border-white/10 text-white min-h-[120px] rounded-2xl focus:ring-indigo-500/20"
+                className="bg-slate-50 border-slate-200 text-slate-900 min-h-[120px] rounded-2xl focus:ring-indigo-500/20"
               />
             </div>
             
-            <div className="bg-amber-500/10 border border-amber-500/20 p-4 rounded-2xl flex gap-3">
-              <Info className="w-5 h-5 text-amber-400 shrink-0" />
-              <p className="text-[11px] text-amber-200 leading-relaxed">
+            <div className="bg-amber-50 border border-amber-100 p-4 rounded-2xl flex gap-3">
+              <Info className="w-5 h-5 text-amber-600 shrink-0" />
+              <p className="text-[11px] text-amber-800 leading-relaxed font-medium">
                 Inviando questa richiesta, il post tornerà in stato di <span className="font-bold">Revisione</span>.
               </p>
             </div>
           </div>
           <DialogFooter className="gap-3 sm:gap-0">
-            <Button variant="ghost" onClick={() => setSelectedPost(null)} className="text-slate-400 hover:text-white">
+            <Button variant="ghost" onClick={() => setSelectedPost(null)} className="text-slate-500 font-bold hover:text-slate-900">
               Annulla
             </Button>
             <Button 

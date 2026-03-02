@@ -4,26 +4,26 @@
 
 @layer base {
   :root {
-    --background: 222 47% 2%; /* Sfondo ultra-deep quasi nero */
-    --foreground: 210 40% 98%;
-    --card: 222 47% 5%; /* Card leggermente più chiare dello sfondo per profondità */
-    --card-foreground: 210 40% 98%;
-    --popover: 222 47% 6%;
-    --popover-foreground: 210 40% 98%;
+    --background: 210 40% 98%; /* Slate 50 */
+    --foreground: 222 47% 11%; /* Slate 900 */
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
     --primary: 239 84% 67%; /* Indigo 600 */
     --primary-foreground: 210 40% 98%;
-    --secondary: 222 47% 10%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 222 47% 12%;
-    --muted-foreground: 215 20% 75%; /* Testo muto più chiaro per leggibilità */
-    --accent: 262 83% 58%; /* Violet 600 */
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
+    --accent: 262 83% 58%;
     --accent-foreground: 210 40% 98%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 210 40% 98%;
-    --border: 222 47% 15%;
-    --input: 222 47% 15%;
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
     --ring: 239 84% 67%;
-    --radius: 1rem;
+    --radius: 0.75rem;
   }
 }
 
@@ -35,20 +35,20 @@
     @apply bg-background text-foreground font-body antialiased;
   }
   h1, h2, h3, h4, h5, h6 {
-    @apply font-headline font-bold tracking-tight text-white;
+    @apply font-headline font-bold tracking-tight text-slate-900;
   }
 }
 
 .glass-card {
-  @apply bg-slate-900/60 backdrop-blur-2xl border border-white/10 shadow-[0_8px_32px_0_rgba(0,0,0,0.8)];
+  @apply bg-white border border-slate-200 shadow-sm;
 }
 
 .gradient-text {
-  @apply bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400;
+  @apply bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600;
 }
 
 .gradient-primary {
-  @apply bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 transition-all duration-300 shadow-lg shadow-indigo-500/20;
+  @apply bg-indigo-600 hover:bg-indigo-700 text-white shadow-md transition-all duration-200;
 }
 
 .custom-scrollbar::-webkit-scrollbar {
@@ -58,5 +58,5 @@
   @apply bg-transparent;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  @apply bg-white/10 rounded-full hover:bg-white/20;
+  @apply bg-slate-200 rounded-full hover:bg-slate-300;
 }

@@ -42,9 +42,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   if (isUserLoading || isUserDataLoading || !isAdmin) {
     return (
-      <div className="h-screen flex flex-col items-center justify-center bg-slate-950">
-        <Loader2 className="animate-spin text-indigo-500 w-12 h-12 mb-4" />
-        <p className="text-slate-400 font-medium animate-pulse text-sm">Verifica autorizzazioni Hub Admin...</p>
+      <div className="h-screen flex flex-col items-center justify-center bg-white">
+        <Loader2 className="animate-spin text-indigo-600 w-12 h-12 mb-4" />
+        <p className="text-slate-500 font-bold animate-pulse text-sm">Verifica autorizzazioni Hub Admin...</p>
       </div>
     );
   }
@@ -57,28 +57,28 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   ];
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col lg:flex-row">
+    <div className="min-h-screen bg-slate-50 flex flex-col lg:flex-row">
       {/* Mobile Header */}
-      <header className="lg:hidden h-16 bg-slate-900 border-b border-white/5 flex items-center justify-between px-4 sticky top-0 z-50">
+      <header className="lg:hidden h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 sticky top-0 z-50">
         <div className="flex items-center gap-2">
-          <ShieldCheck className="w-6 h-6 text-indigo-500" />
-          <span className="font-headline font-bold text-white text-sm">Nexus Admin</span>
+          <ShieldCheck className="w-6 h-6 text-indigo-600" />
+          <span className="font-headline font-bold text-slate-900 text-sm">Nexus Admin</span>
         </div>
         <div className="flex items-center gap-2">
           <NotificheBell />
           <Button variant="ghost" size="icon" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
-            {isMobileMenuOpen ? <X className="w-6 h-6 text-white" /> : <Menu className="w-6 h-6 text-white" />}
+            {isMobileMenuOpen ? <X className="w-6 h-6 text-slate-900" /> : <Menu className="w-6 h-6 text-slate-900" />}
           </Button>
         </div>
       </header>
 
       {/* Sidebar Desktop */}
-      <aside className={`fixed lg:sticky top-0 left-0 h-screen w-64 bg-slate-900/50 border-r border-white/5 p-6 z-40 transition-transform duration-300 lg:translate-x-0 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      <aside className={`fixed lg:sticky top-0 left-0 h-screen w-64 bg-white border-r border-slate-200 p-6 z-40 transition-transform duration-300 lg:translate-x-0 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="hidden lg:flex items-center gap-3 mb-10">
-          <div className="bg-gradient-to-br from-indigo-600 to-purple-600 p-2 rounded-xl shadow-lg shadow-indigo-500/20">
+          <div className="bg-indigo-600 p-2 rounded-xl shadow-lg">
             <ShieldCheck className="w-6 h-6 text-white" />
           </div>
-          <span className="font-headline font-bold text-white tracking-tight">AD next lab</span>
+          <span className="font-headline font-bold text-slate-900 tracking-tight">AD next lab</span>
         </div>
 
         <nav className="space-y-1.5 flex-1">
@@ -86,10 +86,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <Link key={item.href} href={item.href} onClick={() => setIsMobileMenuOpen(false)}>
               <Button 
                 variant="ghost" 
-                className={`w-full justify-start gap-3 h-11 font-semibold rounded-xl transition-all ${
+                className={`w-full justify-start gap-3 h-11 font-bold rounded-xl transition-all ${
                   pathname === item.href 
-                    ? 'bg-indigo-600/20 text-indigo-400' 
-                    : 'text-slate-400 hover:bg-white/5 hover:text-white'
+                    ? 'bg-indigo-50 text-indigo-600' 
+                    : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
                 }`}
               >
                 <item.icon className="w-5 h-5" /> {item.label}
@@ -98,14 +98,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           ))}
         </nav>
 
-        <div className="mt-auto pt-6 border-t border-white/5 space-y-4">
-          <div className="px-4 py-3 bg-white/5 rounded-xl">
-            <p className="text-[10px] text-slate-500 uppercase font-black tracking-widest mb-1">Operatore</p>
-            <p className="text-xs text-white font-medium truncate">{user?.email}</p>
+        <div className="mt-auto pt-6 border-t border-slate-100 space-y-4">
+          <div className="px-4 py-3 bg-slate-50 rounded-xl border border-slate-100">
+            <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest mb-1">Operatore</p>
+            <p className="text-xs text-slate-900 font-bold truncate">{user?.email}</p>
           </div>
           <Button 
             variant="ghost" 
-            className="w-full justify-start gap-3 text-slate-400 hover:text-red-400 hover:bg-red-500/5 h-11 font-bold rounded-xl" 
+            className="w-full justify-start gap-3 text-slate-500 hover:text-red-600 hover:bg-red-50 h-11 font-bold rounded-xl" 
             onClick={() => auth.signOut()}
           >
             <LogOut className="w-5 h-5" /> Logout

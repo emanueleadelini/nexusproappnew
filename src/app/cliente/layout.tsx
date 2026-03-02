@@ -55,28 +55,28 @@ export default function ClienteLayout({ children }: { children: React.ReactNode 
 
   if (isUserLoading || !isAuthorized) {
     return (
-      <div className="h-screen flex flex-col items-center justify-center bg-slate-950">
-        <Loader2 className="animate-spin text-indigo-500 w-12 h-12 mb-4" />
-        <p className="text-slate-400 font-medium animate-pulse text-sm">Caricamento Hub Pro...</p>
+      <div className="h-screen flex flex-col items-center justify-center bg-white">
+        <Loader2 className="animate-spin text-indigo-600 w-12 h-12 mb-4" />
+        <p className="text-slate-500 font-bold animate-pulse text-sm">Caricamento Hub Pro...</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col">
-      <header className="bg-slate-900/50 backdrop-blur-xl border-b border-white/5 h-20 flex items-center justify-between px-6 md:px-12 sticky top-0 z-30 shadow-2xl">
+    <div className="min-h-screen bg-slate-50 flex flex-col">
+      <header className="bg-white border-b border-slate-200 h-20 flex items-center justify-between px-6 md:px-12 sticky top-0 z-30 shadow-sm">
         <div className="flex items-center gap-6">
           <Link href="/cliente" className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-slate-800 border border-white/10 shadow-inner overflow-hidden flex items-center justify-center p-1 group hover:border-indigo-500/50 transition-colors">
+            <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-200 shadow-inner overflow-hidden flex items-center justify-center p-1 group hover:border-indigo-600 transition-colors">
               {clientData?.logo_url ? (
                 <img src={clientData.logo_url} alt="Logo" className="w-full h-full object-contain" />
               ) : (
-                <ShieldCheck className="w-6 h-6 text-indigo-500 group-hover:scale-110 transition-transform" />
+                <ShieldCheck className="w-6 h-6 text-indigo-600 group-hover:scale-110 transition-transform" />
               )}
             </div>
             <div className="flex flex-col">
-              <span className="text-white font-headline font-bold leading-tight">Nexus Pro</span>
-              <span className="text-[10px] text-indigo-400 uppercase tracking-widest font-black">Client Hub</span>
+              <span className="text-slate-900 font-headline font-bold leading-tight">Nexus Pro</span>
+              <span className="text-[10px] text-indigo-600 uppercase tracking-widest font-black">Client Hub</span>
             </div>
           </Link>
         </div>
@@ -86,7 +86,7 @@ export default function ClienteLayout({ children }: { children: React.ReactNode 
           <Button 
             variant="ghost" 
             size="sm" 
-            className="text-slate-400 font-bold gap-2 hover:bg-red-500/10 hover:text-red-400 transition-all rounded-lg h-10" 
+            className="text-slate-500 font-bold gap-2 hover:bg-red-50 hover:text-red-600 transition-all rounded-lg h-10" 
             onClick={() => auth.signOut()}
           >
             <LogOut className="w-4 h-4" /> 
@@ -95,27 +95,27 @@ export default function ClienteLayout({ children }: { children: React.ReactNode 
         </div>
       </header>
       
-      <main className="flex-1 max-w-7xl mx-auto w-full">
+      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6">
         {children}
       </main>
 
-      <nav className="md:hidden bg-slate-900/80 backdrop-blur-xl border-t border-white/5 fixed bottom-0 left-0 right-0 h-16 flex items-center justify-around z-40 px-6">
-        <Link href="/cliente" className="flex flex-col items-center gap-1 text-indigo-400">
+      <nav className="md:hidden bg-white border-t border-slate-200 fixed bottom-0 left-0 right-0 h-16 flex items-center justify-around z-40 px-6 shadow-2xl">
+        <Link href="/cliente" className="flex flex-col items-center gap-1 text-indigo-600">
           <LayoutGrid className="w-5 h-5" />
           <span className="text-[9px] font-black uppercase">Feed</span>
         </Link>
-        <Link href="/cliente/notifiche" className="flex flex-col items-center gap-1 text-slate-500 hover:text-white transition-colors">
+        <Link href="/cliente/notifiche" className="flex flex-col items-center gap-1 text-slate-400 hover:text-indigo-600 transition-colors">
           <Bell className="w-5 h-5" />
           <span className="text-[9px] font-black uppercase">Notifiche</span>
         </Link>
-        <button onClick={() => auth.signOut()} className="flex flex-col items-center gap-1 text-slate-500">
+        <button onClick={() => auth.signOut()} className="flex flex-col items-center gap-1 text-slate-400">
           <LogOut className="w-5 h-5" />
           <span className="text-[9px] font-black uppercase">Esci</span>
         </button>
       </nav>
 
-      <footer className="bg-slate-900/30 border-t border-white/5 p-8 text-center text-slate-500 text-[10px] font-bold uppercase tracking-widest pb-24 md:pb-8">
-        &copy; {new Date().getFullYear()} AD next lab Hub Digitale &bull; Progettato per l'eccellenza digitale
+      <footer className="bg-white border-t border-slate-100 p-8 text-center text-slate-400 text-[10px] font-bold uppercase tracking-widest pb-24 md:pb-8">
+        &copy; {new Date().getFullYear()} AD next lab Hub Digitale &bull; Progettato per l'eccellenza
       </footer>
     </div>
   );
