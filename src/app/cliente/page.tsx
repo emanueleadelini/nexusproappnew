@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useUser, useFirestore, useCollection, useDoc, useMemoFirebase } from '@/firebase';
 import { query, collection, where, orderBy, doc, updateDoc, serverTimestamp, arrayUnion, Timestamp } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
@@ -10,23 +10,26 @@ import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
 import { 
   Check, 
-  X, 
   Zap,
   Info,
   Loader2
 } from 'lucide-react';
 import { FeedInstagramPreview } from '@/components/feed-instagram-preview';
 import { useToast } from '@/hooks/use-toast';
+import { useSearchParams } from 'next/navigation';
 
 export default function ClienteFeedPage() {
-  const { user } = useUser();
+  const { user, userData, isCliente } = useUser();
   const db = useFirestore();
   const { toast } = useToast();
+  const searchParams = useSearchParams();
+  const highlightPostId = searchParams.get('postId');
+  
   const [selectedPost, setSelectedPost] = useState<any | null>(null);
   const [noteModifica, setNoteModifica] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const clienteId = user?.cliente_id;
+  const clienteId = userData?.cliente_id;
 
   const clientDocRef = useMemoFirebase(() => {
     if (!clienteId) return null;
@@ -35,15 +38,24 @@ export default function ClienteFeedPage() {
   const { data: clientData, isLoading: isClientLoading } = useDoc<any>(clientDocRef);
 
   const postsQuery = useMemoFirebase(() => {
-    if (!clienteId) return null;
+    if (!clienteId || !isCliente) return null;
     return query(
       collection(db, 'clienti', clienteId, 'post'),
       where('stato', 'in', ['da_approvare', 'approvato', 'programmato', 'pubblicato']),
       orderBy('creato_il', 'desc')
     );
-  }, [db, clienteId]);
+  }, [db, clienteId, isCliente]);
 
   const { data: posts, isLoading: isPostsLoading } = useCollection<any>(postsQuery);
+
+  useEffect(() => {
+    if (highlightPostId && posts) {
+      setTimeout(() => {
+        const element = document.getElementById(`post-${highlightPostId}`);
+        element?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 500);
+    }
+  }, [highlightPostId, posts]);
 
   const handleApprova = async (post: any) => {
     if (!clienteId || !user) return;
@@ -84,7 +96,6 @@ export default function ClienteFeedPage() {
         })
       });
       
-      // Segnalazione all'agenzia
       await updateDoc(doc(db, 'clienti', clienteId), {
         richiesta_attenzione: true
       });
@@ -128,7 +139,11 @@ export default function ClienteFeedPage() {
 
         <div className="space-y-12 pb-20">
           {posts?.map((post) => (
-            <div key={post.id} className="animate-in fade-in slide-in-from-bottom-6 duration-1000">
+            <div 
+              key={post.id} 
+              id={`post-${post.id}`}
+              className={`animate-in fade-in slide-in-from-bottom-6 duration-1000 transition-all ${post.id === highlightPostId ? 'ring-2 ring-indigo-500 rounded-[2rem] p-2 bg-indigo-500/5' : ''}`}
+            >
               <FeedInstagramPreview
                 post={post}
                 clienteNome={clientData?.nome_azienda || 'La tua Azienda'}

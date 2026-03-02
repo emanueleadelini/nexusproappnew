@@ -1,16 +1,14 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { useUser, useFirestore, useAuth } from '@/firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { useUser } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { 
   LayoutDashboard, 
   Users, 
   FileText, 
   Bell, 
-  Settings, 
   LogOut, 
   Loader2, 
   ShieldCheck,
@@ -18,47 +16,35 @@ import {
   X
 } from 'lucide-react';
 import Link from 'next/link';
+import { useState } from 'react';
 import { NotificheBell } from '@/components/notifiche-bell';
+import { useAuth } from '@/firebase';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  const { user, isUserLoading } = useUser();
-  const db = useFirestore();
+  const { user, isUserLoading, userData, isUserDataLoading, isAdmin } = useUser();
   const auth = useAuth();
   const router = useRouter();
   const pathname = usePathname();
-  const [isAuthorized, setIsAuthorized] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
-    if (isUserLoading) return;
+    if (isUserLoading || isUserDataLoading) return;
     
     if (!user) {
       router.push('/login');
       return;
     }
 
-    const checkAdmin = async () => {
-      const userDoc = await getDoc(doc(db, 'users', user.uid));
-      if (userDoc.exists()) {
-        const ruolo = userDoc.data().ruolo;
-        if (ruolo === 'super_admin' || ruolo === 'operatore' || ruolo === 'admin') {
-          setIsAuthorized(true);
-        } else {
-          router.push('/cliente');
-        }
-      } else {
-        router.push('/login');
-      }
-    };
-    
-    checkAdmin();
-  }, [user, isUserLoading, db, router]);
+    if (!isAdmin) {
+      router.push('/cliente');
+    }
+  }, [user, isUserLoading, isUserDataLoading, isAdmin, router]);
 
-  if (isUserLoading || !isAuthorized) {
+  if (isUserLoading || isUserDataLoading || !isAdmin) {
     return (
       <div className="h-screen flex flex-col items-center justify-center bg-slate-950">
         <Loader2 className="animate-spin text-indigo-500 w-12 h-12 mb-4" />
-        <p className="text-slate-400 font-medium animate-pulse text-sm">Sincronizzazione Hub Admin...</p>
+        <p className="text-slate-400 font-medium animate-pulse text-sm">Verifica autorizzazioni Hub Admin...</p>
       </div>
     );
   }
@@ -114,7 +100,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
         <div className="mt-auto pt-6 border-t border-white/5 space-y-4">
           <div className="px-4 py-3 bg-white/5 rounded-xl">
-            <p className="text-[10px] text-slate-500 uppercase font-black tracking-widest mb-1">Sessione</p>
+            <p className="text-[10px] text-slate-500 uppercase font-black tracking-widest mb-1">Operatore</p>
             <p className="text-xs text-white font-medium truncate">{user?.email}</p>
           </div>
           <Button 
@@ -127,7 +113,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </div>
       </aside>
 
-      {/* Main Content */}
       <main className="flex-1 min-w-0 p-4 lg:p-10">
         <div className="max-w-7xl mx-auto">
           {children}

@@ -86,7 +86,7 @@
     "providers": ["password"]
   },
   "firestore": {
-    "/users/{uid}": { "schema": "User", "description": "User profiles" },
+    "/users/{uid}": { "schema": "User", "description": "User profiles with roles and multi-tenancy" },
     "/users/{uid}/notifiche/{notificaId}": { "schema": "Notifica", "description": "Personal notification log" },
     "/clienti/{clienteId}": { "schema": "Client", "description": "Main tenant data" },
     "/clienti/{clienteId}/post/{postId}": { "schema": "Post", "description": "Content workflow and social posts" },
