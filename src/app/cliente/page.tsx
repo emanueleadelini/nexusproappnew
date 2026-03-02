@@ -25,7 +25,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Material } from '@/types/material';
 
 export default function ClienteFeedPage() {
-  const { user, userData, isCliente } = useUser();
+  const { user, userData } = useUser();
   const db = useFirestore();
   const { toast } = useToast();
   const searchParams = useSearchParams();
@@ -36,6 +36,7 @@ export default function ClienteFeedPage() {
   const [loading, setLoading] = useState(false);
   const [materialUrlsMap, setMaterialUrlsMap] = useState<Record<string, string[]>>({});
 
+  // FIX: Usa cliente_id dal profilo caricato, MAI l'UID
   const clienteId = userData?.cliente_id;
 
   const clientDocRef = useMemoFirebase(() => {
@@ -45,7 +46,8 @@ export default function ClienteFeedPage() {
   const { data: clientData, isLoading: isClientLoading } = useDoc<any>(clientDocRef);
 
   const postsQuery = useMemoFirebase(() => {
-    if (!clienteId || clienteId === 'unknown') return null;
+    // Gating rigoroso: se non c'è cliente_id, non fare query
+    if (!clienteId || clienteId === 'unknown' || clienteId.length > 25) return null;
     return query(
       collection(db, 'clienti', clienteId, 'post'),
       where('stato', 'in', ['da_approvare', 'approvato', 'programmato', 'pubblicato']),
@@ -55,7 +57,7 @@ export default function ClienteFeedPage() {
   const { data: posts, isLoading: isPostsLoading } = useCollection<any>(postsQuery);
 
   const materialsQuery = useMemoFirebase(() => {
-    if (!clienteId || clienteId === 'unknown') return null;
+    if (!clienteId || clienteId === 'unknown' || clienteId.length > 25) return null;
     return query(collection(db, 'clienti', clienteId, 'materiali'), orderBy('creato_il', 'desc'));
   }, [db, clienteId]);
   const { data: materials } = useCollection<Material>(materialsQuery);

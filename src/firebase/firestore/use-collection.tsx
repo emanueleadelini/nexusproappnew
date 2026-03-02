@@ -37,12 +37,23 @@ export function useCollection<T = any>(
       return;
     }
 
-    // PROTEZIONE PERCORSI UNKNOWN (BRUTE FORCE)
+    // PROTEZIONE PERCORSI ERRATI (UID AL POSTO DI CLIENTE_ID)
     try {
       const path = (memoizedTargetRefOrQuery as any).type === 'collection'
         ? (memoizedTargetRefOrQuery as CollectionReference).path
         : (memoizedTargetRefOrQuery as any)._query?.path?.canonicalString?.() || '';
       
+      const uidPattern = /[a-zA-Z0-9]{28}/;
+      if (path.includes('/clienti/') && uidPattern.test(path.split('/clienti/')[1])) {
+        const potentialUid = path.split('/clienti/')[1].split('/')[0];
+        if (potentialUid.length > 20) {
+          console.warn('useCollection: Bloccata query su UID invece di cliente_id:', potentialUid);
+          setData(null);
+          setIsLoading(false);
+          return;
+        }
+      }
+
       if (!path || path.includes('unknown') || path.includes('undefined')) {
         setData(null);
         setIsLoading(false);
