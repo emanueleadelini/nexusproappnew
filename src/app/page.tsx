@@ -21,11 +21,6 @@ export default function LandingPage() {
     router.push(isAdmin ? '/admin' : '/cliente');
   };
 
-  const handleClienteRedirect = () => {
-    if (!user) { router.push('/login'); return; }
-    router.push(isAdmin ? '/admin' : '/cliente');
-  };
-
   return (
     <div className="min-h-screen bg-white font-body selection:bg-indigo-100 selection:text-indigo-900">
       {/* Navigation (Header) */}

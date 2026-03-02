@@ -49,7 +49,7 @@ export function useCollection<T = any>(
         ? (memoizedTargetRefOrQuery as CollectionReference).path
         : (memoizedTargetRefOrQuery as any)._query?.path?.canonicalString?.() || '';
       
-      if (!path || path.includes('unknown') || path === '' || path === '/databases/(default)/documents/unknown') {
+      if (!path || path.includes('unknown') || path === '' || path.includes('/undefined')) {
         setData(null);
         setIsLoading(false);
         return;
@@ -77,7 +77,7 @@ export function useCollection<T = any>(
       (err: FirestoreError) => {
         // GUARDIA 3: Silenzio assenso durante caricamento o transizioni di auth
         if (err.code === 'permission-denied') {
-          console.warn('useCollection: Permesso negato silenziato (fase di caricamento auth o debug).');
+          console.warn('useCollection: Permesso negato silenziato (debug/loading).');
           setData(null);
           setIsLoading(false);
           return;
