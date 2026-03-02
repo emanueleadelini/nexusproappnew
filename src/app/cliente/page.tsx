@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -39,33 +38,34 @@ export default function ClienteFeedPage() {
   const [loading, setLoading] = useState(false);
   const [materialUrlsMap, setMaterialUrlsMap] = useState<Record<string, string[]>>({});
 
-  // FONDAMENTALE: Usa il cliente_id dal profilo
+  // FONDAMENTALE: Usa il cliente_id dal profilo e verifica che non sia un UID
   const clienteId = userData?.cliente_id;
+  const isIdValid = clienteId && clienteId.length < 25; // Protezione UID (28)
 
   const clientDocRef = useMemoFirebase(() => {
-    if (!clienteId || clienteId === 'unknown') return null;
-    return doc(db, 'clienti', clienteId);
-  }, [db, clienteId]);
+    if (!isIdValid) return null;
+    return doc(db, 'clienti', clienteId!);
+  }, [db, clienteId, isIdValid]);
   const { data: clientData, isLoading: isClientLoading } = useDoc<any>(clientDocRef);
 
   const postsQuery = useMemoFirebase(() => {
-    if (!clienteId || clienteId === 'unknown') return null;
+    if (!isIdValid) return null;
     return query(
-      collection(db, 'clienti', clienteId, 'post'),
+      collection(db, 'clienti', clienteId!, 'post'),
       where('stato', 'in', ['da_approvare', 'approvato', 'programmato', 'pubblicato']),
       orderBy('creato_il', 'desc')
     );
-  }, [db, clienteId]);
-  const { data: posts, isLoading: isPostsLoading } = useCollection<any>(postsQuery);
+  }, [db, clienteId, isIdValid]);
+  const { data: posts, isLoading: isPostsLoading } = useCollection<any>(postsQuery, { enabled: !!isIdValid });
 
   const materialsQuery = useMemoFirebase(() => {
-    if (!clienteId || clienteId === 'unknown') return null;
-    return query(collection(db, 'clienti', clienteId, 'materiali'), orderBy('creato_il', 'desc'));
-  }, [db, clienteId]);
-  const { data: materials } = useCollection<Material>(materialsQuery);
+    if (!isIdValid) return null;
+    return query(collection(db, 'clienti', clienteId!, 'materiali'), orderBy('creato_il', 'desc'));
+  }, [db, clienteId, isIdValid]);
+  const { data: materials } = useCollection<Material>(materialsQuery, { enabled: !!isIdValid });
 
   useEffect(() => {
-    if (!posts || !clienteId) return;
+    if (!posts || !isIdValid) return;
 
     const fetchAssets = async () => {
       const newUrlsMap: Record<string, string[]> = {};
@@ -81,7 +81,7 @@ export default function ClienteFeedPage() {
       setMaterialUrlsMap(newUrlsMap);
     };
     fetchAssets();
-  }, [posts, clienteId]);
+  }, [posts, isIdValid]);
 
   useEffect(() => {
     if (highlightPostId && posts) {
@@ -154,7 +154,6 @@ export default function ClienteFeedPage() {
     );
   }
 
-  // CASO: Profilo esistente ma non collegato a un'azienda
   if (userData && !clienteId) {
     return (
       <div className="min-h-[70vh] flex flex-col items-center justify-center p-8 text-center space-y-6">

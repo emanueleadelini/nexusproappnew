@@ -37,17 +37,19 @@ export function useCollection<T = any>(
       return;
     }
 
-    // PROTEZIONE PERCORSI ERRATI (UID AL POSTO DI CLIENTE_ID)
+    // PROTEZIONE BRUTE FORCE: Verifica se il path contiene un UID invece di un cliente_id
     try {
       const path = (memoizedTargetRefOrQuery as any).type === 'collection'
         ? (memoizedTargetRefOrQuery as CollectionReference).path
         : (memoizedTargetRefOrQuery as any)._query?.path?.canonicalString?.() || '';
       
-      const uidPattern = /[a-zA-Z0-9]{28}/;
-      if (path.includes('/clienti/') && uidPattern.test(path.split('/clienti/')[1])) {
-        const potentialUid = path.split('/clienti/')[1].split('/')[0];
-        if (potentialUid.length > 20) {
-          console.warn('useCollection: Bloccata query su UID invece di cliente_id:', potentialUid);
+      const uidPattern = /[a-zA-Z0-9]{28}/; // Gli UID Firebase sono tipicamente di 28 caratteri
+      if (path.includes('/clienti/')) {
+        const parts = path.split('/clienti/');
+        const potentialId = parts[1].split('/')[0];
+        // Se l'ID è più lungo di 20 caratteri (standard auto-id) e matcha il pattern UID
+        if (potentialId.length > 20 && uidPattern.test(potentialId)) {
+          console.warn('useCollection: Query bloccata. Rilevato UID Firebase usato come cliente_id:', potentialId);
           setData(null);
           setIsLoading(false);
           return;
@@ -76,9 +78,9 @@ export function useCollection<T = any>(
         setIsLoading(false);
       },
       (err: FirestoreError) => {
-        // SILENZIO ASSENSO SU PERMESSI DURANTE TRANSIZIONI
+        // SILENZIA ERRORI DI PERMESSO DURANTE LE TRANSIZIONI DI LOGIN/CARICAMENTO
         if (err.code === 'permission-denied') {
-          console.warn('useCollection: Accesso temporaneamente negato (silenziato)');
+          console.warn('useCollection: Permesso temporaneamente negato (caricamento profilo in corso)');
           setData(null);
           setIsLoading(false);
           return;

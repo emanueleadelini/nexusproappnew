@@ -11,14 +11,23 @@ service cloud.firestore {
       return exists(path) ? get(path).data : null;
     }
 
-    function isAgency() {
+    function getUserRole() {
       let data = getUserData();
-      return isSignedIn() && (data.ruolo == 'super_admin' || data.ruolo == 'admin' || data.ruolo == 'operatore' || request.auth.token.email == 'emanueleadelini@gmail.com');
+      return data != null ? data.ruolo : null;
+    }
+
+    function getUserClienteId() {
+      let data = getUserData();
+      return data != null ? data.cliente_id : null;
+    }
+
+    function isAgency() {
+      let role = getUserRole();
+      return isSignedIn() && (role == 'super_admin' || role == 'admin' || role == 'operatore' || request.auth.token.email == 'emanueleadelini@gmail.com');
     }
 
     function isClientOf(clienteId) {
-      let data = getUserData();
-      return isSignedIn() && data.cliente_id == clienteId;
+      return isSignedIn() && getUserClienteId() == clienteId;
     }
 
     // --- USERS ---
@@ -44,6 +53,7 @@ service cloud.firestore {
       allow create, update, delete: if isAgency();
 
       match /post/{postId} {
+        // La regola list deve essere estremamente robusta
         allow get, list: if isAgency() || isClientOf(clienteId);
         allow create: if isAgency();
         allow update: if isAgency() || (isClientOf(clienteId) && resource.data.stato == 'da_approvare');

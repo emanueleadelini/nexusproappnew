@@ -76,7 +76,7 @@ export const FirebaseProvider: React.FC<{
         }));
       },
       (error) => {
-        console.warn("FirebaseProvider: Profilo non ancora accessibile o mancante.");
+        // Silenziamo temporaneamente gli errori di lettura profilo se il documento non è pronto
         setAuthState(prev => ({ ...prev, isUserDataLoading: false }));
       }
     );
