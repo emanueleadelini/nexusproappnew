@@ -3,8 +3,8 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * NEXUS PRO RULES V5.7
-     * Supporto per Collection Group queries e sicurezza multi-tenant.
+     * NEXUS PRO DEFINITIVE RULES V5.8
+     * Supporto per Collection Group, Multi-tenancy e Identity-Aware Gating.
      */
 
     // --- HELPER FUNCTIONS ---
@@ -54,6 +54,10 @@ service cloud.firestore {
       allow list: if isAgency();
     }
 
+    match /{path=**}/notifiche/{notificaId} {
+      allow list: if isAgency();
+    }
+
     // --- STANDARD RULES ---
 
     match /users/{uid} {
@@ -93,7 +97,7 @@ service cloud.firestore {
       match /materiali/{materialeId} {
         allow get, list: if isClient(clienteId) || isAgency();
         allow create: if isClient(clienteId) || isAgency();
-        allow update: if isAgency() || (isReferente(clienteId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stato_validazione', 'note_rifiuto']));
+        allow update: if isAgency() || (isReferente(clientId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stato_validazione', 'note_rifiuto']));
         allow delete: if isAgency();
       }
     }
