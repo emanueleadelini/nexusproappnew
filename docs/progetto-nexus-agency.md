@@ -1,75 +1,42 @@
-# Nexus Pro (AD Next Lab) - Manuale Tecnico Master v5.6
+
+# Nexus Pro (AD Next Lab) - Manuale Tecnico Master v5.7
 
 Documentazione definitiva dell'Hub Digitale integrato.
 
 ---
 
 ## 1. Visione & Posizionamento
-Nexus Pro è un **Hub Digitale SaaS** progettato per AD Next Lab. Non è un semplice gestionale, ma un ecosistema che unisce:
-- **ADNext Digital**: Strategia Marketing potenziata da AI (Gemini).
-- **ADNext Tech**: Automazione processi e sviluppo software.
-- **ADNext Academy**: Formazione professionale continua.
+Nexus Pro è un **Hub Digitale SaaS** progettato per AD Next Lab. Un ecosistema che unisce Strategia Marketing AI (Gemini), Automazione Tech e Formazione Master.
 
 ---
 
-## 2. Architettura & Design System
-### 2.1 Nexus Dark UI
+## 2. Design System: Nexus Dark
 - **Background**: Slate 950 (#020617)
-- **Primary Accent**: Indigo 600 → Purple 600 (Gradient)
-- **Estetica**: Glassmorphism, bordi ultra-sottili (White/5), blur elevato.
-- **Font**: 'Space Grotesk' per titoli, 'Inter' per il corpo del testo.
-
-### 2.2 Isolamento Dati (SaaS Multi-tenancy)
-Il sistema utilizza un'architettura **Tenant-per-Document** con isolamento garantito a livello di Security Rules:
-- Ogni cliente è un "Tenant" identificato da un `cliente_id`.
-- Gli utenti (`users`) hanno un riferimento al proprio `cliente_id`.
-- Le notifiche sono isolate per utente nella sottocollezione `/users/{uid}/notifiche`.
+- **Primary Accent**: Indigo 600 (#4f46e5)
+- **Secondary Accent**: Violet 600 (#7c3aed)
+- **Glassmorphism**: Componenti con `bg-slate-900/50` e `backdrop-blur-xl`.
 
 ---
 
-## 3. Workflow 2.0 (Silenzio Assenso)
-Il cuore della piattaforma è il processo di approvazione contenuti:
-1. **Invio**: L'admin crea un post e imposta `tipo_pianificazione` (Immediata/Programmata).
-2. **Countdown 24h**: All'invio, viene calcolata `scadenza_approvazione` (+24h).
-3. **Notifica & Deep Link**: Il cliente riceve una notifica. Cliccando, viene portato direttamente alla card del post nel feed con effetto highlight.
-4. **Azioni Cliente**: 
-   - **Approva**: Il post passa a `approvato`.
-   - **Modifiche**: Il cliente inserisce note e il post torna in `revisione`.
-5. **Silenzio Assenso**: Se il cliente non agisce entro le 24h, l'agenzia è autorizzata alla pubblicazione automatica (gestita tramite Cloud Functions).
+## 3. Workflow 2.0: Silenzio Assenso (24h)
+Sistema di approvazione contenuti per eliminare i colli di bottiglia:
+1. **Pianificazione**: L'admin crea il post e imposta la scadenza (+24h).
+2. **Notifica Push/Email**: Il cliente riceve un deep link al feed.
+3. **Feed Instagram Preview**: Il cliente vede il post in anteprima reale con countdown.
+4. **Scadenza**: Se il cliente non agisce entro le 24h, il sistema (Cloud Function) approva automaticamente.
 
 ---
 
-## 4. Gestione Asset & Materiali
-- **Destinazioni**: Social, Sito Web, Offline, Strategico.
-- **Input Cliente**: Include campo Note e selettore Destinazione (Social, Sito, Stampa).
-- **Validazione Admin**: L'admin può validare o rifiutare gli asset caricati dal cliente.
+## 4. Architettura Dati & Sicurezza
+- **Multi-tenancy**: Isolamento tramite `cliente_id` nel profilo utente.
+- **Indici Ottimizzati**: Richiesti per `collectionGroup` (Dashboard Admin) e query ordinate.
+- **Error Handling**: Sistema di Error Boundaries centralizzato per intercettare problemi di indici o permessi senza crashare l'app.
 
 ---
 
-## 5. Infrastruttura & Billing
-### 5.1 Google Cloud Billing
-- **Centralizzazione**: Tutti i progetti Nexus Pro sono collegati a un unico account di fatturazione agenzia (AD Next Lab).
-- **Tracciabilità**: I costi sono monitorati per Project ID per permettere il calcolo del margine per ogni tenant.
-- **Scalabilità**: L'uso del piano Blaze di Firebase garantisce il supporto al "Pay-as-you-go".
-
----
-
-## 6. Struttura Database (Firestore)
-
-### 6.1 Collezioni Primarie
-- `/users/{uid}`: Profili utenti con ruoli (`super_admin`, `operatore`, `referente`, `collaboratore`).
-- `/clienti/{clienteId}`: Dati azienda, budget post (usati/totali) e logo branding.
-
-### 6.2 Sottocollezioni
-- `/users/{uid}/notifiche/{notificaId}`: Log notifiche personale con supporto a Deep Linking (`riferimento_id`).
-- `/clienti/{clienteId}/post/{postId}`: Workflow editoriale, storico stati e versionamento.
-- `/clienti/{clienteId}/materiali/{materialeId}`: Asset creativi e documenti strategici.
-- `/clienti/{clienteId}/post/{postId}/commenti/{commentoId}`: Chat contestuale per ogni contenuto.
-
----
-
-## 7. Integrazione AI
-- **Gemini Flash 2.5**: Utilizzato tramite Genkit per la generazione di bozze social (Titolo + Testo) basate sul settore e sul tono di voce del cliente.
+## 5. Billing & Infrastruttura
+- **Account Centralizzato**: Google Cloud Billing agenzia per tutti i progetti tenant.
+- **Quota Monitor**: Analytics real-time sull'uso dei crediti post.
 
 ---
 *Proprietà Intellettuale - AD next lab - 2024*

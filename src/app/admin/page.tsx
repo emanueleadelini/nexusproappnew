@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
@@ -14,7 +15,6 @@ import {
   Plus, 
   ArrowRight, 
   CheckCircle2,
-  PieChart,
   Calendar,
   AlertCircle
 } from 'lucide-react';
@@ -25,16 +25,17 @@ export default function AdminDashboard() {
   const { user } = useUser();
   const db = useFirestore();
 
-  // Query Clienti
+  // Memoizzazione query clienti
   const clientsQuery = useMemoFirebase(() => {
     if (!user) return null;
     return query(collection(db, 'clienti'), orderBy('creato_il', 'desc'), limit(5));
   }, [db, user]);
   const { data: clients, isLoading: isClientsLoading } = useCollection<any>(clientsQuery);
 
-  // Query Post in attesa (cross-client)
+  // Memoizzazione query post in attesa (cross-client via collectionGroup)
   const pendingPostsQuery = useMemoFirebase(() => {
     if (!user) return null;
+    // IMPORTANTE: Richiede indice su collectionGroup 'post' con stato == 'da_approvare'
     return query(
       collectionGroup(db, 'post'), 
       where('stato', '==', 'da_approvare'),
@@ -60,12 +61,12 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 animate-in fade-in duration-500">
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
         <div>
-          <h1 className="text-4xl font-headline font-bold text-white mb-2">Benvenuto, Admin</h1>
-          <p className="text-slate-400">Ecco cosa sta succedendo nel tuo Hub oggi.</p>
+          <h1 className="text-4xl font-headline font-bold text-white mb-2">Hub Direzionale</h1>
+          <p className="text-slate-400">Bentornato nell'area di controllo Nexus Pro.</p>
         </div>
         <Link href="/admin/clienti">
           <Button className="gradient-primary h-12 px-6 rounded-xl font-bold shadow-lg shadow-indigo-500/20 gap-2">
@@ -76,55 +77,55 @@ export default function AdminDashboard() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="glass-card border-none overflow-hidden group">
+        <Card className="glass-card border-none overflow-hidden group hover:border-white/10 transition-all">
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
               <div className="w-12 h-12 bg-indigo-500/20 rounded-2xl flex items-center justify-center text-indigo-400 group-hover:scale-110 transition-transform">
                 <Users className="w-6 h-6" />
               </div>
-              <Badge variant="outline" className="text-[10px] text-indigo-400 border-indigo-500/20 font-black">+2</Badge>
+              <Badge variant="outline" className="text-[10px] text-indigo-400 border-indigo-500/20 font-black">ACTIVE</Badge>
             </div>
-            <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-1">Clienti Attivi</p>
+            <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-1">Clienti Hub</p>
             <p className="text-3xl font-bold text-white">{clients?.length || 0}</p>
           </CardContent>
         </Card>
 
-        <Card className="glass-card border-none overflow-hidden group">
+        <Card className="glass-card border-none overflow-hidden group hover:border-white/10 transition-all">
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
               <div className="w-12 h-12 bg-amber-500/20 rounded-2xl flex items-center justify-center text-amber-400 group-hover:scale-110 transition-transform">
                 <Clock className="w-6 h-6" />
               </div>
-              <Badge variant="outline" className="text-[10px] text-amber-400 border-amber-500/20 font-black">Urgent</Badge>
+              <Badge variant="outline" className="text-[10px] text-amber-400 border-amber-500/20 font-black">PENDING</Badge>
             </div>
             <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-1">In Approvazione</p>
             <p className="text-3xl font-bold text-white">{pendingPosts?.length || 0}</p>
           </CardContent>
         </Card>
 
-        <Card className="glass-card border-none overflow-hidden group">
+        <Card className="glass-card border-none overflow-hidden group hover:border-white/10 transition-all">
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
               <div className="w-12 h-12 bg-emerald-500/20 rounded-2xl flex items-center justify-center text-emerald-400 group-hover:scale-110 transition-transform">
                 <FileText className="w-6 h-6" />
               </div>
-              <Badge variant="outline" className="text-[10px] text-emerald-400 border-emerald-500/20 font-black">Monthly</Badge>
+              <Badge variant="outline" className="text-[10px] text-emerald-400 border-emerald-500/20 font-black">MONTHLY</Badge>
             </div>
             <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-1">Post Prodotti</p>
             <p className="text-3xl font-bold text-white">{totalUsed}</p>
           </CardContent>
         </Card>
 
-        <Card className="glass-card border-none overflow-hidden group">
+        <Card className="glass-card border-none overflow-hidden group hover:border-white/10 transition-all">
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
               <div className="w-12 h-12 bg-purple-500/20 rounded-2xl flex items-center justify-center text-purple-400 group-hover:scale-110 transition-transform">
                 <TrendingUp className="w-6 h-6" />
               </div>
-              <Badge variant="outline" className="text-[10px] text-purple-400 border-purple-500/20 font-black">Live</Badge>
+              <Badge variant="outline" className="text-[10px] text-purple-400 border-purple-500/20 font-black">LIVE</Badge>
             </div>
-            <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-1">Health Score</p>
-            <p className="text-3xl font-bold text-white">98%</p>
+            <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-1">Efficienza Hub</p>
+            <p className="text-3xl font-bold text-white">98.4%</p>
           </CardContent>
         </Card>
       </div>
@@ -133,8 +134,8 @@ export default function AdminDashboard() {
         {/* Ultimi Clienti */}
         <Card className="glass-card border-none">
           <CardHeader className="flex flex-row items-center justify-between border-b border-white/5 pb-6">
-            <CardTitle className="text-lg font-headline flex items-center gap-2">
-              <Users className="w-5 h-5 text-indigo-400" /> Ultimi Clienti Aggiunti
+            <CardTitle className="text-lg font-headline flex items-center gap-2 text-white">
+              <Users className="w-5 h-5 text-indigo-400" /> Clienti Recenti
             </CardTitle>
             <Link href="/admin/clienti">
               <Button variant="ghost" size="sm" className="text-xs text-indigo-400 hover:text-white transition-colors">
@@ -145,33 +146,35 @@ export default function AdminDashboard() {
           <CardContent className="pt-6 px-0">
             <div className="divide-y divide-white/5">
               {clients?.map((client: any) => (
-                <div key={client.id} className="p-4 flex items-center justify-between hover:bg-white/5 transition-colors cursor-pointer group">
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-xl bg-slate-800 border border-white/10 flex items-center justify-center font-bold text-indigo-400">
-                      {client.nome_azienda.charAt(0).toUpperCase()}
+                <Link key={client.id} href={`/admin/clienti/${client.id}`}>
+                  <div className="p-4 flex items-center justify-between hover:bg-white/5 transition-colors cursor-pointer group">
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 rounded-xl bg-slate-800 border border-white/10 flex items-center justify-center font-bold text-indigo-400 group-hover:border-indigo-500/50">
+                        {client.nome_azienda.charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-white group-hover:text-indigo-400 transition-colors">{client.nome_azienda}</p>
+                        <p className="text-[10px] text-slate-500 uppercase font-black">{client.settore || 'Servizi'}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-sm font-bold text-white group-hover:text-indigo-400 transition-colors">{client.nome_azienda}</p>
-                      <p className="text-[10px] text-slate-500 uppercase font-black">{client.settore || 'Servizi'}</p>
+                    <div className="text-right">
+                      <p className="text-xs font-bold text-white">{client.post_usati} / {client.post_totali}</p>
+                      <p className="text-[9px] text-slate-500 uppercase tracking-tighter">Budget Post</p>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-xs font-bold text-white">{client.post_usati} / {client.post_totali}</p>
-                    <p className="text-[9px] text-slate-500 uppercase tracking-tighter">Crediti Post</p>
-                  </div>
-                </div>
+                </Link>
               ))}
               {(!clients || clients.length === 0) && (
-                <div className="p-10 text-center text-slate-500 italic text-sm">Nessun cliente censito.</div>
+                <div className="p-10 text-center text-slate-500 italic text-sm">Nessun cliente registrato.</div>
               )}
             </div>
           </CardContent>
         </Card>
 
-        {/* Post in Attesa */}
+        {/* Post in Attesa Cross-Client */}
         <Card className="glass-card border-none">
           <CardHeader className="flex flex-row items-center justify-between border-b border-white/5 pb-6">
-            <CardTitle className="text-lg font-headline flex items-center gap-2">
+            <CardTitle className="text-lg font-headline flex items-center gap-2 text-white">
               <AlertCircle className="w-5 h-5 text-amber-400" /> Workflow in Attesa
             </CardTitle>
             <Badge className="bg-amber-500/20 text-amber-400 border-none px-2 py-0.5 text-[10px] font-black uppercase">
@@ -191,15 +194,17 @@ export default function AdminDashboard() {
                       </p>
                     </div>
                   </div>
-                  <Button size="sm" variant="ghost" className="h-8 text-[10px] font-bold uppercase text-indigo-400 hover:bg-indigo-500 hover:text-white rounded-lg">
-                    Gestisci
-                  </Button>
+                  <Link href={`/admin/clienti/${post.cliente_id}?postId=${post.id}`}>
+                    <Button size="sm" variant="ghost" className="h-8 text-[10px] font-bold uppercase text-indigo-400 hover:bg-indigo-500 hover:text-white rounded-lg">
+                      Apri Task
+                    </Button>
+                  </Link>
                 </div>
               ))}
               {(!pendingPosts || pendingPosts.length === 0) && (
                 <div className="p-16 text-center flex flex-col items-center justify-center space-y-3">
                   <CheckCircle2 className="w-12 h-12 text-emerald-500/30" />
-                  <p className="text-slate-500 italic text-sm">Tutti i workflow sono aggiornati!</p>
+                  <p className="text-slate-500 italic text-sm">Ottimo lavoro! Nessun post in sospeso.</p>
                 </div>
               )}
             </div>
