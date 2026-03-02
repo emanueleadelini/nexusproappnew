@@ -11,7 +11,8 @@
         "cliente_id": { "type": "string", "description": "Tenant ID for multi-tenancy" },
         "nomeAzienda": { "type": "string" },
         "permessi": { "type": "array", "items": { "type": "string" } },
-        "creatoIl": { "type": "string", "format": "date-time" }
+        "creatoIl": { "type": "string", "format": "date-time" },
+        "ultimo_accesso": { "type": "string", "format": "date-time" }
       }
     },
     "Client": {
@@ -26,7 +27,9 @@
         "include_business_plan": { "type": "boolean" },
         "include_business_model": { "type": "boolean" },
         "richiesta_upgrade": { "type": "boolean" },
-        "creato_il": { "type": "string", "format": "date-time" }
+        "richiesta_attenzione": { "type": "boolean", "description": "Triggered when client requests changes" },
+        "creato_il": { "type": "string", "format": "date-time" },
+        "aggiornato_il": { "type": "string", "format": "date-time" }
       }
     },
     "Post": {
@@ -38,10 +41,31 @@
         "stato": { "type": "string", "enum": ["bozza", "revisione_interna", "da_approvare", "revisione", "approvato", "programmato", "pubblicato"] },
         "piattaforma": { "type": "string" },
         "formato": { "type": "string" },
-        "materiale_id": { "type": "string" },
+        "materiale_id": { "type": "string", "description": "ID reference to the associated material" },
         "tipo_pianificazione": { "type": "string", "enum": ["immediata", "programmata"] },
         "scadenza_approvazione": { "type": "string", "format": "date-time", "description": "Deadline for Silenzio Assenso (24h)" },
         "data_pubblicazione": { "type": "string", "format": "date-time" },
+        "creato_il": { "type": "string", "format": "date-time" },
+        "aggiornato_il": { "type": "string", "format": "date-time" },
+        "versione_corrente": { "type": "number" },
+        "storico_stati": { "type": "array", "items": { "type": "object" } },
+        "versioni": { "type": "array", "items": { "type": "object" } }
+      }
+    },
+    "Material": {
+      "title": "Material",
+      "type": "object",
+      "properties": {
+        "nome_file": { "type": "string" },
+        "url_storage": { "type": "string" },
+        "link_esterno": { "type": "string" },
+        "caricato_da": { "type": "string" },
+        "ruolo_caricatore": { "type": "string", "enum": ["admin", "cliente"] },
+        "stato_validazione": { "type": "string", "enum": ["in_attesa", "validato", "rifiutato"] },
+        "destinazione": { "type": "string", "enum": ["social", "sito", "offline", "strategico"] },
+        "tipo_strategico": { "type": "string" },
+        "note_rifiuto": { "type": "string" },
+        "note_cliente": { "type": "string" },
         "creato_il": { "type": "string", "format": "date-time" }
       }
     },
@@ -56,7 +80,8 @@
         "riferimento_tipo": { "type": "string", "enum": ["post", "materiale", "cliente", "commento"] },
         "riferimento_id": { "type": "string" },
         "letta": { "type": "boolean" },
-        "creato_il": { "type": "string", "format": "date-time" }
+        "creato_il": { "type": "string", "format": "date-time" },
+        "letta_il": { "type": "string", "format": "date-time" }
       }
     }
   },
@@ -67,6 +92,8 @@
     "/users/{uid}": { "schema": "User", "description": "User profiles" },
     "/users/{uid}/notifiche/{notificaId}": { "schema": "Notifica", "description": "Personal notification log" },
     "/clienti/{clienteId}": { "schema": "Client", "description": "Main tenant data" },
-    "/clienti/{clienteId}/post/{postId}": { "schema": "Post", "description": "Content workflow" }
+    "/clienti/{clienteId}/post/{postId}": { "schema": "Post", "description": "Content workflow and social posts" },
+    "/clienti/{clienteId}/materiali/{materialeId}": { "schema": "Material", "description": "Creative assets and strategic docs" },
+    "/clienti/{clienteId}/post/{postId}/commenti/{commentoId}": { "schema": "object", "description": "Contextual chat for each post" }
   }
 }
