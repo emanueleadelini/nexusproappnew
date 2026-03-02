@@ -1,29 +1,13 @@
 import { Timestamp } from 'firebase/firestore';
-import { FileText, Image as ImageIcon, Video, Camera, Share2, Globe, Printer, Link as LinkIcon, ShieldCheck, FileSignature, Fingerprint, CreditCard, Gift, Ticket } from 'lucide-react';
+import { FileText, Camera, Share2, Printer, Link as LinkIcon, FileSignature, Fingerprint } from 'lucide-react';
 
 export type StatoValidazione = 'in_attesa' | 'validato' | 'rifiutato';
 export type DestinazioneAsset = 'social' | 'sito' | 'offline' | 'strategico' | 'visual_identity' | 'contratto';
-export type TipoAsset = 'grafica' | 'foto' | 'video' | 'documento' | 'link' | 'strategia' | 'legale';
 
 export const STATO_VALIDAZIONE_LABELS: Record<StatoValidazione, string> = {
   in_attesa: 'In attesa',
   validato: 'Validato',
   rifiutato: 'Rifiutato',
-};
-
-export const STATO_VALIDAZIONE_COLORS: Record<StatoValidazione, { bg: string; text: string }> = {
-  in_attesa: { bg: 'bg-amber-100', text: 'text-amber-800' },
-  validato: { bg: 'bg-green-100', text: 'text-green-800' },
-  rifiutato: { bg: 'bg-red-100', text: 'text-red-800' },
-};
-
-export const DESTINAZIONE_LABELS: Record<DestinazioneAsset, string> = {
-  social: 'Social Media',
-  sito: 'Sito Web',
-  offline: 'Grafica Offline',
-  strategico: 'Documento Strategico',
-  visual_identity: 'Visual Identity (Logo)',
-  contratto: 'Contratto & Accordi',
 };
 
 export interface Material {

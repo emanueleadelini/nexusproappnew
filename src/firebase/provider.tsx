@@ -2,18 +2,10 @@
 
 import React, { DependencyList, createContext, useContext, ReactNode, useMemo, useState, useEffect } from 'react';
 import { FirebaseApp } from 'firebase/app';
-import { Firestore, doc, onSnapshot, collection, query, limit } from 'firebase/firestore';
+import { Firestore, doc, onSnapshot } from 'firebase/firestore';
 import { Auth, User, onAuthStateChanged } from 'firebase/auth';
-import { FirebaseErrorListener } from '@/components/FirebaseErrorListener'
+import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
 import { UserProfile } from '@/types/user';
-import { useCollection } from '@/firebase/firestore/use-collection';
-
-interface FirebaseProviderProps {
-  children: ReactNode;
-  firebaseApp: FirebaseApp;
-  firestore: Firestore;
-  auth: Auth;
-}
 
 interface UserAuthState {
   user: User | null;
@@ -34,12 +26,12 @@ export const FirebaseContext = createContext<FirebaseContextState | undefined>(u
 
 const ADMIN_EMAIL = 'emanueleadelini@gmail.com';
 
-export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
-  children,
-  firebaseApp,
-  firestore,
-  auth,
-}) => {
+export const FirebaseProvider: React.FC<{
+  children: ReactNode;
+  firebaseApp: FirebaseApp;
+  firestore: Firestore;
+  auth: Auth;
+}> = ({ children, firebaseApp, firestore, auth }) => {
   const [authState, setAuthState] = useState<UserAuthState>({
     user: null,
     isUserLoading: true,
@@ -50,7 +42,6 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
 
   useEffect(() => {
     if (!auth) return;
-
     const unsubscribeAuth = onAuthStateChanged(
       auth,
       (firebaseUser) => {
@@ -74,6 +65,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
       return;
     }
 
+    // Caricamento profilo utente (Fonte di verità per il ruolo e cliente_id)
     const unsubscribeData = onSnapshot(
       doc(firestore, 'users', authState.user.uid),
       (docSnap) => {
@@ -84,7 +76,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
         }));
       },
       (error) => {
-        console.warn("FirebaseProvider: Errore caricamento profilo (silenziato):", error.message);
+        console.warn("FirebaseProvider: Profilo non ancora accessibile o mancante.");
         setAuthState(prev => ({ ...prev, isUserDataLoading: false }));
       }
     );
@@ -92,8 +84,6 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
     return () => unsubscribeData();
   }, [authState.user, firestore]);
 
-  const isAdmin = authState.user?.email === ADMIN_EMAIL;
-  
   const contextValue = useMemo((): FirebaseContextState => {
     const servicesAvailable = !!(firebaseApp && firestore && auth);
     return {
@@ -121,18 +111,16 @@ export const useFirebase = () => {
 
 export const useAuth = () => useFirebase().auth!;
 export const useFirestore = () => useFirebase().firestore!;
-export const useFirebaseApp = () => useFirebase().firebaseApp!;
 export const useUser = () => {
-  const { user, isUserLoading, userError, userData, isUserDataLoading } = useFirebase();
+  const { user, isUserLoading, userData, isUserDataLoading } = useFirebase();
+  const isAdmin = user?.email === ADMIN_EMAIL;
   return { 
     user, 
     isUserLoading, 
-    userError, 
     userData, 
     isUserDataLoading,
-    role: userData?.ruolo || null,
-    isAdmin: user?.email === ADMIN_EMAIL,
-    isCliente: user && user.email !== ADMIN_EMAIL,
+    isAdmin,
+    isCliente: user && !isAdmin,
     clienteId: userData?.cliente_id || null
   };
 };

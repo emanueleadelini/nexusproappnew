@@ -20,13 +20,9 @@ export interface UseCollectionResult<T> {
   error: FirestoreError | Error | null;
 }
 
-export interface UseCollectionOptions {
-  enabled?: boolean;
-}
-
 export function useCollection<T = any>(
     memoizedTargetRefOrQuery: ((CollectionReference<DocumentData> | Query<DocumentData>) & {__memo?: boolean})  | null | undefined,
-    options: UseCollectionOptions = {}
+    options: { enabled?: boolean } = {}
 ): UseCollectionResult<T> {
   const { enabled = true } = options;
   const [data, setData] = useState<WithId<T>[] | null>(null);
@@ -35,35 +31,28 @@ export function useCollection<T = any>(
   const unsubscribeRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
-    // GUARDIA 1: Sospensione esplicita o riferimento nullo
     if (!enabled || !memoizedTargetRefOrQuery) {
       setData(null);
       setIsLoading(false);
-      setError(null);
       return;
     }
 
-    // GUARDIA 2: Protezione percorsi non validi o "unknown" (BRUTE FORCE FIX)
+    // PROTEZIONE PERCORSI UNKNOWN (BRUTE FORCE)
     try {
       const path = (memoizedTargetRefOrQuery as any).type === 'collection'
         ? (memoizedTargetRefOrQuery as CollectionReference).path
         : (memoizedTargetRefOrQuery as any)._query?.path?.canonicalString?.() || '';
       
-      // Controllo aggressivo per evitare query su ID non pronti
-      if (!path || path.includes('unknown') || path === '' || path.includes('/undefined')) {
+      if (!path || path.includes('unknown') || path.includes('undefined')) {
         setData(null);
         setIsLoading(false);
         return;
       }
-    } catch (e) {
-      // Silenzia errori di parsing del path
-    }
+    } catch (e) {}
 
     if (unsubscribeRef.current) unsubscribeRef.current();
 
     setIsLoading(true);
-    setError(null);
-
     const unsubscribe = onSnapshot(
       memoizedTargetRefOrQuery,
       (snapshot: QuerySnapshot<DocumentData>) => {
@@ -76,9 +65,9 @@ export function useCollection<T = any>(
         setIsLoading(false);
       },
       (err: FirestoreError) => {
-        // GUARDIA 3: Silenzio assenso durante caricamento o transizioni di auth
+        // SILENZIO ASSENSO SU PERMESSI DURANTE TRANSIZIONI
         if (err.code === 'permission-denied') {
-          console.warn('useCollection: Permesso negato silenziato per caricamento differito.');
+          console.warn('useCollection: Accesso temporaneamente negato (silenziato)');
           setData(null);
           setIsLoading(false);
           return;
@@ -101,13 +90,11 @@ export function useCollection<T = any>(
     );
 
     unsubscribeRef.current = unsubscribe;
-    return () => {
-      if (unsubscribeRef.current) unsubscribeRef.current();
-    };
+    return () => { if (unsubscribeRef.current) unsubscribeRef.current(); };
   }, [memoizedTargetRefOrQuery, enabled]);
 
   if(memoizedTargetRefOrQuery && !memoizedTargetRefOrQuery.__memo) {
-    throw new Error('Query non stabilizzata con useMemoFirebase. Rischio loop infinito.');
+    throw new Error('Query non stabilizzata con useMemoFirebase.');
   }
 
   return { data, isLoading, error };

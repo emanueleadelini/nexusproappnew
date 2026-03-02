@@ -7,24 +7,18 @@ service cloud.firestore {
     }
 
     function getUserData() {
-      let userDoc = get(/databases/$(database)/documents/users/$(request.auth.uid));
-      return userDoc.data;
-    }
-
-    function isSuperAdmin() {
-      return isSignedIn() && (getUserData().ruolo == 'super_admin' || request.auth.token.email == 'emanueleadelini@gmail.com');
-    }
-
-    function isAdmin() {
-      return isSuperAdmin() || (isSignedIn() && getUserData().ruolo == 'admin');
+      let path = /databases/$(database)/documents/users/$(request.auth.uid);
+      return exists(path) ? get(path).data : null;
     }
 
     function isAgency() {
-      return isAdmin() || (isSignedIn() && getUserData().ruolo == 'operatore');
+      let data = getUserData();
+      return isSignedIn() && (data.ruolo == 'super_admin' || data.ruolo == 'admin' || data.ruolo == 'operatore' || request.auth.token.email == 'emanueleadelini@gmail.com');
     }
 
     function isClientOf(clienteId) {
-      return isSignedIn() && getUserData().cliente_id == clienteId;
+      let data = getUserData();
+      return isSignedIn() && data.cliente_id == clienteId;
     }
 
     // --- USERS ---
@@ -32,8 +26,8 @@ service cloud.firestore {
       allow get: if isSignedIn() && (request.auth.uid == uid || isAgency());
       allow list: if isAgency();
       allow create: if isSignedIn();
-      allow update: if (request.auth.uid == uid) || isAdmin();
-      allow delete: if isAdmin();
+      allow update: if (request.auth.uid == uid) || isAgency();
+      allow delete: if isAgency();
 
       match /notifiche/{notificaId} {
         allow read: if request.auth.uid == uid || isAgency();
@@ -47,7 +41,7 @@ service cloud.firestore {
     match /clienti/{clienteId} {
       allow get: if isAgency() || isClientOf(clienteId);
       allow list: if isAgency();
-      allow create, update, delete: if isAdmin();
+      allow create, update, delete: if isAgency();
 
       match /post/{postId} {
         allow get, list: if isAgency() || isClientOf(clienteId);
@@ -67,8 +61,5 @@ service cloud.firestore {
         allow delete: if isAgency();
       }
     }
-
-    // REGOLE TEMPORANEE DEBUG (Se necessario scommentare match /{document=**})
-    // match /{document=**} { allow read, write: if request.auth != null; }
   }
 }
