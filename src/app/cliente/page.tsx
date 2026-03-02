@@ -270,7 +270,7 @@ export default function ClienteFeedPage() {
                   </CardHeader>
                   <CardContent className="p-8">
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {['brochure', 'volantino', '6x3', '3x6', 'altro'].map(type => {
+                      {['brochure', 'volantino', 'bigliettini', 'gadget', '6x3', '3x6', 'altro'].map(type => {
                         const typeMaterials = materials?.filter(m => m.destinazione === 'offline' && m.tipo_offline === type);
                         return (
                           <div key={type} className="space-y-4">

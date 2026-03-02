@@ -1,5 +1,6 @@
+
 import { Timestamp } from 'firebase/firestore';
-import { FileText, Image as ImageIcon, Video, Camera, Share2, Globe, Printer, Link as LinkIcon, ShieldCheck, PieChart, Briefcase, FileSignature, Fingerprint } from 'lucide-react';
+import { FileText, Image as ImageIcon, Video, Camera, Share2, Globe, Printer, Link as LinkIcon, ShieldCheck, PieChart, Briefcase, FileSignature, Fingerprint, CreditCard, Gift } from 'lucide-react';
 
 export type StatoValidazione = 'in_attesa' | 'validato' | 'rifiutato';
 export type DestinazioneAsset = 'social' | 'sito' | 'offline' | 'strategico' | 'visual_identity' | 'contratto';
@@ -45,7 +46,7 @@ export interface Material {
   stato_validazione: StatoValidazione;
   destinazione: DestinazioneAsset; 
   tipo_strategico?: 'piano_strategico' | 'piano_comunicazione' | 'business_plan' | 'business_model';
-  tipo_offline?: 'brochure' | 'volantino' | '6x3' | '3x6' | 'altro';
+  tipo_offline?: 'brochure' | 'volantino' | '6x3' | '3x6' | 'bigliettini' | 'gadget' | 'altro';
   note_rifiuto: string | null;
   note_cliente?: string | null;
   creato_il: Timestamp;

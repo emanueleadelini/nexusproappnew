@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useRef } from 'react';
@@ -9,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useFirestore, useUser } from '@/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, UploadCloud, FileIcon, X, Link as LinkIcon, Plus, AlertCircle, ShieldCheck, Printer, Fingerprint, FileSignature } from 'lucide-react';
+import { Loader2, UploadCloud, FileIcon, X, Link as LinkIcon, Plus, AlertCircle, ShieldCheck, Printer, Fingerprint, FileSignature, CreditCard, Gift } from 'lucide-react';
 import { DestinazioneAsset } from '@/types/material';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
@@ -211,6 +212,8 @@ export function CaricaMaterialeModal({ isOpen, onClose, clienteId }: Props) {
                   <SelectContent>
                     <SelectItem value="brochure">📖 Brochure</SelectItem>
                     <SelectItem value="volantino">📄 Volantino</SelectItem>
+                    <SelectItem value="bigliettini">📇 Bigliettini da Visita</SelectItem>
+                    <SelectItem value="gadget">🎁 Gadget</SelectItem>
                     <SelectItem value="6x3">🖼️ 6x3 (Grande Formato)</SelectItem>
                     <SelectItem value="3x6">🖼️ 3x6 (Grande Formato)</SelectItem>
                     <SelectItem value="altro">⚙️ Altro Offline</SelectItem>
