@@ -57,27 +57,50 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
       auth,
       (firebaseUser) => {
         if (firebaseUser) {
-          setAuthState(prev => ({ ...prev, user: firebaseUser, isUserLoading: false, isUserDataLoading: true }));
+          setAuthState(prev => ({ 
+            ...prev, 
+            user: firebaseUser, 
+            isUserLoading: false, 
+            isUserDataLoading: true 
+          }));
           
-          // Ascolta il profilo utente in tempo reale
-          const unsubscribeDoc = onSnapshot(doc(firestore, 'users', firebaseUser.uid), (docSnap) => {
+          // Ascolta il profilo utente in tempo reale con gestione robusta del caricamento
+          const userDocRef = doc(firestore, 'users', firebaseUser.uid);
+          const unsubscribeDoc = onSnapshot(userDocRef, (docSnap) => {
             setAuthState(prev => ({
               ...prev,
               userData: docSnap.exists() ? (docSnap.data() as UserProfile) : null,
               isUserDataLoading: false
             }));
           }, (err) => {
+            // Gestione errore (es. permessi mancanti se il documento non esiste ancora)
             console.error("Errore recupero profilo:", err);
-            setAuthState(prev => ({ ...prev, isUserDataLoading: false }));
+            setAuthState(prev => ({ 
+              ...prev, 
+              isUserDataLoading: false,
+              userData: null // Assicuriamoci che non rimanga in caricamento infinito
+            }));
           });
 
           return () => unsubscribeDoc();
         } else {
-          setAuthState({ user: null, userData: null, isUserLoading: false, isUserDataLoading: false, userError: null });
+          setAuthState({ 
+            user: null, 
+            userData: null, 
+            isUserLoading: false, 
+            isUserDataLoading: false, 
+            userError: null 
+          });
         }
       },
       (error) => {
-        setAuthState({ user: null, userData: null, isUserLoading: false, isUserDataLoading: false, userError: error });
+        setAuthState({ 
+          user: null, 
+          userData: null, 
+          isUserLoading: false, 
+          isUserDataLoading: false, 
+          userError: error 
+        });
       }
     );
 
