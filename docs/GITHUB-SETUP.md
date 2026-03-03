@@ -1,60 +1,43 @@
 # Guida al Collegamento GitHub
 
-Segui questi passaggi per collegare correttamente il codice sorgente di Nexus Pro al repository ufficiale su GitHub.
+Questa guida spiega come sincronizzare il codice di Nexus Pro con il repository ufficiale.
 
-## 1. Che cos'è il Terminale?
-Il terminale è lo strumento che permette di inviare comandi testuali al sistema. 
-**Dove trovarlo in Firebase Studio:**
-- Guarda nella parte bassa della schermata.
-- Cerca la scheda con la scritta **"Terminal"**.
-- Se non la vedi, cerca l'icona con il simbolo `>_` o clicca sul menù delle opzioni (solitamente tre lineette o "View") e seleziona "Terminal".
+## 1. Localizzare il Terminale
+Il terminale è lo strumento necessario per inviare il codice. 
+**In Firebase Studio:**
+- Cerca la linguetta **"Terminal"** nella parte inferiore dello schermo.
+- Se non la vedi, clicca sull'icona `>_` o seleziona `View > Terminal`.
 
-## 2. Inizializzazione Repository
-Una volta aperto il terminale, assicurati di essere nella cartella radice del progetto ed esegui i seguenti comandi:
+## 2. Comandi di Inizializzazione
+Copia e incolla questi comandi nel terminale premendo INVIO dopo ognuno:
 
 ```bash
-# Inizializza il repository git locale
+# Inizializza il repository locale
 git init
 
-# Aggiungi l'origine remota
+# Collega il repository remoto di Emanuele Adelini
 git remote add origin https://github.com/emanueleadelini/Nexuspro.git
 ```
 
-## 3. Verifica Stato (Richiesto da Antigravity)
-Per capire se il collegamento è configurato bene, scrivi questi comandi uno alla volta:
+## 3. Preparazione e Primo Invio (Push)
+Questi comandi "impacchettano" tutto il codice scritto finora e lo inviano a GitHub:
 
 ```bash
-# Mostra lo stato dei file
-git status
-
-# Mostra i collegamenti remoti attivi
-git remote -v
-```
-
-## 4. Preparazione e Primo Commit
-Dopo la verifica, procedi con l'invio dei file:
-
-```bash
-# Aggiungi tutti i file al sistema di tracking
+# Aggiunge tutti i file al pacchetto
 git add .
 
-# Crea il primo commit con il messaggio richiesto
+# Crea un punto di salvataggio con un messaggio
 git commit -m "primo push del progetto"
-```
 
-## 5. Configurazione Branch e Push
-Imposta il branch principale su `main` ed esegui l'invio al server:
-
-```bash
-# Rinomina il branch in main
+# Imposta il ramo principale
 git branch -M main
 
-# Invia il codice al server remoto
+# Invia i file al server (ti potrebbe chiedere il login a GitHub)
 git push -u origin main
 ```
 
-## 6. Manutenzione
-Ogni volta che effettui modifiche tramite l'App Prototyper di Firebase Studio, ricordati di eseguire un `git pull` locale per sincronizzare le modifiche dell'AI, e successivamente un `push` per mantenere aggiornato il repository remoto.
+## 4. Manutenzione
+Ogni volta che l'IA apporta modifiche significative, ricorda di ripetere l'operazione di `add`, `commit` e `push` per mantenere il backup su GitHub sempre aggiornato.
 
 ---
 *Documentazione Tecnica AD Next Lab*
