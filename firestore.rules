@@ -2,74 +2,132 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    /**
+     * NEXUS AGENCY SECURITY RULES - PROTOTYPING PHASE
+     * 
+     * CORE PHILOSOPHY:
+     * This ruleset implements a hybrid security model designed for an agency-client relationship.
+     * It prioritizes strict authorization (who can access what) while maintaining flexibility 
+     * in data structures for rapid prototyping.
+     * 
+     * DATA STRUCTURE & HIERARCHY:
+     * - /users/{userId}: Primary profile storage and authorization context (role, clientId).
+     * - /admins/{adminId}: A marker collection for global administrators (Authorization Independence).
+     * - /clienti/{clientId}: Top-level organizational units for client companies.
+     * - /clienti/{clientId}/post/{postId}: Subcollection for editorial content.
+     * - /clienti/{clientId}/materiali/{materialId}: Subcollection for digital assets.
+     * 
+     * KEY SECURITY DECISIONS:
+     * 1. Admin Authorization: Admin status is verified via the existence of a document in the /admins 
+     *    collection, avoiding expensive data lookups on every request.
+     * 2. Client Scoping: Client users are granted access based on the 'clientId' stored in their 
+     *    own UserProfile document.
+     * 3. Denormalization for Performance: 'clientId' is mirrored inside subcollection documents 
+     *    to allow for single-document authorization checks without traversing parent paths.
+     * 4. Query-Aware Security (QAP): List operations on /clienti are restricted to admins to 
+     *    prevent client users from discovering other companies.
+     */
+
+    // --- Helper Functions ---
+
+    /** Checks if the request is from an authenticated user. */
     function isSignedIn() {
       return request.auth != null;
     }
 
+    /** Checks if the user is a global administrator via a collection existence check. */
+    function isAdmin() {
+      return isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    /** Checks if the authenticated user's UID matches the provided userId. */
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    /** Retrieves the authenticated user's profile data. */
     function getUserData() {
-      let path = /databases/$(database)/documents/users/$(request.auth.uid);
-      return exists(path) ? get(path).data : null;
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
 
-    function getUserRole() {
-      let data = getUserData();
-      return data != null ? data.ruolo : null;
+    /** Checks if the authenticated user is associated with a specific clientId. */
+    function belongsToClient(clientId) {
+      return isSignedIn() && getUserData().clientId == clientId;
     }
 
-    function getUserClienteId() {
-      let data = getUserData();
-      return data != null ? data.cliente_id : null;
+    /** Combines ownership and existence checks for destructive/modifying operations. */
+    function isExistingOwner(userId) {
+      return resource != null && isOwner(userId);
     }
 
-    function isAgency() {
-      let role = getUserRole();
-      return isSignedIn() && (role == 'super_admin' || role == 'admin' || role == 'operatore' || request.auth.token.email == 'emanueleadelini@gmail.com');
+    // --- Collection Rules ---
+
+    /**
+     * @description Rules for user profiles. Users manage their own profiles; Admins manage all.
+     * @path /users/{userId}
+     * @allow get: (read) if the user is the owner or an admin.
+     * @deny list: (read) if a user tries to list all user profiles.
+     * @principle Restricts access to a user's own data tree and enforces self-creation.
+     */
+    match /users/{userId} {
+      allow get: if isOwner(userId) || isAdmin();
+      allow list: if isAdmin();
+      allow create: if isOwner(userId);
+      allow update: if (isExistingOwner(userId) || isAdmin()) && (request.resource.data.id == userId);
+      allow delete: if isAdmin();
     }
 
-    function isClientOf(clienteId) {
-      return isSignedIn() && getUserClienteId() == clienteId;
+    /**
+     * @description Rules for the admin marker collection. Strictly controlled for security.
+     * @path /admins/{adminId}
+     * @allow get: (read) if the user is an admin.
+     * @deny create: (write) if a non-admin tries to promote themselves.
+     * @principle Implements DBAC (Database-Based Access Control) for high-privilege roles.
+     */
+    match /admins/{adminId} {
+      allow get, list: if isAdmin();
+      allow create, update, delete: if false; // Managed via Firebase Console or Admin SDK only for safety.
     }
 
-    // --- USERS ---
-    match /users/{uid} {
-      allow get: if isSignedIn() && (request.auth.uid == uid || isAgency());
-      allow list: if isAgency();
-      allow create: if isSignedIn();
-      allow update: if (request.auth.uid == uid) || isAgency();
-      allow delete: if isAgency();
-
-      match /notifiche/{notificaId} {
-        allow read: if request.auth.uid == uid || isAgency();
-        allow create: if isSignedIn();
-        allow update: if request.auth.uid == uid;
-        allow delete: if isAgency();
-      }
+    /**
+     * @description Rules for Client entities. Admins have full access; Clients see only their own company.
+     * @path /clienti/{clientId}
+     * @allow get: (read) if the user belongs to this client.
+     * @deny list: (read) for client users to prevent cross-company discovery.
+     * @principle Path-based scoping for client privacy.
+     */
+    match /clienti/{clientId} {
+      allow get: if belongsToClient(clientId) || isAdmin();
+      allow list: if isAdmin();
+      allow create, update, delete: if isAdmin();
     }
 
-    // --- CLIENTI ---
-    match /clienti/{clienteId} {
-      allow get: if isAgency() || isClientOf(clienteId);
-      allow list: if isAgency();
-      allow create, update, delete: if isAgency();
+    /**
+     * @description Rules for Posts. Clients can read/list their own and update status to 'approvato'.
+     * @path /clienti/{clientId}/post/{postId}
+     * @allow list: (read) if the client ID in the path matches the user's client ID.
+     * @deny update: (write) if a client tries to change the clientId association.
+     * @principle Enforces relational integrity and client-scoped visibility.
+     */
+    match /clienti/{clientId}/post/{postId} {
+      allow get, list: if belongsToClient(clientId) || isAdmin();
+      allow create: if isAdmin();
+      allow update: if (resource != null) && (isAdmin() || (belongsToClient(clientId) && request.resource.data.clientId == resource.data.clientId));
+      allow delete: if isAdmin();
+    }
 
-      match /post/{postId} {
-        // La regola list deve essere estremamente robusta
-        allow get, list: if isAgency() || isClientOf(clienteId);
-        allow create: if isAgency();
-        allow update: if isAgency() || (isClientOf(clienteId) && resource.data.stato == 'da_approvare');
-        allow delete: if isAgency();
-        
-        match /commenti/{commentoId} {
-          allow read, write: if isAgency() || isClientOf(clienteId);
-        }
-      }
-
-      match /materiali/{materialeId} {
-        allow get, list: if isAgency() || isClientOf(clienteId);
-        allow create: if isAgency() || isClientOf(clienteId);
-        allow update: if isAgency() || isClientOf(clienteId);
-        allow delete: if isAgency();
-      }
+    /**
+     * @description Rules for Materials. Clients can upload files for their company.
+     * @path /clienti/{clientId}/materiali/{materialId}
+     * @allow create: (write) if the client ID and uploadedByUserId are correctly set.
+     * @deny create: (write) if a user tries to upload materials for a different client.
+     * @principle Validates relational consistency between path, user session, and document data.
+     */
+    match /clienti/{clientId}/materiali/{materialId} {
+      allow get, list: if belongsToClient(clientId) || isAdmin();
+      allow create: if (isAdmin() || belongsToClient(clientId)) && (request.resource.data.clientId == clientId && request.resource.data.uploadedByUserId == request.auth.uid);
+      allow update: if (resource != null) && (isAdmin() || (belongsToClient(clientId) && request.resource.data.clientId == resource.data.clientId));
+      allow delete: if (resource != null) && (isAdmin() || (belongsToClient(clientId) && resource.data.uploadedByUserId == request.auth.uid));
     }
   }
 }

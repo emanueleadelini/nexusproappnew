@@ -1,87 +1,300 @@
 {
   "entities": {
-    "User": {
-      "title": "User",
+    "UserProfile": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "UserProfile",
       "type": "object",
-      "description": "Represents a user of the Nexus Pro app.",
+      "description": "Represents a user of the Nexus Agency app, including their role and associated client information. This entity does not store authentication credentials.",
       "properties": {
-        "id": { "type": "string" },
-        "email": { "type": "string", "format": "email" },
-        "ruolo": { "type": "string", "enum": ["super_admin", "operatore", "referente", "collaboratore", "admin"] },
-        "cliente_id": { "type": "string", "description": "Tenant ID for multi-tenancy" },
-        "nomeAzienda": { "type": "string" },
-        "permessi": { "type": "array", "items": { "type": "string" } },
-        "creatoIl": { "type": "string", "format": "date-time" },
-        "ultimo_accesso": { "type": "string", "format": "date-time" }
-      }
-    },
-    "Client": {
-      "title": "Client",
-      "type": "object",
-      "properties": {
-        "nome_azienda": { "type": "string" },
-        "settore": { "type": "string" },
-        "logo_url": { "type": "string" },
-        "email_riferimento": { "type": "string", "format": "email" },
-        "post_totali": { "type": "number" },
-        "post_usati": { "type": "number" },
-        "include_contratto": { "type": "boolean" },
-        "include_visual_identity": { "type": "boolean" },
-        "include_offline": { "type": "boolean" },
-        "richiesta_upgrade": { "type": "boolean" },
-        "richiesta_attenzione": { "type": "boolean" },
-        "ai_training": {
-          "type": "object",
-          "properties": {
-            "brand_voice": { "type": "string" },
-            "target_audience": { "type": "string" },
-            "key_values": { "type": "string" },
-            "main_topics": { "type": "string" },
-            "competitors": { "type": "string" }
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the UserProfile entity. This typically corresponds to the authentication system's user ID (e.g., Firebase Auth UID)."
+        },
+        "email": {
+          "type": "string",
+          "description": "The user's email address.",
+          "format": "email"
+        },
+        "role": {
+          "type": "string",
+          "description": "The role of the user within the agency app ('admin' or 'client').",
+          "format": "enum",
+          "items": {
+            "type": "string"
           }
         },
-        "creato_il": { "type": "string", "format": "date-time" },
-        "aggiornato_il": { "type": "string", "format": "date-time" }
-      }
+        "clientId": {
+          "type": "string",
+          "description": "Reference to the Client entity if the user's role is 'client'. This field is null for 'admin' users. (Relationship: Client 1:N UserProfile)"
+        },
+        "companyName": {
+          "type": "string",
+          "description": "The name of the company the user is associated with. For client users, this is often a cached value from the associated Client entity for quick access."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the user profile was created.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "email",
+        "role",
+        "companyName",
+        "createdAt"
+      ]
+    },
+    "Client": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Client",
+      "type": "object",
+      "description": "Represents an agency client company, including their contact details, industry, and contractual post credits.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Client entity."
+        },
+        "companyName": {
+          "type": "string",
+          "description": "The official name of the client company."
+        },
+        "sector": {
+          "type": "string",
+          "description": "The industry sector in which the client company operates."
+        },
+        "referenceEmail": {
+          "type": "string",
+          "description": "The main contact email address for the client company.",
+          "format": "email"
+        },
+        "totalPosts": {
+          "type": "number",
+          "description": "The total number of social media posts allocated to the client as per their current service plan."
+        },
+        "usedPosts": {
+          "type": "number",
+          "description": "The number of social media posts already consumed by the client within the current billing period."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the client record was created.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "companyName",
+        "totalPosts",
+        "usedPosts",
+        "createdAt"
+      ]
     },
     "Post": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Post",
       "type": "object",
+      "description": "Represents a social media post planned for a client, progressing through a defined editorial workflow.",
       "properties": {
-        "titolo": { "type": "string" },
-        "testo": { "type": "string" },
-        "stato": { "type": "string", "enum": ["bozza", "revisione_interna", "da_approvare", "revisione", "approvato", "programmato", "pubblicato"] },
-        "piattaforme": { "type": "array", "items": { "type": "string" } },
-        "formato": { "type": "string" },
-        "data_pubblicazione": { "type": "string", "format": "date-time" },
-        "materiali_ids": { "type": "array", "items": { "type": "string" } },
-        "scadenza_approvazione": { "type": "string", "format": "date-time" }
-      }
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Post entity."
+        },
+        "clientId": {
+          "type": "string",
+          "description": "Reference to the Client entity that this post belongs to. (Relationship: Client 1:N Post)"
+        },
+        "title": {
+          "type": "string",
+          "description": "The title or main subject of the social media post."
+        },
+        "text": {
+          "type": "string",
+          "description": "The full body text content of the social media post."
+        },
+        "status": {
+          "type": "string",
+          "description": "The current workflow status of the post.",
+          "format": "enum",
+          "items": {
+            "type": "string"
+          }
+        },
+        "publicationDate": {
+          "type": "string",
+          "description": "The scheduled or actual date and time for the post's publication.",
+          "format": "date-time"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the post was initially created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the post was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "clientId",
+        "title",
+        "text",
+        "status"
+      ]
     },
     "Material": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Material",
       "type": "object",
+      "description": "Represents a digital asset or file (e.g., logo, image) uploaded by a client, awaiting agency review and validation.",
       "properties": {
-        "nome_file": { "type": "string" },
-        "url_storage": { "type": "string" },
-        "link_esterno": { "type": "string" },
-        "caricato_da": { "type": "string" },
-        "ruolo_caricatore": { "type": "string", "enum": ["admin", "cliente"] },
-        "stato_validazione": { "type": "string", "enum": ["in_attesa", "validato", "rifiutato"] },
-        "destinazione": { "type": "string", "enum": ["social", "sito", "offline", "strategico", "visual_identity", "contratto"] },
-        "tipo_strategico": { "type": "string", "enum": ["piano_strategico", "piano_comunicazione", "business_plan", "business_model"] },
-        "tipo_offline": { "type": "string", "enum": ["brochure", "volantino", "6x3", "3x6", "bigliettini", "gadget", "altro"] },
-        "creato_il": { "type": "string", "format": "date-time" }
-      }
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Material entity."
+        },
+        "clientId": {
+          "type": "string",
+          "description": "Reference to the Client entity that this material belongs to. (Relationship: Client 1:N Material)"
+        },
+        "fileName": {
+          "type": "string",
+          "description": "The original name of the uploaded file."
+        },
+        "storageUrl": {
+          "type": "string",
+          "description": "The URL where the material file is stored in cloud storage (e.g., Firebase Storage).",
+          "format": "uri"
+        },
+        "uploadedByUserId": {
+          "type": "string",
+          "description": "Reference to the UserProfile entity who uploaded this material. (Relationship: UserProfile 1:N Material)"
+        },
+        "validationStatus": {
+          "type": "string",
+          "description": "The current validation status of the material.",
+          "format": "enum",
+          "items": {
+            "type": "string"
+          }
+        },
+        "rejectionNotes": {
+          "type": "string",
+          "description": "Optional notes or reasons provided if the material was rejected."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the material was uploaded.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "clientId",
+        "fileName",
+        "uploadedByUserId",
+        "validationStatus"
+      ]
     }
   },
   "auth": {
-    "providers": ["password"]
+    "providers": [
+      "password",
+      "anonymous"
+    ]
   },
   "firestore": {
-    "/users/{uid}": { "schema": "User", "description": "User profiles" },
-    "/clienti/{clienteId}": { "schema": "Client", "description": "Tenant data" },
-    "/clienti/{clienteId}/post/{postId}": { "schema": "Post", "description": "Post workflow" },
-    "/clienti/{clienteId}/materiali/{materialeId}": { "schema": "Material", "description": "Assets" }
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "UserProfile",
+          "schema": {
+            "$ref": "#/backend/entities/UserProfile"
+          },
+          "description": "Stores individual user profiles, including their role (admin/client) and associated client ID. This collection serves as the primary source for user-specific authorization context. Access is restricted to the user themselves (read/write). This document's role and clientId are critical for authorization independence checks for other documents.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique ID of the user, corresponding to Firebase Authentication UID."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/admins/{adminId}",
+        "definition": {
+          "entityName": "admin",
+          "schema": {
+            "$ref": "#/backend/entities/UserProfile"
+          },
+          "description": "Dedicated collection for marking users as administrators. Documents here are typically empty or contain minimal data, serving primarily for existence checks (`exists()`) in security rules to grant admin privileges. This structure enables Authorization Independence by removing the need for `get().data.role` checks for administrators.",
+          "params": [
+            {
+              "name": "adminId",
+              "description": "The unique ID of the user who is an administrator, corresponding to Firebase Authentication UID."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/clienti/{clientId}",
+        "definition": {
+          "entityName": "Client",
+          "schema": {
+            "$ref": "#/backend/entities/Client"
+          },
+          "description": "Top-level collection for all agency client companies. Admins have full read/write access. Client users can only read their specific client document (identified by `clientId` from their UserProfile). List operations are restricted for client users to uphold QAP principles.",
+          "params": [
+            {
+              "name": "clientId",
+              "description": "The unique ID of the client company."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/clienti/{clientId}/post/{postId}",
+        "definition": {
+          "entityName": "Post",
+          "schema": {
+            "$ref": "#/backend/entities/Post"
+          },
+          "description": "Subcollection storing social media posts for a specific client. Includes denormalized 'clientId' for robust authorization independence and simpler rules. Admins have full access. Client users can read and update their own posts to 'approvato' status. List operations are secure for clients as they are scoped to their specific 'clientId'.",
+          "params": [
+            {
+              "name": "clientId",
+              "description": "The unique ID of the parent client company."
+            },
+            {
+              "name": "postId",
+              "description": "The unique ID of the social media post."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/clienti/{clientId}/materiali/{materialId}",
+        "definition": {
+          "entityName": "Material",
+          "schema": {
+            "$ref": "#/backend/entities/Material"
+          },
+          "description": "Subcollection storing digital materials (files) uploaded by clients. Includes denormalized 'clientId' and 'uploadedByUserId' for authorization independence. Admins have full access to validate/reject. Client users can read their materials and create new ones. List operations are secure for clients as they are scoped to their specific 'clientId'.",
+          "params": [
+            {
+              "name": "clientId",
+              "description": "The unique ID of the parent client company."
+            },
+            {
+              "name": "materialId",
+              "description": "The unique ID of the material/file."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed to adhere to the core principles of security, scalability, and debuggability, with a strong emphasis on Authorization Independence and Query-Aware Security Rules (QAPs).\n\n**Authorization Independence via Denormalization:**\n1.  **Admin Roles:** To eliminate `get()` calls for checking global admin roles, a dedicated top-level collection `/admins/{adminId}` is introduced. If a document exists at `admins/{request.auth.uid}`, the user is an administrator. This allows security rules to use the highly efficient `exists()` function, directly addressing the 'Authorization Independence' mandate by removing a hierarchical dependency on a `UserProfile` document to determine a global role.\n2.  **User Profiles & Client Association:** The `/users/{userId}` collection stores each `UserProfile`, including their `role` ('admin' or 'client') and `clientId` (if a client). While the rules will perform a `get()` operation on `users/$(request.auth.uid)` to retrieve this context, this is considered an acceptable 'self-lookup' for the user's own identity and authorization attributes, rather than a problematic hierarchical dependency on a *separate business entity*. This self-lookup is stable and critical for establishing the user's base permissions (e.g., which client they belong to).\n3.  **Client-Specific Data:** For subcollections like `posts` and `materials` which belong to a specific client (`/clients/{clientId}/posts/{postId}` and `/clients/{clientId}/materials/{materialId}`), the `clientId` is inherently part of the document path. Furthermore, the `Post` and `Material` schemas explicitly include a `clientId` field. This denormalization reinforces client ownership and allows security rules to directly validate the `clientId` in the path against the `clientId` attribute within the document (`request.resource.data.clientId == clientId`), and against the `clientId` from the user's `UserProfile`.\n\n**Clarity of Intent and Debuggability:**\n*   The use of clear, hierarchical paths (`/clients/{clientId}/posts/{postId}`) explicitly defines ownership and relationships, making the authorization intent transparent. Wildcard names (`{userId}`, `{clientId}`, `{postId}`, `{materialId}`) are descriptive and consistent.\n*   Dedicated status fields (`Post.status`, `Material.validationStatus`) enforce a Finite State Machine model, improving data predictability and simplifying rules logic related to workflow transitions.\n\n**DBAC (Database-Based Access Control):**\n*   Roles (`admin`, `client`) are stored directly in Firestore: 'admin' status is determined by document existence in `/admins/{adminId}`, and 'client' role and associated `clientId` are stored in `/users/{userId}`. This strictly avoids custom claims.\n\n**QAPs (Query-Aware Security Rules):**\n1.  **Admin Access:** Admins (identified by `exists(/admins/$(request.auth.uid))`) have full read/write access to all collections and subcollections, enabling them to query and manage all clients, posts, and materials without restriction.\n2.  **Client Access - Top-Level Clients:** Client users are **prevented from performing `list` operations** on the top-level `/clients` collection. Instead, the application explicitly retrieves the client user's `clientId` from their `UserProfile` (`/users/{request.auth.uid}`) and then performs a direct `get()` operation on *their specific* client document (`/clients/{theirClientId}`). This ensures that `list` queries never return unauthorized data for clients, adhering to the QAP principle.\n3.  **Client Access - Subcollections:** For client-specific subcollections (`/clients/{clientId}/posts` and `/clients/{clientId}/materials`), `list` operations are secure. When a client user queries these subcollections, the `clientId` in the path (e.g., `clienti/{myClientId}/posts`) is directly validated against their associated `clientId` from their `UserProfile`. This guarantees that clients can only retrieve lists of posts and materials belonging to *their own* client entity.\n\n**Invariants:**\n*   Ownership is clearly defined through path parameters (e.g., `{userId}` for `UserProfile`) and document fields (`Post.clientId`, `Material.clientId`, `Material.uploadedByUserId`).\n*   Timestamps (`createdAt`, `updatedAt`, `publicationDate`) are standard fields, supporting data integrity and auditing."
   }
 }
