@@ -14,19 +14,21 @@ Per una comprensione profonda dell'architettura, consultare la cartella `/docs`:
 4. [Logica Security Rules](./docs/SECURITY-RULES-LOGIC.md) - Permessi e Multi-tenancy.
 5. [Ingegneria AI](./docs/AI-ENGINEERING.md) - Genkit e Prompt Strategy.
 
-## Setup Rapido
+## Setup Rapido Git
+Esegui questi comandi sul tuo terminale locale per collegare il progetto:
+```bash
+git init
+git remote add origin https://github.com/emanueleadelini/Nexuspro.git
+git add .
+git commit -m "primo push del progetto"
+git branch -M main
+git push -u origin main
+```
+
+## Configurazione Iniziale App
 1. Inizializzare l'admin principale tramite la pagina `/setup-admin` (Key: `nexus2024`).
-2. Collegare il repository locale:
-   ```bash
-   git init
-   git remote add origin https://github.com/emanueleadelini/Nexuspro.git
-   git add .
-   git commit -m "Initial commit: Nexus Pro v10.1"
-   git branch -M main
-   git push -u origin main
-   ```
-3. Creare i tenant dall'area Admin.
-4. Configurare il Brand DNA per ogni cliente per abilitare la generazione AI strategica.
+2. Creare i tenant dall'area Admin.
+3. Configurare il Brand DNA per ogni cliente per abilitare la generazione AI strategica.
 
 ---
 *Proprietà Intellettuale - AD Next Lab*
