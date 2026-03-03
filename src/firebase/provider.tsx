@@ -106,10 +106,13 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
   }, [auth, firestore]);
 
   const isAdmin = useMemo(() => {
+    // Accesso immediato per l'email del proprietario
+    if (authState.user?.email === 'emanueleadelini@gmail.com') return true;
+    
     // Includiamo 'admin' per compatibilità con setup manuali
     const role = authState.userData?.ruolo;
     return role === 'super_admin' || role === 'operatore' || role === 'admin';
-  }, [authState.userData]);
+  }, [authState.userData, authState.user]);
 
   const contextValue = useMemo((): FirebaseContextState => {
     const servicesAvailable = !!(firebaseApp && firestore && auth);

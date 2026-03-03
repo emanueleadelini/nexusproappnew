@@ -3,7 +3,7 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * NEXUS AGENCY SECURITY RULES - v10.6
+     * NEXUS AGENCY SECURITY RULES - v10.7
      * 
      * CORE PHILOSOPHY:
      * Protezione multi-tenant con isolamento dei dati per cliente.
@@ -17,15 +17,14 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+      return isSignedIn() && (
+        request.auth.token.email == "emanueleadelini@gmail.com" ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
     }
 
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
-    }
-
-    function isSuperAdminEmail() {
-      return isSignedIn() && request.auth.token.email == "emanueleadelini@gmail.com";
     }
 
     function getUserData() {
@@ -33,9 +32,11 @@ service cloud.firestore {
     }
 
     function belongsToClient(clientId) {
+      // Otteniamo il clientId dal profilo utente per validare l'appartenenza al tenant
+      let userProfile = getUserData();
       return isSignedIn() && (
-        getUserData().cliente_id == clientId || 
-        getUserData().clientId == clientId
+        userProfile.cliente_id == clientId || 
+        userProfile.clientId == clientId
       );
     }
 
@@ -58,12 +59,12 @@ service cloud.firestore {
       }
     }
 
-    /** Marker per Amministratori (Critico per il setup) */
+    /** Marker per Amministratori */
     match /admins/{adminId} {
       allow get: if isSignedIn();
       allow list: if isAdmin();
-      // Permette la creazione/aggiornamento iniziale per il Super Admin o Admin esistenti
-      allow create, update: if isOwner(adminId) && (isSuperAdminEmail() || isAdmin());
+      // Permette la creazione iniziale per il Super Admin specifico
+      allow create, update: if isOwner(adminId) && (request.auth.token.email == "emanueleadelini@gmail.com" || isAdmin());
       allow delete: if isAdmin(); 
     }
 
@@ -95,6 +96,22 @@ service cloud.firestore {
         allow update: if isAdmin() || (belongsToClient(clientId) && request.resource.data.clientId == resource.data.clientId);
         allow delete: if isAdmin() || (belongsToClient(clientId) && resource.data.uploadedByUserId == request.auth.uid);
       }
+    }
+
+    /** 
+     * Supporto per Collection Group Queries (CRITICO)
+     * Permette alla Dashboard Admin di interrogare post e materiali globalmente
+     */
+    match /{path=**}/post/{postId} {
+      allow read: if isAdmin();
+    }
+    
+    match /{path=**}/materiali/{materialId} {
+      allow read: if isAdmin();
+    }
+
+    match /{path=**}/notifiche/{notificaId} {
+      allow read: if isAdmin();
     }
   }
 }
