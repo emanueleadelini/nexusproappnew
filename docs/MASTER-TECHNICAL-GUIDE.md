@@ -14,25 +14,22 @@ Nexus Pro è un'applicazione SaaS Multi-tenant progettata per AD Next Lab. Gesti
 
 ## 3. Source Control
 - **Repository Ufficiale**: `https://github.com/emanueleadelini/Nexuspro.git`
+- **Guida Setup**: Vedere [GITHUB-SETUP.md](./GITHUB-SETUP.md)
 
-## 4. Architettura Identity-Aware
-La piattaforma utilizza un sistema di gating rigoroso (v10.0):
-- **Admin Root**: `emanueleadelini@gmail.com` (Unico utente con privilegi di Super Admin).
-- **Tenant Isolation**: Ogni utente non-admin è legato a un `cliente_id` nel proprio profilo Firestore. Tutte le query sono filtrate per questo ID tramite l'oggetto `userData` nel `FirebaseProvider`.
+## 4. Architettura Identity-Aware v10.1
+La piattaforma utilizza un sistema di gating rigoroso per garantire la sicurezza multi-tenant:
+- **Tenant Isolation**: Ogni utente è legato a un `cliente_id` nel proprio profilo Firestore. Tutte le query sono filtrate per questo ID tramite l'oggetto `userData` nel `FirebaseProvider`.
 - **Role-Based Access Control (RBAC)**:
-  - `super_admin`: Accesso totale a dashboard, analytics e gestione tenant.
-  - `referente`: Il cliente principale, può approvare post e caricare asset.
-  - `collaboratore`: Visualizzazione limitata e feedback.
+  - `super_admin`: (emanueleadelini@gmail.com) Accesso totale.
+  - `referente`: Il cliente principale, può approvare post e consultare asset.
+  - `collaboratore`: Visualizzazione limitata.
 
 ## 5. Moduli Strategici
 - **Workflow Post**: Gestione stati (bozza -> da approvare -> approvato -> programmato -> pubblicato).
-- **Silenzio Assenso**: Logica di approvazione automatica (24h) gestibile via UI.
-- **Hub Assets**: Archivio centralizzato per Contratti, Visual Identity e Materiali Offline (Bigliettini, Gadget, ecc.).
+- **Hub Assets**: Archivio centralizzato suddiviso per Contratto, Visual Identity e Materiali Offline (**Bigliettini, Gadget, Brochure, ecc.**).
 - **AI Brand Training**: Sistema di "DNA Mapping" per addestrare i modelli LLM sullo stile comunicativo specifico di ogni cliente.
 
-## 6. Directory Map
-- `src/app/admin`: Dashboard gestionale agenzia.
-- `src/app/cliente`: Portale riservato per i tenant.
-- `src/firebase/`: Core logic, hook personalizzati (`useCollection`, `useDoc`) e provider.
-- `src/ai/flows/`: Definizione dei flussi Genkit per la generazione post e calendari.
-- `src/components/admin/`: Componenti UI per la gestione tenant.
+## 6. Documentazione Collegata
+- [Specifiche Data Model](./DATA-MODEL-SPEC.md)
+- [Logica Security Rules](./SECURITY-RULES-LOGIC.md)
+- [Ingegneria AI](./AI-ENGINEERING.md)
