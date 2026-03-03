@@ -5,25 +5,29 @@ Hub Digitale SaaS per la gestione strategica della comunicazione tra agenzia e c
 ## 🚀 Repository GitHub (Collegato)
 **URL**: `https://github.com/emanueleadelini/Nexuspro.git`
 
-**Verifica Stato**: Se vedi questa documentazione su GitHub, il collegamento è riuscito correttamente.
+## 🛠️ Manutenzione GitHub (Cosa fare per aggiornare)
+Ogni volta che vuoi salvare le modifiche su GitHub, apri il terminale (**View > Terminal**) e usa questi tre comandi in sequenza:
 
-## 🛠️ Guida Rapida Terminale (Manutenzione)
-Per inviare nuovi aggiornamenti su GitHub, apri il terminale (**View > Terminal**) e usa:
 ```bash
+# 1. Prepara tutti i file modificati
 git add .
-git commit -m "descrizione delle modifiche"
+
+# 2. Crea un punto di salvataggio con un messaggio (cambia il testo tra virgolette)
+git commit -m "aggiornamento piattaforma"
+
+# 3. Invia i file al server GitHub
 git push origin main
 ```
 
 ## 📂 Documentazione per Ingegneri
 Consultare la cartella `/docs` per l'analisi tecnica dettagliata:
 
-1. [Checkup Lancio 100%](./docs/CHECKUP-STATUS.md) - Stato attuale e To-Do produzione.
-2. [Guida Tecnica Master](./docs/MASTER-TECHNICAL-GUIDE.md) - Architettura, Stack e Manifest File.
-3. [Specifiche Data Model](./docs/DATA-MODEL-SPEC.md) - Struttura Firestore e Multi-tenancy.
-4. [Sicurezza Identity-Aware](./docs/SECURITY-RULES-LOGIC.md) - Logica delle Security Rules v10.2.
-5. [Ingegneria AI](./docs/AI-ENGINEERING.md) - Prompt Strategy e Brand DNA Mapping.
-6. [Guida GitHub](./docs/GITHUB-SETUP.md) - Istruzioni per il source control.
+1. [Guida GitHub (Aggiornata)](./docs/GITHUB-SETUP.md) - Istruzioni complete per Push e Pull.
+2. [Checkup Lancio 100%](./docs/CHECKUP-STATUS.md) - Stato attuale e To-Do produzione.
+3. [Guida Tecnica Master](./docs/MASTER-TECHNICAL-GUIDE.md) - Architettura, Stack e Manifest File.
+4. [Specifiche Data Model](./docs/DATA-MODEL-SPEC.md) - Struttura Firestore e Multi-tenancy.
+5. [Sicurezza Identity-Aware](./docs/SECURITY-RULES-LOGIC.md) - Logica delle Security Rules v10.2.
+6. [Ingegneria AI](./docs/AI-ENGINEERING.md) - Prompt Strategy e Brand DNA Mapping.
 
 ---
 *Proprietà Intellettuale - AD Next Lab - 2024*

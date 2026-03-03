@@ -1,49 +1,41 @@
-# Guida al Collegamento GitHub (v10.3)
+# Guida alla Manutenzione GitHub (v10.4)
 
-Questa guida spiega come sincronizzare il codice di Nexus Pro con il repository ufficiale utilizzando il terminale.
+Questa guida spiega come mantenere il codice di Nexus Pro sincronizzato tra il tuo ambiente di sviluppo e il repository GitHub ufficiale.
 
-## 1. Localizzare il Terminale Corretto
-Per garantire che i comandi funzionino, usa il terminale integrato in **Firebase Studio**:
-- Cerca la linguetta **"Terminal"** nella parte inferiore dello schermo.
-- Se non la vedi, clicca su **`View > Terminal`** nel menu in alto.
-- *Nota: Se usi il terminale di Windows (CMD), devi prima entrare nella cartella del progetto con `cd`.*
+## 1. Routine di Aggiornamento (Inviare modifiche a GitHub)
+Esegui questi passaggi ogni volta che completi una nuova funzionalità o una serie di correzioni:
 
-## 2. Comandi di Inizializzazione e Push
-Copia e incolla questi comandi nel terminale premendo INVIO dopo ognuno:
+1.  **Apri il Terminale**: Menu `View > Terminal`.
+2.  **Staging dei file**:
+    ```bash
+    git add .
+    ```
+3.  **Commit (Salvataggio locale)**:
+    ```bash
+    git commit -m "Descrivi qui cosa hai cambiato"
+    ```
+4.  **Push (Invio al server)**:
+    ```bash
+    git push origin main
+    ```
+
+## 2. Scaricare aggiornamenti (Se modifichi il codice altrove)
+Se hai apportato modifiche direttamente su GitHub o da un altro computer, usa questo comando per aggiornare il tuo ambiente attuale:
 
 ```bash
-# Inizializza il repository locale
-git init
-
-# Collega il repository remoto
-git remote add origin https://github.com/emanueleadelini/Nexuspro.git
-
-# Prepara tutti i file per l'invio
-git add .
-
-# Crea un punto di salvataggio con un messaggio
-git commit -m "primo push completo"
-
-# Imposta il ramo principale su main
-git branch -M main
-
-# Invia i file al server (sovrascrivendo eventuali conflitti remoti)
-git push -u origin main --force
+git pull origin main
 ```
+*Nota: Se ricevi errori di conflitto, puoi forzare l'aggiornamento con `git pull origin main --force` (attenzione: sovrascrive le modifiche locali non salvate).*
 
-## 3. Come capire se è tutto OK? ✅
-Per confermare che il codice sia effettivamente su GitHub:
-1. Apri il browser su: `https://github.com/emanueleadelini/Nexuspro`
-2. **Cosa devi vedere**: Una lista di file (`src`, `docs`, `package.json`, ecc.).
-3. **Cosa NON devi vedere**: Una pagina grigia con istruzioni di setup (se la vedi, il push è fallito).
+## 3. Verifica del Successo ✅
+Per confermare che tutto sia andato a buon fine:
+1. Apri: `https://github.com/emanueleadelini/Nexuspro`
+2. Controlla la data dell'ultimo commit accanto ai file: deve corrispondere a pochi minuti fa.
+3. Se vedi il tuo messaggio di commit (punto 1.3), il codice è al sicuro sul cloud.
 
-## 4. Manutenzione
-Ogni volta che vengono apportate modifiche significative, ricorda di ripetere l'operazione per mantenere il backup aggiornato:
-```bash
-git add .
-git commit -m "descrizione della modifica"
-git push origin main
-```
+## 4. Differenza tra Branch Menu e Terminale
+- **Menu Branch (Icona in basso a sinistra)**: Serve solo a visualizzare o cambiare "ramo" del codice. Non esegue il push dei file.
+- **Terminale (Finestra testuale)**: È l'unico posto dove puoi scrivere i comandi `git add`, `git commit` e `git push`.
 
 ---
 *Documentazione Tecnica AD Next Lab - 2024*
