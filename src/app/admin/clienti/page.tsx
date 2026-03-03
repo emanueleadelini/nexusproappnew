@@ -8,12 +8,12 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { 
-  Users, 
-  Plus, 
-  Search, 
-  Building2, 
-  ArrowRight, 
+import {
+  Users,
+  Plus,
+  Search,
+  Building2,
+  ArrowRight,
   Briefcase,
   Calendar,
   Filter
@@ -35,7 +35,7 @@ export default function ClientiListPage() {
 
   const { data: clients, isLoading } = useCollection<any>(clientsQuery);
 
-  const filteredClients = clients?.filter(c => 
+  const filteredClients = clients?.filter(c =>
     c.nome_azienda?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     c.settore?.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -58,8 +58,8 @@ export default function ClientiListPage() {
     <div className="space-y-8 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
         <div>
-          <h1 className="text-4xl font-headline font-bold text-white mb-2">Portfolio Clienti</h1>
-          <p className="text-slate-400 text-sm">Gestione tenant e monitoraggio performance Hub.</p>
+          <h1 className="text-4xl font-headline font-bold text-slate-900 mb-2">Portfolio Clienti</h1>
+          <p className="text-slate-500 text-sm">Gestione tenant e monitoraggio performance Hub.</p>
         </div>
         <Button onClick={() => setIsAddModalOpen(true)} className="gradient-primary h-12 px-6 rounded-xl font-bold shadow-lg shadow-indigo-500/20 gap-2">
           <Plus className="w-5 h-5" /> Aggiungi Cliente
@@ -69,14 +69,14 @@ export default function ClientiListPage() {
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-          <Input 
-            placeholder="Cerca azienda o settore..." 
+          <Input
+            placeholder="Cerca azienda o settore..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 bg-slate-900/50 border-white/10 text-white rounded-xl h-11 focus:ring-indigo-500/20"
+            className="pl-10 bg-white border-slate-200 text-slate-900 rounded-xl h-11 focus:ring-indigo-500/20 shadow-sm"
           />
         </div>
-        <Button variant="outline" className="border-white/10 text-slate-400 gap-2 h-11 rounded-xl hover:bg-white/5">
+        <Button variant="outline" className="border-slate-200 text-slate-600 gap-2 h-11 rounded-xl shadow-sm hover:bg-slate-50 hover:text-slate-900">
           <Filter className="w-4 h-4" /> Filtri
         </Button>
       </div>
@@ -89,7 +89,7 @@ export default function ClientiListPage() {
               <Card className="glass-card border-none hover:border-indigo-500/30 transition-all group cursor-pointer h-full">
                 <CardHeader className="pb-4">
                   <div className="flex justify-between items-start">
-                    <div className="w-12 h-12 rounded-2xl bg-slate-800 border border-white/5 flex items-center justify-center overflow-hidden group-hover:border-indigo-500/50 transition-colors">
+                    <div className="w-12 h-12 rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-center overflow-hidden group-hover:border-indigo-500/50 transition-colors shadow-sm">
                       {client.logo_url ? (
                         <img src={client.logo_url} alt={client.nome_azienda} className="w-full h-full object-cover" />
                       ) : (
@@ -100,14 +100,16 @@ export default function ClientiListPage() {
                       {client.settore || 'Servizi'}
                     </Badge>
                   </div>
-                  <CardTitle className="text-xl text-white pt-4 group-hover:text-indigo-400 transition-colors">{client.nome_azienda}</CardTitle>
-                  <CardDescription className="text-slate-500 text-xs truncate">Ref: {client.email_riferimento || 'Nessuna email'}</CardDescription>
+                  <CardTitle className="text-xl text-slate-900 pt-4 group-hover:text-indigo-600 transition-colors font-headline font-bold">{client.nome_azienda}</CardTitle>
+                  {client.email_riferimento && (
+                    <CardDescription className="text-slate-500 text-xs truncate mt-1">{client.email_riferimento}</CardDescription>
+                  )}
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
                     <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest">
                       <span className="text-slate-500">Post Mensili</span>
-                      <span className="text-white">{client.post_usati} / {client.post_totali}</span>
+                      <span className="text-slate-900">{client.post_usati} / {client.post_totali}</span>
                     </div>
                     <Progress value={usagePercent} className="h-1.5" />
                   </div>
@@ -116,7 +118,7 @@ export default function ClientiListPage() {
                       <Calendar className="w-3 h-3" />
                       <span className="text-[10px] font-bold">Attivo da {client.creato_il?.toDate().toLocaleDateString('it-IT', { month: 'short', year: 'numeric' })}</span>
                     </div>
-                    <div className="text-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="text-indigo-600 opacity-0 -translate-x-2 group-hover:translate-x-0 group-hover:opacity-100 transition-all duration-300">
                       <ArrowRight className="w-4 h-4" />
                     </div>
                   </div>
@@ -127,9 +129,9 @@ export default function ClientiListPage() {
         })}
 
         {filteredClients?.length === 0 && (
-          <div className="col-span-full py-20 text-center glass-card rounded-[2rem] border-dashed border-white/10">
-            <Users className="w-12 h-12 text-slate-700 mx-auto mb-4" />
-            <h3 className="text-white font-bold">Nessun cliente trovato</h3>
+          <div className="col-span-full py-20 text-center glass-card rounded-[2rem] border-dashed border-slate-200">
+            <Users className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+            <h3 className="text-slate-900 font-bold">Nessun cliente trovato</h3>
             <p className="text-slate-500 text-sm">Prova a cambiare i termini di ricerca.</p>
           </div>
         )}

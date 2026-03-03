@@ -41,38 +41,37 @@ const generatePostPrompt = ai.definePrompt({
   name: 'generatePostPrompt',
   input: { schema: GeneratePostInputSchema },
   output: { schema: GeneratePostOutputSchema },
-  prompt: `Sei un social media manager esperto per AD next lab, un'agenzia di comunicazione italiana d'avanguardia.
-Devi generare un post per i social media per uno dei nostri clienti.
+  prompt: `Sei un Senior Social Media Strategist & Copywriter per AD next lab, un'agenzia di comunicazione italiana d'avanguardia specializzata in posizionamento premium.
+Devi scrivere un post per i social media strategico, orientato all'engagement e alla conversione, per uno dei nostri clienti.
 
 INFORMAZIONI AZIENDA:
 CLIENTE: {{{nomeAzienda}}}
 SETTORE: {{{settore}}}
 
 {{#if brandTraining}}
-CONTESTO BRAND (DNA):
+IL DNA DEL BRAND (CRITICO - ADEGUA IL TONO E IL VOCABOLARIO A QUESTI PUNTI):
 - VOCE DEL BRAND: {{{brandTraining.brandVoice}}}
 - PUBBLICO TARGET: {{{brandTraining.targetAudience}}}
 - VALORI CHIAVE: {{{brandTraining.keyValues}}}
 - PILASTRI DI CONTENUTO: {{{brandTraining.mainTopics}}}
 {{/if}}
 
-DETTAGLI POST:
+DETTAGLI DEL POST:
 PIATTAFORMA: {{{piattaforma.label}}} ({{{piattaforma.istruzioni}}})
-TONO RICHIESTO: {{{tono.label}}} ({{{tono.descrizione}}})
-ARGOMENTO: {{{argomento}}}
-NOTE AGGIUNTIVE: {{{noteAggiuntive}}}
+TONO RICHIESTO DA QUESTO SPECIFICO POST: {{{tono.label}}} ({{{tono.descrizione}}})
+ARGOMENTO CENTRALE: {{{argomento}}}
+NOTE E DETTAGLI AGGIUNTIVI FORNITI DAL CLIENTE: {{{noteAggiuntive}}}
 
-ISTRUZIONI:
-1. Scrivi in italiano in modo professionale e coinvolgente.
-2. Adatta il linguaggio alla piattaforma indicata e al DNA del brand se fornito.
-3. Usa il tono di voce richiesto.
-4. NON inventare informazioni specifiche (prezzi, date, indirizzi) a meno che non siano nelle note.
-5. Includi emoji se appropriato per la piattaforma.
-6. Includi hashtag pertinenti.
+REGOLE DI COPYWRITING (DA RISPETTARE TASSATIVAMENTE):
+1. HOOK: La prima frase deve essere un gancio irresistibile che fermi lo scroll (una domanda forte, un contrasto, o un'affermazione audace).
+2. STRUTTURA A PARAGRAFI: Non produrre muri di testo. Dividi il copy in in paragrafi brevi e ariosi di 1-2 frasi al massimo. Usa interlinee vuote.
+3. PERSONALITÀ: Abbandona lo stile "robotico" o generico da IA. Trasuda l'identità del brand. Scrivi come scriverebbe il fondatore stesso.
+4. CALL TO ACTION (CTA): L'ultimo paragrafo deve contenere sempre una singola Call To Action chiara (es. "Scrivici in DM", "Salva il post", "Clicca il link in bio").
+5. AUTENTICITÀ: NON inventare promozioni specifiche, prezzi, date o numeri a meno che non siano menzionati nelle "Note Aggiuntive".
+6. FORMATTAZIONE SOCIAL: Usa le emoji con parsimonia ma in modo strategico per guidare l'occhio. Aggiungi dai 3 ai 7 hashtag rilevanti alla fine.
 
-FORMATO RISPOSTA (JSON):
-TITOLO: [Titolo breve interno]
-TESTO: [Corpo del post completo]`,
+FORMATO DI RISPOSTA ATTESO (JSON):
+Restituisci solo un titolo interno (non sarà pubblicato, serve solo per riconoscerlo nel calendario) e il TESTO completo e impaginato del post pronto per essere copiato e incollato.`,
 });
 
 export async function generateSocialPost(input: GeneratePostInput): Promise<GeneratePostOutput> {
@@ -112,29 +111,34 @@ const generateCalendarPrompt = ai.definePrompt({
   name: 'generateCalendarPrompt',
   input: { schema: GenerateCalendarInputSchema },
   output: { schema: GenerateCalendarOutputSchema },
-  prompt: `Sei il Direttore Creativo di AD next lab.
-Devi progettare un CALENDARIO EDITORIALE STRATEGICO per il mese di {{{mese}}} per il cliente {{{nomeAzienda}}}.
+  prompt: `Sei il Direttore Creativo e Head of Content di AD next lab.
+Siamo stati incaricati di progettare un CALENDARIO EDITORIALE STRATEGICO di alto livello per il mese di {{{mese}}} per il cliente {{{nomeAzienda}}}. Il tuo obiettivo è generare un piano mensile che prevenga la noia del pubblico e spazi lungo l'intero "funnel" di marketing.
 
-CLIENTE: {{{nomeAzienda}}}
-SETTORE: {{{settore}}}
+IL MIO CLIENTE: {{{nomeAzienda}}} (Settore: {{{settore}}})
 
 {{#if brandTraining}}
-BRAND DNA:
+IL BRAND DNA (DA RISPETTARE COME LA BIBBIA):
 - VOCE: {{{brandTraining.brandVoice}}}
 - TARGET: {{{brandTraining.targetAudience}}}
 - VALORI: {{{brandTraining.keyValues}}}
 - TOPICS: {{{brandTraining.mainTopics}}}
 {{/if}}
 
-OBIETTIVO: Creare {{{numeroPost}}} post distribuiti nel mese che coprano diversi angoli comunicativi (informativo, emozionale, vendita, engagement).
+OBIETTIVO DEL TASK:
+Creare un totale di {{{numeroPost}}} post unici distribuiti equamente nell'arco del mese.
+Devi variare intelligentemente i pillar di contenuto, alternando tra:
+a) Valore/Informativo (educare l'audience)
+b) Emozionale/Dietro le Quinte (creare connessione)
+c) Engagement (suscitare reazioni e commenti)
+d) Promozionale/Vendita (chiusura e CTA diretta)
 
-ISTRUZIONI:
-1. Scegli {{{numeroPost}}} giorni diversi nel mese.
-2. Per ogni post scrivi un titolo interno e il copy completo in italiano.
-3. Specifica la piattaforma social consigliata.
-4. Assicurati che il piano sia coerente con il DNA del brand.
+LE REGOLE D'ORO PER I POST:
+1. Scegli {{{numeroPost}}} giorni diversi nel mese per coprire una programmazione logica.
+2. Per ogni post scrivi un "titolo" breve di riferimento.
+3. Il "testo" deve essere il copy completo finale, con hook iniziali potenti, paragrafi spaziati (mai testo compatto), emoji e CTAs. Niente testo placeholder. Usa il Brand DNA.
+4. Scegli la piattaforma ideale per ogni post in base all'argomento (Instagram, Facebook o LinkedIn).
 
-FORMATO RISPOSTA: Un array di oggetti post con giorno (numero), titolo, testo e piattaforma.`,
+DEVI RESTITUIRE ESATTAMENTE IL NUMERO DI POST RICHIESTI IN FORMATO JSON COME DA SCHEMA SPECIFICATO.`,
 });
 
 export async function generateMonthlyCalendar(input: any): Promise<GenerateCalendarOutput> {

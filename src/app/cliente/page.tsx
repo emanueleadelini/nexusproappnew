@@ -10,8 +10,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
-import { 
-  Check, 
+import {
+  Check,
   Zap,
   Loader2,
   Fingerprint,
@@ -45,7 +45,7 @@ export default function ClienteFeedPage() {
   const { toast } = useToast();
   const searchParams = useSearchParams();
   const highlightPostId = searchParams.get('postId');
-  
+
   const [selectedPost, setSelectedPost] = useState<any | null>(null);
   const [noteModifica, setNoteModifica] = useState('');
   const [loading, setLoading] = useState(false);
@@ -179,7 +179,7 @@ export default function ClienteFeedPage() {
   }
 
   const usagePercent = (clientData?.post_usati / (clientData?.post_totali || 1)) * 100;
-  
+
   return (
     <div className="space-y-10 py-10 animate-in fade-in duration-700">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
@@ -193,7 +193,7 @@ export default function ClienteFeedPage() {
           </div>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" className="h-12 rounded-xl border-slate-200 text-slate-900 bg-white font-bold px-6 hover:bg-slate-50"><History className="w-4 h-4 mr-2"/> Storico</Button>
+          <Button variant="outline" className="h-12 rounded-xl border-slate-200 text-slate-900 bg-white font-bold px-6 hover:bg-slate-50"><History className="w-4 h-4 mr-2" /> Storico</Button>
           <Button onClick={handleRequestUpgrade} className="h-12 gradient-primary shadow-lg shadow-indigo-500/20 rounded-xl font-bold px-6">Post Extra</Button>
         </div>
       </div>
@@ -361,17 +361,31 @@ export default function ClienteFeedPage() {
 
         <div className="space-y-6">
           <Card className="glass-card border-none rounded-[2.5rem] overflow-hidden shadow-sm bg-white">
-            <CardHeader className="bg-indigo-600 p-8"><CardTitle className="text-white text-lg font-headline flex items-center gap-2"><Zap className="w-5 h-5 fill-white" /> Piano Mensile</CardTitle></CardHeader>
+            <CardHeader className="bg-indigo-600 p-8">
+              <CardTitle className="text-white text-lg font-headline flex items-center gap-2">
+                <Zap className="w-5 h-5 text-white fill-current" /> Il Tuo Piano
+              </CardTitle>
+            </CardHeader>
             <CardContent className="p-8 space-y-8">
-              <div className="text-center p-6 bg-slate-50 rounded-3xl border border-slate-100">
+              <div className="text-center p-6 bg-slate-50 rounded-3xl border border-slate-100 shadow-inner">
                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Post Residui</span>
-                <div className="text-6xl font-black text-slate-900 mt-2 tracking-tighter">{Math.max(0, (clientData?.post_totali || 0) - (clientData?.post_usati || 0))}</div>
+                <div className="text-6xl font-black text-slate-900 mt-2 tracking-tighter">
+                  {Math.max(0, (clientData?.post_totali || 0) - (clientData?.post_usati || 0))}
+                </div>
+                {clientData?.post_totali > 0 ? (
+                  <p className="text-xs text-slate-500 mt-3 font-medium">su {clientData.post_totali} <span className="text-slate-400">post mensili inclusi</span></p>
+                ) : (
+                  <p className="text-xs text-amber-600 mt-3 font-medium bg-amber-50 mx-auto max-w-fit px-3 py-1 rounded-full border border-amber-100">Piano in attesa di configurazione</p>
+                )}
               </div>
               <div className="space-y-2">
-                <div className="flex justify-between items-end"><span className="text-[10px] font-black text-slate-400 uppercase">Utilizzo</span><span className="text-sm font-black text-slate-900">{clientData?.post_usati} / {clientData?.post_totali}</span></div>
-                <Progress value={usagePercent} className="h-2.5 bg-slate-100 rounded-full" />
+                <div className="flex justify-between items-end">
+                  <span className="text-[10px] font-black text-slate-400 uppercase">Utilizzo</span>
+                  <span className="text-sm font-black text-slate-900">{clientData?.post_usati || 0} / {clientData?.post_totali || 0}</span>
+                </div>
+                <Progress value={clientData?.post_totali ? usagePercent : 0} className="h-2.5 bg-slate-100 rounded-full" />
               </div>
-              
+
               <div className="pt-4 space-y-4">
                 <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-100">
                   <TrendingUp className="w-5 h-5 text-indigo-600" />
@@ -417,11 +431,11 @@ export default function ClienteFeedPage() {
       </Dialog>
 
       {postPerCommenti && (
-        <CommentiSidebar 
-          clienteId={clienteId!} 
-          postId={postPerCommenti} 
-          isOpen={!!postPerCommenti} 
-          onClose={() => setPostPerCommenti(null)} 
+        <CommentiSidebar
+          clienteId={clienteId!}
+          postId={postPerCommenti}
+          isOpen={!!postPerCommenti}
+          onClose={() => setPostPerCommenti(null)}
         />
       )}
     </div>
