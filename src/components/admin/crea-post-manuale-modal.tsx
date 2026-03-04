@@ -135,19 +135,21 @@ export function CreaPostManualeModal({ isOpen, onClose, clienteId }: Props) {
       const newPostRef = await addDoc(collection(db, 'clienti', clienteId, 'post'), postData);
       await updateDoc(doc(db, 'clienti', clienteId), { post_usati: increment(1) });
 
-      // Notifica al referente
-      const usersSnap = await getDocs(query(collection(db, 'users'), where('cliente_id', '==', clienteId), where('ruolo', '==', 'cliente_finale')));
+      // Notifica al referente (bypass errore indice Firestore filtrando in memoria)
+      const usersSnap = await getDocs(query(collection(db, 'users'), where('cliente_id', '==', clienteId)));
       for (const refDoc of usersSnap.docs) {
-        await addDoc(collection(db, 'users', refDoc.id, 'notifiche'), {
-          tipo: 'post_da_approvare',
-          messaggio: `Nuovo post "${formData.titolo}" pronto per ${formData.piattaforme.join(', ')}!`,
-          destinatario_uid: refDoc.id,
-          cliente_id: clienteId,
-          riferimento_tipo: 'post',
-          riferimento_id: newPostRef.id,
-          letta: false,
-          creato_il: serverTimestamp()
-        });
+        if (refDoc.data().ruolo === 'cliente_finale') {
+          await addDoc(collection(db, 'users', refDoc.id, 'notifiche'), {
+            tipo: 'post_da_approvare',
+            messaggio: `Nuovo post "${formData.titolo}" pronto per ${formData.piattaforme.join(', ')}!`,
+            destinatario_uid: refDoc.id,
+            cliente_id: clienteId,
+            riferimento_tipo: 'post',
+            riferimento_id: newPostRef.id,
+            letta: false,
+            creato_il: serverTimestamp()
+          });
+        }
       }
 
       toast({ title: 'Post Inviato!', description: 'Il cliente è stato notificato.' });
