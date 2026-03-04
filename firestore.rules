@@ -78,6 +78,14 @@ service cloud.firestore {
     }
 
     /**
+     * @description Rules for user notifications.
+     */
+    match /users/{userId}/notifiche/{notificaId} {
+      allow read, update: if isOwner(userId) || isAdmin();
+      allow create, delete: if isAdmin();
+    }
+
+    /**
      * @description Rules for the admin marker collection. Strictly controlled for security.
      * @path /admins/{adminId}
      * @allow get: (read) if the user is an admin.
