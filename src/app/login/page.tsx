@@ -30,11 +30,29 @@ export default function LoginPage() {
 
     try {
       const { user } = await signInWithEmailAndPassword(auth, email, password);
-      
-      if (user.email === ADMIN_EMAIL) {
-        router.push('/admin');
+
+      // Controlliamo in quale delle 3 "Porte" l'utente deve essere instradato
+      // in base al ruolo assegnatogli nel database
+      const userDoc = await getDoc(doc(db, 'users', user.uid));
+
+      if (userDoc.exists()) {
+        const ruolo = userDoc.data().ruolo;
+
+        // Porta 1 & 2: Super Admin / Agenzie terze (Operatori) -> vanno entrambi nella Dashboard Admin
+        if (ruolo === 'super_admin' || ruolo === 'operatore') {
+          router.push('/admin');
+        }
+        // Porta 3: Clienti finali (Referenti Aziendali, ecc.) -> vanno nel Client Hub
+        else {
+          router.push('/cliente');
+        }
       } else {
-        router.push('/cliente');
+        // Fallback di sicurezza in caso di documento mancante
+        if (user.email === 'emanueleadelini@gmail.com') {
+          router.push('/admin');
+        } else {
+          router.push('/cliente');
+        }
       }
     } catch (err: any) {
       toast({

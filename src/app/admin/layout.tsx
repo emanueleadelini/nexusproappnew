@@ -2,15 +2,15 @@
 
 import { useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { useUser } from '@/firebase';
+import { useUser, useAuth } from '@/firebase';
 import { Button } from '@/components/ui/button';
-import { 
-  LayoutDashboard, 
-  Users, 
-  FileText, 
-  Bell, 
-  LogOut, 
-  Loader2, 
+import {
+  LayoutDashboard,
+  Users,
+  FileText,
+  Bell,
+  LogOut,
+  Loader2,
   ShieldCheck,
   Menu,
   X
@@ -18,18 +18,19 @@ import {
 import Link from 'next/link';
 import { useState } from 'react';
 import { NotificheBell } from '@/components/notifiche-bell';
-import { useAuth } from '@/firebase';
+import { usePermessi } from '@/hooks/use-permessi';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  const { user, isUserLoading, userData, isUserDataLoading, isAdmin } = useUser();
+  const { user, isUserLoading } = useUser();
+  const { isAdmin, loading: isPermessiLoading } = usePermessi();
   const auth = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
-    if (isUserLoading || isUserDataLoading) return;
-    
+    if (isUserLoading || isPermessiLoading) return;
+
     if (!user) {
       router.push('/login');
       return;
@@ -38,9 +39,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     if (!isAdmin) {
       router.push('/cliente');
     }
-  }, [user, isUserLoading, isUserDataLoading, isAdmin, router]);
+  }, [user, isUserLoading, isPermessiLoading, isAdmin, router]);
 
-  if (isUserLoading || isUserDataLoading || !isAdmin) {
+  if (isUserLoading || isPermessiLoading || !isAdmin) {
     return (
       <div className="h-screen flex flex-col items-center justify-center bg-white">
         <Loader2 className="animate-spin text-indigo-600 w-12 h-12 mb-4" />
@@ -84,13 +85,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <nav className="space-y-1.5 flex-1">
           {navItems.map((item) => (
             <Link key={item.href} href={item.href} onClick={() => setIsMobileMenuOpen(false)}>
-              <Button 
-                variant="ghost" 
-                className={`w-full justify-start gap-3 h-11 font-bold rounded-xl transition-all ${
-                  pathname === item.href 
-                    ? 'bg-indigo-50 text-indigo-600' 
-                    : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
-                }`}
+              <Button
+                variant="ghost"
+                className={`w-full justify-start gap-3 h-11 font-bold rounded-xl transition-all ${pathname === item.href
+                  ? 'bg-indigo-50 text-indigo-600'
+                  : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
+                  }`}
               >
                 <item.icon className="w-5 h-5" /> {item.label}
               </Button>
@@ -103,9 +103,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest mb-1">Operatore</p>
             <p className="text-xs text-slate-900 font-bold truncate">{user?.email}</p>
           </div>
-          <Button 
-            variant="ghost" 
-            className="w-full justify-start gap-3 text-slate-500 hover:text-red-600 hover:bg-red-50 h-11 font-bold rounded-xl" 
+          <Button
+            variant="ghost"
+            className="w-full justify-start gap-3 text-slate-500 hover:text-red-600 hover:bg-red-50 h-11 font-bold rounded-xl"
             onClick={() => auth.signOut()}
           >
             <LogOut className="w-5 h-5" /> Logout
