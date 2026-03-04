@@ -31,13 +31,13 @@ export function AggiungiClienteModal({ isOpen, onClose }: Props) {
     user_email: '',
     user_password: ''
   });
-  
+
   const db = useFirestore();
   const { toast } = useToast();
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!formData.nome_azienda || !formData.user_email || !formData.user_password) {
       toast({ variant: 'destructive', title: 'Campi mancanti', description: 'Nome azienda, email login e password sono obbligatori.' });
       return;
@@ -69,6 +69,7 @@ export function AggiungiClienteModal({ isOpen, onClose }: Props) {
 
       // Creazione Profilo Utente collegato
       await setDoc(doc(db, 'users', newUid), {
+        id: newUid,
         email: formData.user_email,
         ruolo: 'referente',
         cliente_id: clienteId,
@@ -106,15 +107,15 @@ export function AggiungiClienteModal({ isOpen, onClose }: Props) {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2 col-span-2">
                 <Label htmlFor="nome">Nome Azienda *</Label>
-                <Input id="nome" value={formData.nome_azienda} onChange={(e) => setFormData({...formData, nome_azienda: e.target.value})} placeholder="es. AD next lab S.r.l." required />
+                <Input id="nome" value={formData.nome_azienda} onChange={(e) => setFormData({ ...formData, nome_azienda: e.target.value })} placeholder="es. AD next lab S.r.l." required />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="settore">Settore</Label>
-                <Input id="settore" value={formData.settore} onChange={(e) => setFormData({...formData, settore: e.target.value})} placeholder="es. Ristorazione" />
+                <Input id="settore" value={formData.settore} onChange={(e) => setFormData({ ...formData, settore: e.target.value })} placeholder="es. Ristorazione" />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="post">Post Totali (Piano)</Label>
-                <Input id="post" type="number" min="1" value={formData.post_totali} onChange={(e) => setFormData({...formData, post_totali: Number(e.target.value)})} />
+                <Input id="post" type="number" min="1" value={formData.post_totali} onChange={(e) => setFormData({ ...formData, post_totali: Number(e.target.value) })} />
               </div>
             </div>
           </div>
@@ -128,11 +129,11 @@ export function AggiungiClienteModal({ isOpen, onClose }: Props) {
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="user-email">Email Login *</Label>
-                <Input id="user-email" type="email" value={formData.user_email} onChange={(e) => setFormData({...formData, user_email: e.target.value})} placeholder="cliente@email.it" required className="bg-white" />
+                <Input id="user-email" type="email" value={formData.user_email} onChange={(e) => setFormData({ ...formData, user_email: e.target.value })} placeholder="cliente@email.it" required className="bg-white" />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="user-pass">Password Login *</Label>
-                <Input id="user-pass" type="password" value={formData.user_password} onChange={(e) => setFormData({...formData, user_password: e.target.value})} placeholder="Minimo 6 caratteri" required className="bg-white" />
+                <Input id="user-pass" type="password" value={formData.user_password} onChange={(e) => setFormData({ ...formData, user_password: e.target.value })} placeholder="Minimo 6 caratteri" required className="bg-white" />
               </div>
             </div>
           </div>
