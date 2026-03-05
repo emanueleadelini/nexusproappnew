@@ -51,6 +51,9 @@
     --input: 214 32% 91%;
     --ring: 239 84% 60%;
     color-scheme: light;
+    /* Forza colore testo e sfondo base — senza questo gli elementi ereditano il bianco dal body dark */
+    color: hsl(var(--foreground));
+    background-color: hsl(var(--background));
   }
 }
 
