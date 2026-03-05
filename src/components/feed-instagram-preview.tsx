@@ -30,12 +30,12 @@ interface FeedInstagramPreviewProps {
   materialUrls?: string[] | null;
 }
 
-export function FeedInstagramPreview({ 
-  post, 
-  clienteNome, 
+export function FeedInstagramPreview({
+  post,
+  clienteNome,
   clienteLogo,
-  onApprove, 
-  onReject, 
+  onApprove,
+  onReject,
   onComment,
   showActions = false,
   materialUrls = []
@@ -46,7 +46,7 @@ export function FeedInstagramPreview({
   const scadenzaStr = post.scadenza_approvazione && typeof post.scadenza_approvazione.toDate === 'function'
     ? formatDistanceToNow(post.scadenza_approvazione.toDate(), { addSuffix: true, locale: it })
     : null;
-  
+
   const isUrgent = post.stato === 'da_approvare' && scadenzaStr;
   const isCarousel = post.formato === 'carosello' && materialUrls && materialUrls.length > 1;
 
@@ -66,13 +66,13 @@ export function FeedInstagramPreview({
           <div className="flex flex-col">
             <span className="text-sm font-bold text-slate-900 leading-none">{clienteNome}</span>
             <div className="flex items-center gap-2 mt-1">
-              <span className="text-[10px] text-slate-500 flex items-center gap-1 font-medium">
+              <span className="text-xs text-slate-500 flex items-center gap-1 font-medium">
                 {post.tipo_pianificazione === 'immediata' ? <Zap className="w-2.5 h-2.5 text-amber-500 fill-amber-500" /> : <Clock className="w-2.5 h-2.5" />}
                 {post.tipo_pianificazione === 'immediata' ? 'Sponsorizzato' : 'Programmato'}
               </span>
               <div className="flex gap-1 ml-1 border-l border-slate-200 pl-2">
                 {selectedPlatforms.map(p => (
-                  <Badge key={p} variant="ghost" className="p-0 h-auto text-[8px] text-indigo-600 font-black uppercase tracking-tighter">
+                  <Badge key={p} variant="ghost" className="p-0 h-auto text-[10px] text-indigo-600 font-black uppercase tracking-tight">
                     {PIATTAFORMA_LABELS[p]?.charAt(0)}
                   </Badge>
                 ))}
@@ -111,7 +111,7 @@ export function FeedInstagramPreview({
             <div className="w-20 h-20 mb-3 bg-white rounded-3xl flex items-center justify-center border-2 border-dashed border-slate-200">
               <span className="text-3xl">📸</span>
             </div>
-            <span className="text-[10px] uppercase font-black tracking-[0.2em] text-slate-400">Asset In Produzione</span>
+            <span className="text-xs uppercase font-black tracking-wider text-slate-500">Asset In Produzione</span>
           </div>
         )}
       </div>
@@ -120,18 +120,18 @@ export function FeedInstagramPreview({
       <div className="p-4 space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-5">
-            <Heart 
-              className={`w-7 h-7 cursor-pointer transition-all hover:scale-110 ${liked ? 'fill-red-500 text-red-500' : 'text-slate-900'}`} 
-              onClick={() => setLiked(!liked)} 
+            <Heart
+              className={`w-7 h-7 cursor-pointer transition-all hover:scale-110 ${liked ? 'fill-red-500 text-red-500' : 'text-slate-900'}`}
+              onClick={() => setLiked(!liked)}
             />
-            <MessageCircle 
-              className="w-7 h-7 text-slate-900 cursor-pointer hover:text-indigo-600 transition-colors" 
-              onClick={onComment} 
+            <MessageCircle
+              className="w-7 h-7 text-slate-900 cursor-pointer hover:text-indigo-600 transition-colors"
+              onClick={onComment}
             />
             <Send className="w-7 h-7 text-slate-900 cursor-pointer -rotate-12" />
           </div>
-          <Bookmark 
-            className={`w-7 h-7 cursor-pointer ${saved ? 'fill-slate-900 text-slate-900' : 'text-slate-900'}`} 
+          <Bookmark
+            className={`w-7 h-7 cursor-pointer ${saved ? 'fill-slate-900 text-slate-900' : 'text-slate-900'}`}
             onClick={() => setSaved(!saved)}
           />
         </div>
@@ -139,7 +139,7 @@ export function FeedInstagramPreview({
         <div className="space-y-2">
           <div className="flex flex-wrap gap-2 mb-2">
             {selectedPlatforms.map(p => (
-              <Badge key={p} variant="outline" className="text-[9px] font-bold py-0 h-4 border-indigo-100 text-indigo-600 bg-indigo-50/30">
+              <Badge key={p} variant="outline" className="text-[10px] font-bold py-0 h-4 border-indigo-100 text-indigo-600 bg-indigo-50/30">
                 <Share2 className="w-2 h-2 mr-1" /> {PIATTAFORMA_LABELS[p]}
               </Badge>
             ))}
@@ -168,21 +168,21 @@ export function FeedInstagramPreview({
       {showActions && (
         <CardFooter className="p-4 bg-slate-50 border-t border-slate-100 flex flex-col gap-4">
           <div className="flex gap-3 w-full">
-            <Button 
-              variant="outline" 
-              className="flex-1 border-red-200 text-red-600 bg-white font-bold h-12 rounded-xl hover:bg-red-50" 
+            <Button
+              variant="outline"
+              className="flex-1 border-red-200 text-red-600 bg-white font-bold h-12 rounded-xl hover:bg-red-50"
               onClick={onReject}
             >
               <X className="w-4 h-4 mr-2" /> Revisione
             </Button>
-            <Button 
-              className="flex-1 gradient-primary font-bold h-12 rounded-xl" 
+            <Button
+              className="flex-1 gradient-primary font-bold h-12 rounded-xl"
               onClick={onApprove}
             >
               <Check className="w-4 h-4 mr-2" /> Approva Post
             </Button>
           </div>
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center">
+          <p className="text-xs font-bold text-slate-500 uppercase tracking-wider text-center">
             Il post verrà pubblicato automaticamente tra 24h
           </p>
         </CardFooter>

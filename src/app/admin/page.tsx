@@ -7,13 +7,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { 
-  Users, 
-  FileText, 
-  Clock, 
-  TrendingUp, 
-  Plus, 
-  ArrowRight, 
+import {
+  Users,
+  FileText,
+  Clock,
+  TrendingUp,
+  Plus,
+  ArrowRight,
   CheckCircle2,
   Calendar,
   AlertCircle,
@@ -35,7 +35,7 @@ export default function AdminDashboard() {
   const pendingPostsQuery = useMemoFirebase(() => {
     if (!user || !isAdmin) return null;
     return query(
-      collectionGroup(db, 'post'), 
+      collectionGroup(db, 'post'),
       where('stato', '==', 'da_approvare'),
       limit(5)
     );
@@ -63,7 +63,7 @@ export default function AdminDashboard() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
         <div>
           <h1 className="text-4xl md:text-5xl font-headline font-bold text-slate-900 mb-2">Hub Direzionale</h1>
-          <p className="text-slate-500 font-bold uppercase tracking-widest text-[10px]">Cockpit AD next lab &bull; Benvenuto, {user?.email?.split('@')[0]}</p>
+          <p className="text-slate-500 font-bold uppercase tracking-wider text-xs">Cockpit AD next lab &bull; Benvenuto, {user?.email?.split('@')[0]}</p>
         </div>
         <Link href="/admin/clienti">
           <Button className="gradient-primary h-14 px-8 rounded-2xl font-black uppercase tracking-widest text-xs gap-3 shadow-xl shadow-indigo-500/20">
@@ -85,9 +85,9 @@ export default function AdminDashboard() {
                 <div className={`w-14 h-14 ${stat.bg} rounded-2xl flex items-center justify-center ${stat.color} group-hover:scale-110 transition-transform`}>
                   <stat.icon className="w-7 h-7" />
                 </div>
-                <Badge variant="outline" className="text-[9px] font-black tracking-widest border-slate-100 text-slate-400 bg-slate-50 uppercase">{stat.tag}</Badge>
+                <Badge variant="outline" className="text-[10px] font-black tracking-widest border-slate-200 text-slate-500 bg-slate-50 uppercase">{stat.tag}</Badge>
               </div>
-              <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] mb-1">{stat.label}</p>
+              <p className="text-slate-500 text-xs font-black uppercase tracking-wider mb-1">{stat.label}</p>
               <p className="text-4xl font-bold text-slate-900 tracking-tighter">{stat.val}</p>
             </CardContent>
           </Card>
@@ -101,7 +101,7 @@ export default function AdminDashboard() {
               <Users className="w-6 h-6 text-indigo-600" /> Portfolio Recenti
             </CardTitle>
             <Link href="/admin/clienti">
-              <Button variant="ghost" size="sm" className="text-[10px] font-black text-indigo-600 hover:text-indigo-700 uppercase tracking-widest hover:bg-indigo-50 rounded-xl">
+              <Button variant="ghost" size="sm" className="text-xs font-black text-indigo-600 hover:text-indigo-700 uppercase tracking-wider hover:bg-indigo-50 rounded-xl">
                 Tutti i Tenant <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
             </Link>
@@ -117,12 +117,12 @@ export default function AdminDashboard() {
                       </div>
                       <div>
                         <p className="text-base font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">{client.nome_azienda}</p>
-                        <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest">{client.settore || 'Servizi Professionali'}</p>
+                        <p className="text-xs text-slate-500 uppercase font-black tracking-wider">{client.settore || 'Servizi Professionali'}</p>
                       </div>
                     </div>
                     <div className="text-right">
                       <p className="text-sm font-black text-slate-900">{client.post_usati} / {client.post_totali}</p>
-                      <p className="text-[9px] text-slate-400 uppercase font-bold tracking-tighter">Budget Post</p>
+                      <p className="text-[10px] text-slate-500 uppercase font-bold tracking-tight">Budget Post</p>
                     </div>
                   </div>
                 </Link>
@@ -136,7 +136,7 @@ export default function AdminDashboard() {
             <CardTitle className="text-xl font-headline font-bold flex items-center gap-3 text-slate-900">
               <AlertCircle className="w-6 h-6 text-amber-500" /> Workflow 24h
             </CardTitle>
-            <Badge className="bg-amber-50 text-amber-600 border-amber-100 px-3 py-1 text-[10px] font-black uppercase tracking-widest">
+            <Badge className="bg-amber-50 text-amber-700 border-amber-200 px-3 py-1 text-[10px] font-black uppercase tracking-wider">
               {pendingPosts?.length || 0} Attesa
             </Badge>
           </CardHeader>
@@ -150,15 +150,15 @@ export default function AdminDashboard() {
                       <p className="text-base font-bold text-slate-900 truncate max-w-[220px]">{post.titolo}</p>
                       <div className="flex gap-2 mt-1">
                         {(post.piattaforme || [post.piattaforma]).map((p: string) => (
-                          <span key={p} className="text-[9px] text-slate-400 uppercase font-black tracking-widest flex items-center gap-1">
-                            <Calendar className="w-3 h-3 text-indigo-400" /> {p}
+                          <span key={p} className="text-[10px] text-slate-500 uppercase font-black tracking-wider flex items-center gap-1">
+                            <Calendar className="w-3.5 h-3.5 text-indigo-400" /> {p}
                           </span>
                         ))}
                       </div>
                     </div>
                   </div>
                   <Link href={`/admin/clienti/${post.cliente_id}?postId=${post.id}`}>
-                    <Button size="sm" variant="ghost" className="h-10 px-4 text-[10px] font-black uppercase tracking-widest text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all">
+                    <Button size="sm" variant="ghost" className="h-10 px-4 text-xs font-black uppercase tracking-wider text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all">
                       Apri Task
                     </Button>
                   </Link>
@@ -169,7 +169,7 @@ export default function AdminDashboard() {
                   <div className="w-20 h-20 bg-emerald-50 rounded-[2rem] flex items-center justify-center">
                     <CheckCircle2 className="w-10 h-10 text-emerald-500/50" />
                   </div>
-                  <p className="text-slate-400 font-bold uppercase tracking-widest text-[10px]">Tutto approvato &bull; Hub in Ordine</p>
+                  <p className="text-slate-500 font-bold uppercase tracking-wider text-xs">Tutto approvato &bull; Hub in Ordine</p>
                 </div>
               )}
             </div>
