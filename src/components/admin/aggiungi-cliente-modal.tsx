@@ -6,11 +6,11 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { useFirestore } from '@/firebase';
+import { useFirestore, useUser } from '@/firebase';
 import { collection, addDoc, doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, deleteApp } from 'firebase/app';
-import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
+import { getAuth as getFirebaseAuth, createUserWithEmailAndPassword } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Building2, UserPlus, KeyRound } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
@@ -33,6 +33,7 @@ export function AggiungiClienteModal({ isOpen, onClose }: Props) {
   });
 
   const db = useFirestore();
+  const { user } = useUser();
   const { toast } = useToast();
 
   const handleSave = async (e: React.FormEvent) => {
@@ -46,12 +47,12 @@ export function AggiungiClienteModal({ isOpen, onClose }: Props) {
     setLoading(true);
     const secondaryAppName = `SecondaryAuth-${Date.now()}`;
     const secondaryApp = initializeApp(firebaseConfig, secondaryAppName);
-    const secondaryAuth = getAuth(secondaryApp);
+    const secondaryAuth = getFirebaseAuth(secondaryApp);
 
     try {
       // Creazione Tenant con moduli attivi di default
       // Attacchiamo il tenant all'agenzia (L'admin loggato)
-      const currentUserUid = getAuth().currentUser?.uid || 'super_admin';
+      const currentUserUid = user?.uid ?? 'super_admin';
       const clientRef = await addDoc(collection(db, 'clienti'), {
         nome_azienda: formData.nome_azienda,
         settore: formData.settore,

@@ -2,7 +2,7 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import { useFirestore, useMemoFirebase, useCollection, useDoc, useUser, useAuth } from '@/firebase';
-import { collection, doc, query, orderBy, updateDoc, serverTimestamp, deleteDoc, arrayUnion, Timestamp } from 'firebase/firestore';
+import { collection, doc, query, orderBy, updateDoc, serverTimestamp, deleteDoc, getDocs, arrayUnion, Timestamp } from 'firebase/firestore';
 import { sendPasswordResetEmail } from 'firebase/auth';
 import { StatoPost, STATO_POST_LABELS, STATO_POST_COLORS, Post } from '@/types/post';
 import { Material } from '@/types/material';
@@ -147,8 +147,26 @@ export default function ClienteDettaglio() {
   const handleDeleteClient = async () => {
     setIsDeleting(true);
     try {
+      // 1. Elimina tutti i post della subcollection
+      const postsSnap = await getDocs(collection(db, 'clienti', clienteId, 'post'));
+      await Promise.all(postsSnap.docs.map(d => deleteDoc(d.ref)));
+
+      // 2. Elimina tutti i materiali della subcollection
+      const materialsSnap = await getDocs(collection(db, 'clienti', clienteId, 'materiali'));
+      await Promise.all(materialsSnap.docs.map(d => deleteDoc(d.ref)));
+
+      // 3. Trova ed elimina il documento utente collegato (cliente_id == clienteId)
+      const usersSnap = await getDocs(collection(db, 'users'));
+      await Promise.all(
+        usersSnap.docs
+          .filter(d => d.data().cliente_id === clienteId)
+          .map(d => deleteDoc(d.ref))
+      );
+
+      // 4. Elimina il documento cliente
       await deleteDoc(doc(db, 'clienti', clienteId));
-      toast({ title: "Cliente eliminato", description: "Il tenant è stato rimosso con successo." });
+
+      toast({ title: "Cliente eliminato", description: "Tenant e tutti i dati associati rimossi." });
       router.push('/admin/clienti');
     } catch (e) {
       toast({ variant: 'destructive', title: "Errore", description: "Impossibile eliminare il cliente." });

@@ -48,7 +48,7 @@ export default function LoginPage() {
         }
       } else {
         // Fallback di sicurezza in caso di documento mancante
-        if (user.email === 'emanueleadelini@gmail.com') {
+        if (user.email === ADMIN_EMAIL) {
           router.push('/admin');
         } else {
           router.push('/cliente');

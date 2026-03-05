@@ -52,7 +52,7 @@ service cloud.firestore {
 
     /** Checks if the authenticated user is associated with a specific clientId. */
     function belongsToClient(clientId) {
-      return isSignedIn() && getUserData().clientId == clientId;
+      return isSignedIn() && getUserData().cliente_id == clientId;
     }
 
     /** Combines ownership and existence checks for destructive/modifying operations. */

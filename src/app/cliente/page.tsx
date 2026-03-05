@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useUser, useFirestore, useCollection, useDoc, useMemoFirebase } from '@/firebase';
-import { query, collection, where, orderBy, doc, updateDoc, serverTimestamp, arrayUnion, Timestamp, addDoc } from 'firebase/firestore';
+import { query, collection, where, orderBy, doc, getDoc, updateDoc, serverTimestamp, arrayUnion, Timestamp, addDoc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
@@ -40,12 +40,23 @@ import { Post, STATO_POST_LABELS, STATO_POST_COLORS } from '@/types/post';
 import { CommentiSidebar } from '@/components/commenti-sidebar';
 
 export default function ClienteFeedPage() {
-  const { user, userData, isUserDataLoading } = useUser();
+  const { user } = useUser();
   const db = useFirestore();
   const { toast } = useToast();
   const searchParams = useSearchParams();
   const highlightPostId = searchParams.get('postId');
-  
+
+  const [userData, setUserData] = useState<any>(null);
+  const [isUserDataLoading, setIsUserDataLoading] = useState(true);
+
+  useEffect(() => {
+    if (!user) { setIsUserDataLoading(false); return; }
+    getDoc(doc(db, 'users', user.uid)).then(snap => {
+      if (snap.exists()) setUserData(snap.data());
+      setIsUserDataLoading(false);
+    }).catch(() => setIsUserDataLoading(false));
+  }, [user, db]);
+
   const [selectedPost, setSelectedPost] = useState<any | null>(null);
   const [noteModifica, setNoteModifica] = useState('');
   const [loading, setLoading] = useState(false);
@@ -69,13 +80,13 @@ export default function ClienteFeedPage() {
       orderBy('creato_il', 'desc')
     );
   }, [db, clienteId, isIdValid]);
-  const { data: posts, isLoading: isPostsLoading } = useCollection<Post>(postsQuery, { enabled: !!isIdValid });
+  const { data: posts, isLoading: isPostsLoading } = useCollection<Post>(postsQuery);
 
   const materialsQuery = useMemoFirebase(() => {
     if (!isIdValid) return null;
     return query(collection(db, 'clienti', clienteId!, 'materiali'), orderBy('creato_il', 'desc'));
   }, [db, clienteId, isIdValid]);
-  const { data: materials } = useCollection<Material>(materialsQuery, { enabled: !!isIdValid });
+  const { data: materials } = useCollection<Material>(materialsQuery);
 
   useEffect(() => {
     if (!posts || !isIdValid) return;

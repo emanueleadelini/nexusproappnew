@@ -1,6 +1,7 @@
 'use client';
 
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { usePermessi } from '@/hooks/use-permessi';
 import { query, collection, where, orderBy, limit, collectionGroup } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -21,7 +22,8 @@ import {
 import Link from 'next/link';
 
 export default function AdminDashboard() {
-  const { user, userData, isAdmin } = useUser();
+  const { user } = useUser();
+  const { isAdmin } = usePermessi();
   const db = useFirestore();
 
   const clientsQuery = useMemoFirebase(() => {
@@ -61,7 +63,7 @@ export default function AdminDashboard() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
         <div>
           <h1 className="text-4xl md:text-5xl font-headline font-bold text-slate-900 mb-2">Hub Direzionale</h1>
-          <p className="text-slate-500 font-bold uppercase tracking-widest text-[10px]">Cockpit AD next lab &bull; Benvenuto, {userData?.email.split('@')[0]}</p>
+          <p className="text-slate-500 font-bold uppercase tracking-widest text-[10px]">Cockpit AD next lab &bull; Benvenuto, {user?.email?.split('@')[0]}</p>
         </div>
         <Link href="/admin/clienti">
           <Button className="gradient-primary h-14 px-8 rounded-2xl font-black uppercase tracking-widest text-xs gap-3 shadow-xl shadow-indigo-500/20">

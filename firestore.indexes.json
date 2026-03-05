@@ -1,9 +1,13 @@
 {
   "indexes": [
     {
-      "collectionGroup": "notifiche",
-      "queryScope": "COLLECTION",
+      "collectionGroup": "post",
+      "queryScope": "COLLECTION_GROUP",
       "fields": [
+        {
+          "fieldPath": "stato",
+          "order": "ASCENDING"
+        },
         {
           "fieldPath": "creato_il",
           "order": "DESCENDING"
