@@ -112,7 +112,12 @@ service cloud.firestore {
     match /clienti/{clientId} {
       allow get: if belongsToClient(clientId) || isAdmin();
       allow list: if isAdmin();
-      allow create, update, delete: if isAdmin();
+      allow create, delete: if isAdmin();
+      // Admin: update completo. Cliente: può segnalare solo richiesta_attenzione e richiesta_upgrade sul proprio doc.
+      allow update: if isAdmin() || (
+        belongsToClient(clientId) &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['richiesta_attenzione', 'richiesta_upgrade'])
+      );
     }
 
     /**
