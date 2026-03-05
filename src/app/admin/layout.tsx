@@ -14,7 +14,8 @@ import {
   ShieldCheck,
   Menu,
   X,
-  BarChart3
+  BarChart3,
+  LifeBuoy
 } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
@@ -55,6 +56,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { label: 'Dashboard', href: '/admin', icon: LayoutDashboard },
     { label: 'Clienti', href: '/admin/clienti', icon: Users },
     { label: 'Post', href: '/admin/post', icon: FileText },
+    { label: 'Richieste', href: '/admin/richieste', icon: LifeBuoy },
     { label: 'Analytics', href: '/admin/analytics', icon: BarChart3 },
     { label: 'Notifiche', href: '/admin/notifiche', icon: Bell },
   ];

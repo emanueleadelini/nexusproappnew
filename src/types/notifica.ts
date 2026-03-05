@@ -12,7 +12,9 @@ export type TipoNotifica =
   | "upgrade_richiesto" 
   | "commento_nuovo" 
   | "nuovo_cliente"
-  | "approvazione_auto_silenzio";
+  | "approvazione_auto_silenzio"
+  | "nuova_richiesta"
+  | "risposta_richiesta";
 
 export interface Notifica {
   id: string;
@@ -24,7 +26,7 @@ export interface Notifica {
   creato_il: Timestamp;
   
   // Campi per Deep Linking (Sprint 2.0)
-  riferimento_tipo: "post" | "materiale" | "cliente" | "commento";
+  riferimento_tipo: "post" | "materiale" | "cliente" | "commento" | "richiesta";
   riferimento_id: string;
   
   // Opzionali per UI

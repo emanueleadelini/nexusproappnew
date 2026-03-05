@@ -154,6 +154,28 @@ service cloud.firestore {
      * @deny create: (write) if a user tries to upload materials for a different client.
      * @principle Validates relational consistency between path, user session, and document data.
      */
+    /**
+     * @description Rules for Support Requests (Richieste). Clients create/read their own; admins manage all.
+     * @path /clienti/{clientId}/richieste/{richiestaId}
+     */
+    match /{path=**}/richieste/{richiestaId} {
+      allow list, get: if isAdmin();
+    }
+
+    match /clienti/{clientId}/richieste/{richiestaId} {
+      allow get, list: if belongsToClient(clientId) || isAdmin();
+      allow create: if belongsToClient(clientId) || isAdmin();
+      allow update: if isAdmin() || (
+        belongsToClient(clientId) &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['non_letti_cliente', 'aggiornato_il', 'ultimo_messaggio_preview'])
+      );
+    }
+
+    match /clienti/{clientId}/richieste/{richiestaId}/messaggi/{msgId} {
+      allow get, list: if belongsToClient(clientId) || isAdmin();
+      allow create: if belongsToClient(clientId) || isAdmin();
+    }
+
     match /clienti/{clientId}/materiali/{materialId} {
       allow get, list: if belongsToClient(clientId) || isAdmin();
       // Admin può creare liberamente; il cliente deve rispettare la validazione dei campi

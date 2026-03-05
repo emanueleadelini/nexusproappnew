@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useUser, useFirestore, useDoc, useMemoFirebase, useAuth } from '@/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
-import { LogOut, Loader2, UserCircle, Briefcase, ShieldCheck, LayoutGrid, Calendar, Bell } from 'lucide-react';
+import { LogOut, Loader2, ShieldCheck, LayoutGrid, Bell, LifeBuoy } from 'lucide-react';
 import { NotificheBell } from '@/components/notifiche-bell';
 import Link from 'next/link';
 
@@ -99,10 +99,14 @@ export default function ClienteLayout({ children }: { children: React.ReactNode 
         {children}
       </main>
 
-      <nav className="md:hidden bg-white border-t border-slate-200 fixed bottom-0 left-0 right-0 h-16 flex items-center justify-around z-40 px-6 shadow-2xl">
+      <nav className="md:hidden bg-white border-t border-slate-200 fixed bottom-0 left-0 right-0 h-16 flex items-center justify-around z-40 px-4 shadow-2xl">
         <Link href="/cliente" className="flex flex-col items-center gap-1 text-indigo-600">
           <LayoutGrid className="w-5 h-5" />
           <span className="text-[9px] font-black uppercase">Feed</span>
+        </Link>
+        <Link href="/cliente/richieste" className="flex flex-col items-center gap-1 text-slate-400 hover:text-indigo-600 transition-colors">
+          <LifeBuoy className="w-5 h-5" />
+          <span className="text-[9px] font-black uppercase">Supporto</span>
         </Link>
         <Link href="/cliente/notifiche" className="flex flex-col items-center gap-1 text-slate-400 hover:text-indigo-600 transition-colors">
           <Bell className="w-5 h-5" />
