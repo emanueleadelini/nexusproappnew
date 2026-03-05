@@ -69,53 +69,53 @@ export default function AdminNotifichePage() {
     <div className="max-w-4xl mx-auto space-y-8">
       <div className="flex justify-between items-end">
         <div>
-          <h1 className="text-3xl font-headline font-bold">Centro Notifiche Agenzia</h1>
-          <p className="text-muted-foreground">Monitora l'attività dei clienti e i feedback sui post.</p>
+          <h1 className="text-3xl font-headline font-bold text-slate-900">Centro Notifiche</h1>
+          <p className="text-slate-500 text-sm">Monitora l'attività dei clienti e i feedback sui post.</p>
         </div>
-        <Button variant="outline" size="sm" onClick={markAllAsRead} className="gap-2">
+        <Button variant="outline" size="sm" onClick={markAllAsRead} className="gap-2 border-slate-200 text-slate-600 hover:bg-slate-50 rounded-xl">
           <CheckCheck className="w-4 h-4" /> Segna tutte come lette
         </Button>
       </div>
 
-      <div className="space-y-3">
+      <div className="space-y-2">
         {notifications && notifications.length > 0 ? (
           notifications.map((n) => (
-            <Card 
-              key={n.id} 
-              className={`hover:shadow-md transition-all cursor-pointer border-l-4 ${!n.letta ? 'border-l-indigo-600 bg-indigo-50/5' : 'border-l-transparent opacity-70'}`}
+            <Card
+              key={n.id}
+              className={`hover:shadow-sm transition-all cursor-pointer border-l-4 rounded-2xl ${!n.letta ? 'border-l-indigo-500 bg-white shadow-sm' : 'border-l-transparent bg-white opacity-60'}`}
               onClick={() => handleNotificationClick(n)}
             >
               <CardContent className="p-4 flex items-start gap-4">
-                <div className="mt-1 p-2 bg-white rounded-lg shadow-sm border border-gray-100">
+                <div className="mt-0.5 p-2 bg-slate-50 rounded-xl border border-slate-100 shrink-0">
                   {getIcon(n.tipo)}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex justify-between items-start mb-1">
-                    <p className={`text-sm ${!n.letta ? 'font-bold text-gray-900' : 'text-gray-600'}`}>
+                    <p className={`text-sm ${!n.letta ? 'font-bold text-slate-900' : 'text-slate-500'}`}>
                       {n.messaggio}
                     </p>
-                    <span className="text-[10px] text-gray-400 flex items-center gap-1 whitespace-nowrap ml-4">
+                    <span className="text-[10px] text-slate-400 flex items-center gap-1 whitespace-nowrap ml-4 shrink-0">
                       <Calendar className="w-3 h-3" /> {n.creato_il?.toDate().toLocaleDateString()}
                     </span>
                   </div>
                   <div className="flex items-center gap-3">
-                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">
                       {formatDistanceToNow(n.creato_il?.toDate(), { addSuffix: true, locale: it })}
                     </p>
                     {n.riferimento_tipo === 'post' && (
-                      <Badge variant="secondary" className="text-[8px] font-bold py-0 h-4">VEDI POST</Badge>
+                      <Badge className="text-[8px] font-bold py-0 h-4 bg-indigo-50 text-indigo-600 border-none">VEDI POST</Badge>
                     )}
                   </div>
                 </div>
-                <ChevronRight className="w-4 h-4 text-gray-300 self-center" />
+                <ChevronRight className="w-4 h-4 text-slate-300 self-center shrink-0" />
               </CardContent>
             </Card>
           ))
         ) : (
-          <Card className="p-12 text-center border-dashed">
-            <Bell className="w-12 h-12 text-gray-200 mx-auto mb-4" />
-            <p className="text-gray-500 italic">Nessuna notifica presente nello storico.</p>
-          </Card>
+          <div className="py-20 text-center bg-white rounded-2xl border-2 border-dashed border-slate-200">
+            <Bell className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+            <p className="text-slate-500 italic">Nessuna notifica presente nello storico.</p>
+          </div>
         )}
       </div>
     </div>

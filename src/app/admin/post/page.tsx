@@ -42,9 +42,9 @@ export default function AdminGlobalPostPage() {
   if (isLoading) {
     return (
       <div className="space-y-8 animate-pulse">
-        <Skeleton className="h-12 w-64 bg-white/5" />
-        <div className="space-y-4">
-          {[1, 2, 3, 4, 5].map(i => <Skeleton key={i} className="h-24 rounded-xl bg-white/5" />)}
+        <Skeleton className="h-10 w-64 bg-slate-200" />
+        <div className="space-y-3">
+          {[1, 2, 3, 4, 5].map(i => <Skeleton key={i} className="h-24 rounded-2xl bg-slate-200" />)}
         </div>
       </div>
     );
@@ -54,48 +54,48 @@ export default function AdminGlobalPostPage() {
     <div className="space-y-8 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
         <div>
-          <h1 className="text-4xl font-headline font-bold text-white mb-2">Monitoraggio Post</h1>
-          <p className="text-slate-400 text-sm">Visione globale di tutti i workflow attivi nell'Hub.</p>
+          <h1 className="text-3xl font-headline font-bold text-slate-900 mb-1">Monitoraggio Post</h1>
+          <p className="text-slate-500 text-sm">Visione globale di tutti i workflow attivi nell'Hub.</p>
         </div>
         <div className="flex gap-2">
-          <Button 
-            variant={!filterStato ? 'default' : 'outline'} 
+          <Button
+            variant={!filterStato ? 'default' : 'outline'}
             onClick={() => setFilterStato(null)}
-            className="h-10 text-[10px] font-black uppercase tracking-widest"
+            className="h-10 text-[10px] font-black uppercase tracking-widest rounded-xl"
           >
             Tutti
           </Button>
-          <Button 
-            variant={filterStato === 'da_approvare' ? 'default' : 'outline'} 
+          <Button
+            variant={filterStato === 'da_approvare' ? 'default' : 'outline'}
             onClick={() => setFilterStato('da_approvare')}
-            className="h-10 text-[10px] font-black uppercase tracking-widest border-amber-500/20 text-amber-500"
+            className="h-10 text-[10px] font-black uppercase tracking-widest rounded-xl border-amber-200 text-amber-600 hover:bg-amber-50"
           >
             In Approvazione
           </Button>
         </div>
       </div>
 
-      <Card className="glass-card border-none overflow-hidden">
+      <Card className="bg-white border border-slate-100 shadow-sm rounded-2xl overflow-hidden">
         <CardContent className="p-0">
-          <div className="divide-y divide-white/5">
+          <div className="divide-y divide-slate-100">
             {posts?.map((post) => (
-              <div key={post.id} className="p-6 flex flex-col md:flex-row md:items-center justify-between hover:bg-white/5 transition-colors group">
+              <div key={post.id} className="p-5 flex flex-col md:flex-row md:items-center justify-between hover:bg-slate-50 transition-colors group">
                 <div className="flex items-start gap-4">
                   <div className="mt-1">
-                    <div className={`w-3 h-3 rounded-full ${STATO_POST_COLORS[post.stato].bg} border border-white/10`} />
+                    <div className={`w-2.5 h-2.5 rounded-full ${STATO_POST_COLORS[post.stato].bg}`} />
                   </div>
                   <div>
-                    <div className="flex items-center gap-3 mb-1">
+                    <div className="flex items-center gap-3 mb-1.5">
                       <Badge className={`${STATO_POST_COLORS[post.stato].bg} ${STATO_POST_COLORS[post.stato].text} border-none text-[9px] font-black uppercase`}>
                         {STATO_POST_LABELS[post.stato]}
                       </Badge>
-                      <span className="text-[10px] text-slate-500 font-bold uppercase flex items-center gap-1">
+                      <span className="text-[10px] text-slate-400 font-bold uppercase flex items-center gap-1">
                         <Share2 className="w-3 h-3" /> {PIATTAFORMA_LABELS[post.piattaforma] || post.piattaforma}
                       </span>
                     </div>
-                    <h4 className="text-white font-bold group-hover:text-indigo-400 transition-colors">{post.titolo}</h4>
-                    <div className="flex items-center gap-4 mt-2">
-                      <span className="text-[10px] text-slate-500 flex items-center gap-1">
+                    <h4 className="text-slate-900 font-bold group-hover:text-indigo-600 transition-colors">{post.titolo}</h4>
+                    <div className="flex items-center gap-4 mt-1.5">
+                      <span className="text-[10px] text-slate-400 flex items-center gap-1">
                         <Calendar className="w-3 h-3" /> {post.creato_il?.toDate().toLocaleDateString()}
                       </span>
                       {post.scadenza_approvazione && post.stato === 'da_approvare' && (
@@ -108,7 +108,7 @@ export default function AdminGlobalPostPage() {
                 </div>
                 <div className="mt-4 md:mt-0 flex gap-2">
                   <Link href={`/admin/clienti/${(post as any).cliente_id}?postId=${post.id}`}>
-                    <Button variant="ghost" className="h-9 text-[10px] font-black uppercase text-indigo-400 hover:bg-indigo-500/10 rounded-lg">
+                    <Button variant="ghost" className="h-9 text-[10px] font-black uppercase text-indigo-600 hover:bg-indigo-50 rounded-xl">
                       Apri Task <ArrowRight className="w-3 h-3 ml-2" />
                     </Button>
                   </Link>
@@ -118,7 +118,7 @@ export default function AdminGlobalPostPage() {
 
             {(!posts || posts.length === 0) && (
               <div className="p-20 text-center">
-                <CheckCircle2 className="w-12 h-12 text-emerald-500/30 mx-auto mb-4" />
+                <CheckCircle2 className="w-12 h-12 text-emerald-400/50 mx-auto mb-4" />
                 <p className="text-slate-500 italic">Nessun post trovato con questi criteri.</p>
               </div>
             )}

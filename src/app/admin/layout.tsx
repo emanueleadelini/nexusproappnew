@@ -13,7 +13,8 @@ import {
   Loader2,
   ShieldCheck,
   Menu,
-  X
+  X,
+  BarChart3
 } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
@@ -54,6 +55,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { label: 'Dashboard', href: '/admin', icon: LayoutDashboard },
     { label: 'Clienti', href: '/admin/clienti', icon: Users },
     { label: 'Post', href: '/admin/post', icon: FileText },
+    { label: 'Analytics', href: '/admin/analytics', icon: BarChart3 },
     { label: 'Notifiche', href: '/admin/notifiche', icon: Bell },
   ];
 
@@ -87,7 +89,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <Link key={item.href} href={item.href} onClick={() => setIsMobileMenuOpen(false)}>
               <Button
                 variant="ghost"
-                className={`w-full justify-start gap-3 h-11 font-bold rounded-xl transition-all ${pathname === item.href
+                className={`w-full justify-start gap-3 h-11 font-bold rounded-xl transition-all ${(item.href === '/admin' ? pathname === item.href : pathname.startsWith(item.href))
                   ? 'bg-indigo-50 text-indigo-600'
                   : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
                   }`}

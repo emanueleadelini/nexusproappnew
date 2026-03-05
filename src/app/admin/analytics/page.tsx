@@ -69,11 +69,11 @@ export default function AnalyticsPage() {
     return (
       <div className="space-y-8">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-24 rounded-xl" />)}
+          {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-24 rounded-2xl bg-slate-200" />)}
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <Skeleton className="h-80 rounded-xl" />
-          <Skeleton className="h-80 rounded-xl" />
+          <Skeleton className="h-80 rounded-2xl bg-slate-200" />
+          <Skeleton className="h-80 rounded-2xl bg-slate-200" />
         </div>
       </div>
     );
@@ -82,70 +82,78 @@ export default function AnalyticsPage() {
   return (
     <div className="space-y-8 animate-in fade-in duration-700">
       <div>
-        <h2 className="text-3xl font-headline font-bold text-white">Analytics Hub</h2>
-        <p className="text-slate-400 text-sm">Indicatori di performance e saturazione risorse.</p>
+        <h2 className="text-3xl font-headline font-bold text-slate-900">Analytics Hub</h2>
+        <p className="text-slate-500 text-sm">Indicatori di performance e saturazione risorse.</p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="glass-card border-none">
+        <Card className="bg-white border border-slate-100 shadow-sm rounded-2xl">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-xs font-bold uppercase text-slate-500">Clienti Hub</CardTitle>
-            <Users className="h-4 w-4 text-indigo-500" />
+            <CardTitle className="text-xs font-bold uppercase text-slate-400 tracking-wider">Clienti Hub</CardTitle>
+            <div className="w-8 h-8 rounded-xl bg-indigo-50 flex items-center justify-center">
+              <Users className="h-4 w-4 text-indigo-600" />
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-white">{stats?.totalClients}</div>
-            <p className="text-[10px] text-slate-500 mt-1">Aziende attive nel sistema</p>
-          </CardContent>
-        </Card>
-        
-        <Card className="glass-card border-none">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-xs font-bold uppercase text-slate-500">Output Mensile</CardTitle>
-            <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-white">{stats?.totalUsed}</div>
-            <p className="text-[10px] text-slate-500 mt-1">Post generati questo mese</p>
+            <div className="text-3xl font-bold text-slate-900">{stats?.totalClients}</div>
+            <p className="text-[10px] text-slate-400 mt-1">Aziende attive nel sistema</p>
           </CardContent>
         </Card>
 
-        <Card className="glass-card border-none">
+        <Card className="bg-white border border-slate-100 shadow-sm rounded-2xl">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-xs font-bold uppercase text-slate-500">Saturazione</CardTitle>
-            <TrendingUp className="h-4 w-4 text-indigo-400" />
+            <CardTitle className="text-xs font-bold uppercase text-slate-400 tracking-wider">Output Mensile</CardTitle>
+            <div className="w-8 h-8 rounded-xl bg-emerald-50 flex items-center justify-center">
+              <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-white">{stats?.avgUsage.toFixed(1)}%</div>
-            <p className="text-[10px] text-slate-500 mt-1">Media utilizzo crediti post</p>
+            <div className="text-3xl font-bold text-slate-900">{stats?.totalUsed}</div>
+            <p className="text-[10px] text-slate-400 mt-1">Post generati questo mese</p>
           </CardContent>
         </Card>
 
-        <Card className="glass-card border-none bg-amber-500/5">
+        <Card className="bg-white border border-slate-100 shadow-sm rounded-2xl">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-xs font-bold uppercase text-amber-500">Upgrades</CardTitle>
-            <AlertCircle className="h-4 w-4 text-amber-500" />
+            <CardTitle className="text-xs font-bold uppercase text-slate-400 tracking-wider">Saturazione</CardTitle>
+            <div className="w-8 h-8 rounded-xl bg-indigo-50 flex items-center justify-center">
+              <TrendingUp className="h-4 w-4 text-indigo-600" />
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-amber-500">{stats?.upgradeRequests}</div>
-            <p className="text-[10px] text-amber-600 mt-1">Richieste espansione piano</p>
+            <div className="text-3xl font-bold text-slate-900">{stats?.avgUsage.toFixed(1)}%</div>
+            <p className="text-[10px] text-slate-400 mt-1">Media utilizzo crediti post</p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-amber-50 border border-amber-100 shadow-sm rounded-2xl">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-xs font-bold uppercase text-amber-600 tracking-wider">Upgrades</CardTitle>
+            <div className="w-8 h-8 rounded-xl bg-amber-100 flex items-center justify-center">
+              <AlertCircle className="h-4 w-4 text-amber-600" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-amber-600">{stats?.upgradeRequests}</div>
+            <p className="text-[10px] text-amber-500 mt-1">Richieste espansione piano</p>
           </CardContent>
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <Card className="glass-card border-none">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card className="bg-white border border-slate-100 shadow-sm rounded-2xl">
           <CardHeader>
-            <CardTitle className="text-lg font-headline flex items-center gap-2 text-white">
-              <BarChart3 className="w-5 h-5 text-indigo-400" /> Distribuzione Carico
+            <CardTitle className="text-lg font-headline flex items-center gap-2 text-slate-900">
+              <BarChart3 className="w-5 h-5 text-indigo-500" /> Distribuzione Carico
             </CardTitle>
-            <CardDescription className="text-slate-500">Confronto tra post usati e budget totale per cliente.</CardDescription>
+            <CardDescription className="text-slate-400">Confronto tra post usati e budget totale per cliente.</CardDescription>
           </CardHeader>
           <CardContent className="h-80">
             <ChartContainer config={chartConfig} className="h-full w-full">
               <BarChart data={stats?.creditData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#64748b' }} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#64748b' }} />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#94a3b8' }} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#94a3b8' }} />
                 <ChartTooltip content={<ChartTooltipContent />} />
                 <Bar dataKey="usati" fill="var(--color-usati)" radius={[4, 4, 0, 0]} barSize={24} />
                 <Bar dataKey="totali" fill="var(--color-totali)" radius={[4, 4, 0, 0]} barSize={24} />
@@ -154,12 +162,12 @@ export default function AnalyticsPage() {
           </CardContent>
         </Card>
 
-        <Card className="glass-card border-none">
+        <Card className="bg-white border border-slate-100 shadow-sm rounded-2xl">
           <CardHeader>
-            <CardTitle className="text-lg font-headline flex items-center gap-2 text-white">
-              <PieChart className="w-5 h-5 text-indigo-400" /> Risorse Globali
+            <CardTitle className="text-lg font-headline flex items-center gap-2 text-slate-900">
+              <PieChart className="w-5 h-5 text-indigo-500" /> Risorse Globali
             </CardTitle>
-            <CardDescription className="text-slate-500">Ripartizione crediti impegnati vs residui.</CardDescription>
+            <CardDescription className="text-slate-400">Ripartizione crediti impegnati vs residui.</CardDescription>
           </CardHeader>
           <CardContent className="h-80 flex flex-col items-center justify-center relative">
             <ResponsiveContainer width="100%" height="100%">
@@ -177,15 +185,15 @@ export default function AnalyticsPage() {
                   dataKey="value"
                 >
                   <Cell fill="#6366f1" stroke="none" />
-                  <Cell fill="rgba(255,255,255,0.05)" stroke="none" />
+                  <Cell fill="#e2e8f0" stroke="none" />
                 </Pie>
-                <Tooltip contentStyle={{ backgroundColor: '#0f172a', border: 'none', borderRadius: '8px' }} />
-                <Legend iconType="circle" wrapperStyle={{ fontSize: '10px', textTransform: 'uppercase', color: '#64748b' }} />
+                <Tooltip contentStyle={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px', color: '#1e293b' }} />
+                <Legend iconType="circle" wrapperStyle={{ fontSize: '10px', textTransform: 'uppercase', color: '#94a3b8' }} />
               </RechartsPieChart>
             </ResponsiveContainer>
             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                <span className="text-3xl font-bold text-white">{stats?.avgUsage.toFixed(0)}%</span>
-                <span className="text-[8px] uppercase font-black text-slate-500 tracking-widest">Capacità</span>
+              <span className="text-3xl font-bold text-slate-900">{stats?.avgUsage.toFixed(0)}%</span>
+              <span className="text-[8px] uppercase font-black text-slate-400 tracking-widest">Capacità</span>
             </div>
           </CardContent>
         </Card>
