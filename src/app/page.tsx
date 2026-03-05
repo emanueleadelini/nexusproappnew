@@ -366,19 +366,18 @@ export default function App() {
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
                 </span>
-                <span className="text-sm text-indigo-300">5 Tool Pronti • Setup Rapido • Zero Rischi</span>
+                <span className="text-sm text-indigo-300">⚡ Automazione • Strategia • Formazione Finanziata</span>
               </div>
 
               <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight mb-6">
-                <span className="block text-white">Software che</span>
+                <span className="block text-white">Smetti di rincorrere</span>
                 <span className="block bg-gradient-to-r from-indigo-400 via-violet-400 to-emerald-400 bg-clip-text text-transparent">
-                  Funziona dal Giorno 1
+                  il mercato. Inizia ad automatizzarlo.
                 </span>
               </h1>
 
               <p className="text-lg sm:text-xl text-slate-400 max-w-xl mx-auto lg:mx-0 mb-8 leading-relaxed">
-                Costruiamo <strong>tool intelligenti</strong> per agenzie, ristoranti e studi professionali.
-                Testati, pronti, con <span className="text-emerald-400">risultati garantiti</span>.
+                Dimentica i software generici. In AD Next Lab uniamo <strong>strumenti AI proprietari</strong>, consulenza strategica e <span className="text-emerald-400">formazione a costo zero</span> per trasformare la tua PMI in una macchina autonoma.
               </p>
 
               <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 mb-12">
@@ -387,7 +386,7 @@ export default function App() {
                   onClick={() => scrollToSection('prodotti')}
                   className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white border-0 px-8 h-14 text-lg shadow-xl shadow-indigo-500/25 hover:shadow-indigo-500/40 transition-all"
                 >
-                  Scopri i Prodotti
+                  Esplora i Software
                   <ArrowRight className="ml-2 w-5 h-5" />
                 </Button>
                 <Button
@@ -397,7 +396,7 @@ export default function App() {
                   className="border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white px-8 h-14 text-lg"
                 >
                   <Play className="mr-2 w-5 h-5" />
-                  Richiedi Demo
+                  Scopri il Metodo Lab
                 </Button>
               </div>
 
