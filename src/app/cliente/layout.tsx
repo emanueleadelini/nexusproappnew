@@ -63,7 +63,7 @@ export default function ClienteLayout({ children }: { children: React.ReactNode 
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
+    <div className="admin-theme min-h-screen bg-background flex flex-col">
       <header className="bg-white border-b border-slate-200 h-20 flex items-center justify-between px-6 md:px-12 sticky top-0 z-30 shadow-sm">
         <div className="flex items-center gap-6">
           <Link href="/cliente" className="flex items-center gap-3">

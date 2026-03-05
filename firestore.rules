@@ -35,9 +35,14 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    /** Checks if the user is a global administrator via a collection existence check or master email. */
+    /** Checks if the user is a global administrator via collection existence, master email, or Firestore role. */
     function isAdmin() {
-      return isSignedIn() && (exists(/databases/$(database)/documents/admins/$(request.auth.uid)) || request.auth.token.email == 'emanueleadelini@gmail.com');
+      return isSignedIn() && (
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+        request.auth.token.email == 'emanueleadelini@gmail.com' ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.ruolo in ['super_admin', 'admin_agenzia'])
+      );
     }
 
     /** Checks if the authenticated user's UID matches the provided userId. */

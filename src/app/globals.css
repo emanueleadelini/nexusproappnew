@@ -5,6 +5,7 @@
 @tailwind utilities;
 
 @layer base {
+  /* Landing page — dark theme */
   :root {
     --background: 222 47% 3%;
     --foreground: 210 40% 98%;
@@ -13,7 +14,7 @@
     --popover: 222 47% 6%;
     --popover-foreground: 210 40% 98%;
     --primary: 239 84% 67%;
-    --primary-foreground: 210 40% 98%;
+    --primary-foreground: 0 0% 100%;
     --secondary: 217 33% 17%;
     --secondary-foreground: 210 40% 98%;
     --muted: 217 33% 17%;
@@ -21,11 +22,35 @@
     --accent: 263 70% 50%;
     --accent-foreground: 210 40% 98%;
     --destructive: 0 84% 60%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive-foreground: 0 0% 100%;
     --border: 217 33% 17%;
     --input: 217 33% 17%;
     --ring: 239 84% 67%;
     --radius: 0.75rem;
+  }
+
+  /* Admin / Cliente hub — light theme */
+  .admin-theme {
+    --background: 210 20% 98%;
+    --foreground: 222 47% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    --primary: 239 84% 60%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
+    --accent: 210 40% 96%;
+    --accent-foreground: 222 47% 11%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 239 84% 60%;
+    color-scheme: light;
   }
 }
 
@@ -40,7 +65,7 @@
   }
 }
 
-/* Custom scrollbar */
+/* Custom scrollbar — dark (landing) */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -59,6 +84,19 @@
   background: #475569;
 }
 
+/* Custom scrollbar — light (admin/cliente) */
+.admin-theme ::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+.admin-theme ::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+}
+
+.admin-theme ::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
 /* Smooth scroll */
 html {
   scroll-behavior: smooth;
@@ -75,9 +113,26 @@ html {
   @apply bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-violet-400;
 }
 
-/* Glass effect */
+/* Glass effect (landing — dark) */
 .glass {
   @apply bg-slate-900/50 backdrop-blur-xl border border-slate-800;
+}
+
+/* Glass card (admin/cliente — light) */
+.glass-card {
+  @apply bg-white border border-slate-100 shadow-sm;
+}
+
+/* Gradient primary button */
+.gradient-primary {
+  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+  color: white;
+  transition: opacity 0.15s ease, box-shadow 0.15s ease;
+}
+
+.gradient-primary:hover {
+  opacity: 0.9;
+  box-shadow: 0 8px 24px rgba(79, 70, 229, 0.3);
 }
 
 /* Animation utilities */
