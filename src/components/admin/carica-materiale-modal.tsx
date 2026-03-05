@@ -76,11 +76,13 @@ export function CaricaMaterialeModal({ isOpen, onClose, clienteId }: Props) {
       const matColRef = collection(db, 'clienti', clienteId, 'materiali');
 
       if (uploadType === 'file') {
-        const uploadPromises = selectedFiles.map(file => 
+        const uploadPromises = selectedFiles.map(file =>
           addDoc(matColRef, {
             nome_file: file.name,
             url_storage: null,
             caricato_da: user.uid,
+            uploadedByUserId: user.uid,
+            clientId: clienteId,
             ruolo_caricatore: 'admin',
             destinazione: destinazione,
             tipo_strategico: destinazione === 'strategico' ? tipoStrategico : null,
@@ -97,6 +99,8 @@ export function CaricaMaterialeModal({ isOpen, onClose, clienteId }: Props) {
           url_storage: null,
           link_esterno: externalLink,
           caricato_da: user.uid,
+          uploadedByUserId: user.uid,
+          clientId: clienteId,
           ruolo_caricatore: 'admin',
           destinazione: destinazione,
           tipo_strategico: destinazione === 'strategico' ? tipoStrategico : null,

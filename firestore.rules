@@ -117,6 +117,19 @@ service cloud.firestore {
      * @deny update: (write) if a client tries to change the clientId association.
      * @principle Enforces relational integrity and client-scoped visibility.
      */
+    /**
+     * @description Regola per collection group queries (dashboard admin).
+     * Il wildcard ricorsivo {path=**} è obbligatorio per collectionGroup().
+     * La condizione è scritta inline per evitare problemi di valutazione delle funzioni
+     * nel contesto delle collection group query.
+     */
+    match /{path=**}/post/{postId} {
+      allow list: if request.auth != null && (
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+        request.auth.token.email == 'emanueleadelini@gmail.com'
+      );
+    }
+
     match /clienti/{clientId}/post/{postId} {
       allow get, list: if belongsToClient(clientId) || isAdmin();
       allow create: if isAdmin();
@@ -133,7 +146,12 @@ service cloud.firestore {
      */
     match /clienti/{clientId}/materiali/{materialId} {
       allow get, list: if belongsToClient(clientId) || isAdmin();
-      allow create: if (isAdmin() || belongsToClient(clientId)) && (request.resource.data.clientId == clientId && request.resource.data.uploadedByUserId == request.auth.uid);
+      // Admin può creare liberamente; il cliente deve rispettare la validazione dei campi
+      allow create: if isAdmin() || (
+        belongsToClient(clientId) &&
+        request.resource.data.clientId == clientId &&
+        request.resource.data.uploadedByUserId == request.auth.uid
+      );
       allow update: if (resource != null) && (isAdmin() || (belongsToClient(clientId) && request.resource.data.clientId == resource.data.clientId));
       allow delete: if (resource != null) && (isAdmin() || (belongsToClient(clientId) && resource.data.uploadedByUserId == request.auth.uid));
     }

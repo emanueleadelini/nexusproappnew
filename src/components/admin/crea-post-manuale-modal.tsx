@@ -98,6 +98,8 @@ export function CreaPostManualeModal({ isOpen, onClose, clienteId }: Props) {
             nome_file: file.name,
             url_storage: null,
             caricato_da: user.uid,
+            uploadedByUserId: user.uid,
+            clientId: clienteId,
             ruolo_caricatore: 'admin',
             destinazione: 'social',
             stato_validazione: 'validato',

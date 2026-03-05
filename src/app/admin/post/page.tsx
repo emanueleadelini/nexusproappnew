@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useFirestore, useCollection, useMemoFirebase, useUser } from '@/firebase';
+import { usePermessi } from '@/hooks/use-permessi';
 import { collectionGroup, query, orderBy, where, limit } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -22,7 +23,8 @@ import Link from 'next/link';
 import { STATO_POST_LABELS, STATO_POST_COLORS, PIATTAFORMA_LABELS, Post } from '@/types/post';
 
 export default function AdminGlobalPostPage() {
-  const { user, isAdmin } = useUser();
+  const { user } = useUser();
+  const { isAdmin } = usePermessi();
   const db = useFirestore();
   const [filterStato, setFilterStato] = useState<string | null>(null);
 
