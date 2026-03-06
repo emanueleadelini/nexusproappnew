@@ -1,0 +1,18 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Asset dei clienti — solo utenti autenticati
+    // I controlli di ruolo più granulari vengono gestiti lato app
+    match /clienti/{clienteId}/{allPaths=**} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn()
+        && request.resource.size < 50 * 1024 * 1024  // max 50MB
+        && request.resource.contentType.matches('image/.*|application/pdf|video/.*|application/.*');
+    }
+  }
+}

@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth, useFirestore } from '@/firebase';
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,6 +19,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
   const auth = useAuth();
   const db = useFirestore();
   const router = useRouter();
@@ -62,6 +63,22 @@ export default function LoginPage() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handlePasswordReset = async () => {
+    if (!email) {
+      toast({ variant: 'destructive', title: 'Email mancante', description: 'Inserisci la tua email nel campo sopra.' });
+      return;
+    }
+    setResetLoading(true);
+    try {
+      await sendPasswordResetEmail(auth, email);
+      toast({ title: 'Email inviata', description: `Controlla la casella di ${email} per il link di reset.` });
+    } catch {
+      toast({ variant: 'destructive', title: 'Errore', description: 'Impossibile inviare l\'email di reset. Verifica l\'indirizzo.' });
+    } finally {
+      setResetLoading(false);
     }
   };
 
@@ -134,7 +151,15 @@ export default function LoginPage() {
             </Button>
           </form>
 
-          <div className="text-center pt-6 border-t border-slate-100">
+          <div className="text-center pt-6 border-t border-slate-100 space-y-3">
+            <button
+              type="button"
+              onClick={handlePasswordReset}
+              disabled={resetLoading}
+              className="text-indigo-500 hover:text-indigo-700 text-xs font-black uppercase tracking-widest transition-all block w-full"
+            >
+              {resetLoading ? 'Invio in corso...' : 'Password dimenticata?'}
+            </button>
             <Link href="/" className="text-slate-400 hover:text-indigo-600 text-xs font-black uppercase tracking-widest transition-all">
               ← Torna alla Home
             </Link>

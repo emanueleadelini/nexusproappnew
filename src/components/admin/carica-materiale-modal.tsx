@@ -7,10 +7,11 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useFirestore, useUser } from '@/firebase';
+import { useFirestore, useUser, useStorage } from '@/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, UploadCloud, FileIcon, X, Link as LinkIcon, Plus, AlertCircle, ShieldCheck, Printer, Fingerprint, FileSignature, CreditCard, Gift } from 'lucide-react';
+import { Loader2, UploadCloud, X, Link as LinkIcon, Plus, Printer, Fingerprint, FileSignature } from 'lucide-react';
 import { DestinazioneAsset } from '@/types/material';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
@@ -33,6 +34,7 @@ export function CaricaMaterialeModal({ isOpen, onClose, clienteId }: Props) {
   const [uploadType, setUploadType] = useState<'file' | 'link'>('file');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const db = useFirestore();
+  const storage = useStorage();
   const { toast } = useToast();
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -76,10 +78,15 @@ export function CaricaMaterialeModal({ isOpen, onClose, clienteId }: Props) {
       const matColRef = collection(db, 'clienti', clienteId, 'materiali');
 
       if (uploadType === 'file') {
-        const uploadPromises = selectedFiles.map(file =>
-          addDoc(matColRef, {
+        const uploadPromises = selectedFiles.map(async (file) => {
+          const timestamp = Date.now();
+          const storagePath = `clienti/${clienteId}/${timestamp}_${file.name}`;
+          const storageRef = ref(storage, storagePath);
+          await uploadBytes(storageRef, file);
+          const url_storage = await getDownloadURL(storageRef);
+          return addDoc(matColRef, {
             nome_file: file.name,
-            url_storage: null,
+            url_storage,
             caricato_da: user.uid,
             uploadedByUserId: user.uid,
             clientId: clienteId,
@@ -90,8 +97,8 @@ export function CaricaMaterialeModal({ isOpen, onClose, clienteId }: Props) {
             stato_validazione: 'validato',
             note_rifiuto: null,
             creato_il: serverTimestamp()
-          })
-        );
+          });
+        });
         await Promise.all(uploadPromises);
       } else {
         await addDoc(matColRef, {

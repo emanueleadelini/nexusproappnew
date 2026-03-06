@@ -28,6 +28,7 @@ export default function ClientiListPage() {
   const { isAdmin, ruolo } = usePermessi();
   const db = useFirestore();
   const [searchTerm, setSearchTerm] = useState('');
+  const [filtroSettore, setFiltroSettore] = useState('');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
   const clientsQuery = useMemoFirebase(() => {
@@ -41,10 +42,14 @@ export default function ClientiListPage() {
 
   const { data: clients, isLoading } = useCollection<any>(clientsQuery);
 
-  const filteredClients = clients?.filter(c =>
-    c.nome_azienda?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    c.settore?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const settoriDisponibili = [...new Set(clients?.map(c => c.settore).filter(Boolean) || [])].sort();
+
+  const filteredClients = clients?.filter(c => {
+    const matchSearch = c.nome_azienda?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      c.settore?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchSettore = !filtroSettore || c.settore === filtroSettore;
+    return matchSearch && matchSettore;
+  });
 
   if (isLoading) {
     return (
@@ -82,9 +87,19 @@ export default function ClientiListPage() {
             className="pl-10 bg-white border-slate-200 text-slate-900 placeholder:text-slate-400 rounded-xl h-11 focus-visible:ring-indigo-500/20"
           />
         </div>
-        <Button variant="outline" className="border-slate-200 text-slate-500 gap-2 h-11 rounded-xl hover:bg-slate-50">
-          <Filter className="w-4 h-4" /> Filtri
-        </Button>
+        <div className="relative">
+          <select
+            value={filtroSettore}
+            onChange={(e) => setFiltroSettore(e.target.value)}
+            className="h-11 rounded-xl border border-slate-200 bg-white text-slate-700 text-sm font-bold px-4 pr-8 appearance-none cursor-pointer hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+          >
+            <option value="">Tutti i Settori</option>
+            {settoriDisponibili.map(s => (
+              <option key={s} value={s}>{s}</option>
+            ))}
+          </select>
+          <Filter className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">

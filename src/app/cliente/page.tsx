@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useUser, useFirestore, useCollection, useDoc, useMemoFirebase } from '@/firebase';
-import { query, collection, where, orderBy, doc, getDoc, updateDoc, serverTimestamp, arrayUnion, Timestamp, addDoc } from 'firebase/firestore';
+import { query, collection, orderBy, doc, getDoc, updateDoc, serverTimestamp, arrayUnion, Timestamp } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
@@ -20,23 +20,19 @@ import {
   DownloadCloud,
   AlertCircle,
   Briefcase,
-  Calendar,
-  LayoutGrid,
   History,
-  MessageSquare,
-  Clock,
-  Timer,
   ArrowUpRight,
   TrendingUp,
-  Download
 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { FeedInstagramPreview } from '@/components/feed-instagram-preview';
 import { useToast } from '@/hooks/use-toast';
 import { useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Material } from '@/types/material';
 import { CalendarioVisuale } from '@/components/admin/calendario-visuale';
-import { Post, STATO_POST_LABELS, STATO_POST_COLORS } from '@/types/post';
+import { Post } from '@/types/post';
 import { CommentiSidebar } from '@/components/commenti-sidebar';
 
 export default function ClienteFeedPage() {
@@ -57,6 +53,7 @@ export default function ClienteFeedPage() {
     }).catch(() => setIsUserDataLoading(false));
   }, [user, db]);
 
+  const router = useRouter();
   const [selectedPost, setSelectedPost] = useState<any | null>(null);
   const [noteModifica, setNoteModifica] = useState('');
   const [loading, setLoading] = useState(false);
@@ -89,23 +86,22 @@ export default function ClienteFeedPage() {
   const { data: materials } = useCollection<Material>(materialsQuery);
 
   useEffect(() => {
-    if (!posts || !isIdValid) return;
+    if (!posts || !materials || !isIdValid) return;
 
-    const fetchAssets = async () => {
-      const newUrlsMap: Record<string, string[]> = {};
-      for (const post of posts) {
-        const assetIds = post.materiali_ids || (post.materiale_id ? [post.materiale_id] : []);
-        if (assetIds.length === 0) continue;
-        const urls: string[] = [];
-        for (const id of assetIds) {
-          urls.push(`https://picsum.photos/seed/${id}/800/800`);
-        }
-        newUrlsMap[post.id] = urls;
+    const newUrlsMap: Record<string, string[]> = {};
+    for (const post of posts) {
+      const assetIds = post.materiali_ids || (post.materiale_id ? [post.materiale_id] : []);
+      if (assetIds.length === 0) continue;
+      const urls: string[] = [];
+      for (const id of assetIds) {
+        const mat = materials.find(m => m.id === id);
+        if (mat?.url_storage) urls.push(mat.url_storage);
+        else if (mat?.link_esterno) urls.push(mat.link_esterno);
       }
-      setMaterialUrlsMap(newUrlsMap);
-    };
-    fetchAssets();
-  }, [posts, isIdValid]);
+      if (urls.length > 0) newUrlsMap[post.id] = urls;
+    }
+    setMaterialUrlsMap(newUrlsMap);
+  }, [posts, materials, isIdValid]);
 
   const handleApprova = async (post: any) => {
     if (!clienteId || !user) return;
@@ -204,7 +200,7 @@ export default function ClienteFeedPage() {
           </div>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" className="h-12 rounded-xl border-slate-200 text-slate-900 bg-white font-bold px-6 hover:bg-slate-50"><History className="w-4 h-4 mr-2" /> Storico</Button>
+          <Button variant="outline" onClick={() => router.push('/cliente/notifiche')} className="h-12 rounded-xl border-slate-200 text-slate-900 bg-white font-bold px-6 hover:bg-slate-50"><History className="w-4 h-4 mr-2" /> Storico</Button>
           <Button onClick={handleRequestUpgrade} className="h-12 gradient-primary shadow-lg shadow-indigo-500/20 rounded-xl font-bold px-6">Post Extra</Button>
         </div>
       </div>
@@ -399,9 +395,9 @@ export default function ClienteFeedPage() {
           <Card className="glass-card border-none rounded-[2.5rem] p-8 bg-indigo-50/30 border-indigo-100">
             <h4 className="text-sm font-bold text-indigo-900 mb-2 flex items-center gap-2"><AlertCircle className="w-4 h-4 text-indigo-600" /> Supporto Dedicato</h4>
             <p className="text-xs text-indigo-700/70 leading-relaxed mb-4">Hai bisogno di assistenza o vuoi discutere una nuova strategia?</p>
-            <Button variant="link" className="p-0 h-auto text-indigo-600 font-bold text-xs uppercase tracking-widest flex items-center gap-2">
+            <Link href="/cliente/richieste" className="inline-flex items-center gap-2 text-indigo-600 font-bold text-xs uppercase tracking-widest hover:text-indigo-800 transition-colors">
               Contatta Team Nexus <ArrowUpRight className="w-3.5 h-3.5" />
-            </Button>
+            </Link>
           </Card>
         </div>
       </div>
