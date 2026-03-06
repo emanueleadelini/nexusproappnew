@@ -43,6 +43,8 @@ export default function AdminDashboard() {
   const { data: pendingPosts, isLoading: isPostsLoading } = useCollection<any>(pendingPostsQuery);
 
   const totalUsed = clients?.reduce((acc: number, c: any) => acc + (c.post_usati || 0), 0) || 0;
+  const totalBudget = clients?.reduce((acc: number, c: any) => acc + (c.post_totali || 0), 0) || 0;
+  const kpiSaturation = totalBudget > 0 ? `${Math.round((totalUsed / totalBudget) * 100)}%` : '—';
 
   if (isClientsLoading || isPostsLoading) {
     return (
@@ -77,7 +79,7 @@ export default function AdminDashboard() {
           { label: "Clienti Attivi", val: clients?.length || 0, icon: Users, color: "text-indigo-600", bg: "bg-indigo-50", tag: "HUB" },
           { label: "Task Approvazione", val: pendingPosts?.length || 0, icon: Clock, color: "text-amber-600", bg: "bg-amber-50", tag: "24H" },
           { label: "Post Mensili", val: totalUsed, icon: FileText, color: "text-emerald-600", bg: "bg-emerald-50", tag: "TOTAL" },
-          { label: "KPI Performance", val: "98.4%", icon: Zap, color: "text-purple-600", bg: "bg-purple-50", tag: "LIVE" }
+          { label: "Saturazione Budget", val: kpiSaturation, icon: Zap, color: "text-purple-600", bg: "bg-purple-50", tag: "LIVE" }
         ].map((stat, i) => (
           <Card key={i} className="bg-white border-slate-100 shadow-sm overflow-hidden group hover:shadow-md transition-all rounded-[2rem]">
             <CardContent className="p-8">

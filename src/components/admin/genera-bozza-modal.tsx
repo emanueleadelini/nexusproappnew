@@ -14,6 +14,14 @@ import { useFirestore, useUser, useDoc, useMemoFirebase } from '@/firebase';
 import { collection, addDoc, serverTimestamp, doc, updateDoc, increment, Timestamp, writeBatch } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 
+interface Props {
+  isOpen: boolean;
+  onClose: () => void;
+  clienteId: string;
+  clienteNome: string;
+  clienteSettore: string;
+}
+
 const PIATTAFORME = [
   { id: 'instagram', label: 'Instagram', istruzioni: 'caption coinvolgente con emoji e hashtag' },
   { id: 'facebook', label: 'Facebook', istruzioni: 'post informativo e colloquiale' },

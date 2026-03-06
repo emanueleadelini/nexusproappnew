@@ -7,15 +7,12 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
-import { useFirestore, useUser } from '@/firebase';
+import { useFirestore, useUser, useStorage } from '@/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { collection, addDoc, serverTimestamp, Timestamp, doc, updateDoc, increment, getDocs, query, where } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, FilePlus2, UploadCloud, X, ImageIcon, Share2, Layout, Zap, Clock, Images } from 'lucide-react';
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
-import { DestinazioneAsset } from '@/types/material';
+import { Loader2, FilePlus2, UploadCloud, X, Images } from 'lucide-react';
 import { PiattaformaPost, FormatoPost, PIATTAFORMA_LABELS, FORMATO_LABELS, StatoPost, TipoPianificazione } from '@/types/post';
 
 interface Props {
@@ -43,6 +40,7 @@ export function CreaPostManualeModal({ isOpen, onClose, clienteId }: Props) {
   });
 
   const db = useFirestore();
+  const storage = useStorage();
   const { toast } = useToast();
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -94,9 +92,13 @@ export function CreaPostManualeModal({ isOpen, onClose, clienteId }: Props) {
 
       if (selectedFiles.length > 0) {
         for (const file of selectedFiles) {
+          const storagePath = `clienti/${clienteId}/${Date.now()}_${file.name}`;
+          const storageRef = ref(storage, storagePath);
+          await uploadBytes(storageRef, file);
+          const url_storage = await getDownloadURL(storageRef);
           const matRef = await addDoc(collection(db, 'clienti', clienteId, 'materiali'), {
             nome_file: file.name,
-            url_storage: null,
+            url_storage,
             caricato_da: user.uid,
             uploadedByUserId: user.uid,
             clientId: clienteId,
