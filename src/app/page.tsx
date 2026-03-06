@@ -16,13 +16,22 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
+import { useFirestore } from '@/firebase';
+import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { ProdottoLead, TipoLead } from '@/types/lead';
 
 export default function App() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [contactOpen, setContactOpen] = useState(false);
+  const [provaOpen, setProvaOpen] = useState<ProdottoLead | null>(null);
+  const [provaForm, setProvaForm] = useState({ nome: '', email: '', telefono: '', azienda: '', messaggio: '' });
+  const [provaLoading, setProvaLoading] = useState(false);
+  const [demoForm, setDemoForm] = useState({ nome: '', email: '', azienda: '', prodotto: '' as ProdottoLead | '', messaggio: '' });
+  const [demoLoading, setDemoLoading] = useState(false);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const heroRef = useRef<HTMLDivElement>(null);
+  const db = useFirestore();
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 50);
@@ -49,10 +58,46 @@ export default function App() {
     setMobileMenuOpen(false);
   };
 
-  const handleContactSubmit = (e: React.FormEvent) => {
+  const handleContactSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    toast.success('Messaggio inviato! Ti contatteremo presto.');
-    setContactOpen(false);
+    setDemoLoading(true);
+    try {
+      await addDoc(collection(db, 'leads'), {
+        ...demoForm,
+        prodotto: demoForm.prodotto || 'altro',
+        tipo: 'demo' as TipoLead,
+        stato: 'nuovo',
+        creato_il: serverTimestamp(),
+      });
+      toast.success('Richiesta inviata! Ti contatteremo entro 24 ore.');
+      setContactOpen(false);
+      setDemoForm({ nome: '', email: '', azienda: '', prodotto: '', messaggio: '' });
+    } catch {
+      toast.error('Errore nell\'invio. Riprova tra poco.');
+    } finally {
+      setDemoLoading(false);
+    }
+  };
+
+  const handleProvaSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setProvaLoading(true);
+    try {
+      await addDoc(collection(db, 'leads'), {
+        ...provaForm,
+        prodotto: provaOpen,
+        tipo: 'prova' as TipoLead,
+        stato: 'nuovo',
+        creato_il: serverTimestamp(),
+      });
+      toast.success('Richiesta inviata! Ti contatteremo presto.');
+      setProvaOpen(null);
+      setProvaForm({ nome: '', email: '', telefono: '', azienda: '', messaggio: '' });
+    } catch {
+      toast.error('Errore nell\'invio. Riprova tra poco.');
+    } finally {
+      setProvaLoading(false);
+    }
   };
 
   const products = [
@@ -567,12 +612,13 @@ export default function App() {
                       </ul>
 
                       <div className="flex gap-3">
-                        <a href={product.href} className="flex-1">
-                          <Button className={`w-full bg-gradient-to-r ${product.color} hover:opacity-90 text-white border-0`}>
-                            {product.cta}
-                            <ArrowRight className="ml-2 w-4 h-4" />
-                          </Button>
-                        </a>
+                        <Button
+                          className={`flex-1 bg-gradient-to-r ${product.color} hover:opacity-90 text-white border-0`}
+                          onClick={() => setProvaOpen(product.id as ProdottoLead)}
+                        >
+                          {product.cta}
+                          <ArrowRight className="ml-2 w-4 h-4" />
+                        </Button>
                         <Button variant="outline" className="border-slate-700 text-slate-300 hover:bg-slate-800">
                           <Play className="w-4 h-4" />
                         </Button>
@@ -907,6 +953,82 @@ export default function App() {
         </div>
       </footer>
 
+      {/* Prova Dialog (Nexus Pro / Placeat) */}
+      <Dialog open={!!provaOpen} onOpenChange={(open) => { if (!open) setProvaOpen(null); }}>
+        <DialogContent className="bg-slate-900 border-slate-800 text-white max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-2xl">
+              Prova {provaOpen === 'nexuspro' ? 'Nexus Pro' : 'Placeat'} Gratis
+            </DialogTitle>
+            <DialogDescription className="text-slate-400">
+              {provaOpen === 'nexuspro'
+                ? 'Lascia i tuoi dati e ti attiviamo un accesso di prova per la tua agenzia.'
+                : 'Lascia i tuoi dati e ti attiviamo un accesso di prova per il tuo locale.'}
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleProvaSubmit} className="space-y-4 mt-4">
+            <div>
+              <label className="text-sm text-slate-400 mb-1 block">Nome e Cognome *</label>
+              <Input
+                placeholder="Mario Rossi"
+                className="bg-slate-800 border-slate-700 text-white"
+                required
+                value={provaForm.nome}
+                onChange={(e) => setProvaForm(f => ({ ...f, nome: e.target.value }))}
+              />
+            </div>
+            <div>
+              <label className="text-sm text-slate-400 mb-1 block">Email *</label>
+              <Input
+                type="email"
+                placeholder="mario@azienda.it"
+                className="bg-slate-800 border-slate-700 text-white"
+                required
+                value={provaForm.email}
+                onChange={(e) => setProvaForm(f => ({ ...f, email: e.target.value }))}
+              />
+            </div>
+            <div>
+              <label className="text-sm text-slate-400 mb-1 block">Telefono</label>
+              <Input
+                type="tel"
+                placeholder="+39 333 1234567"
+                className="bg-slate-800 border-slate-700 text-white"
+                value={provaForm.telefono}
+                onChange={(e) => setProvaForm(f => ({ ...f, telefono: e.target.value }))}
+              />
+            </div>
+            <div>
+              <label className="text-sm text-slate-400 mb-1 block">
+                {provaOpen === 'nexuspro' ? 'Nome Agenzia' : 'Nome Locale'}
+              </label>
+              <Input
+                placeholder={provaOpen === 'nexuspro' ? 'Nome agenzia' : 'Ristorante / Bar / Pizzeria'}
+                className="bg-slate-800 border-slate-700 text-white"
+                value={provaForm.azienda}
+                onChange={(e) => setProvaForm(f => ({ ...f, azienda: e.target.value }))}
+              />
+            </div>
+            <div>
+              <label className="text-sm text-slate-400 mb-1 block">Messaggio (opzionale)</label>
+              <Textarea
+                placeholder="Raccontaci la tua situazione..."
+                className="bg-slate-800 border-slate-700 text-white min-h-[80px]"
+                value={provaForm.messaggio}
+                onChange={(e) => setProvaForm(f => ({ ...f, messaggio: e.target.value }))}
+              />
+            </div>
+            <Button
+              type="submit"
+              disabled={provaLoading}
+              className={`w-full text-white ${provaOpen === 'nexuspro' ? 'bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500' : 'bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500'}`}
+            >
+              {provaLoading ? 'Invio in corso...' : 'Richiedi Accesso di Prova'}
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
+
       {/* Contact Dialog */}
       <Dialog open={contactOpen} onOpenChange={setContactOpen}>
         <DialogContent className="bg-slate-900 border-slate-800 text-white max-w-md">
@@ -923,6 +1045,8 @@ export default function App() {
                 placeholder="Mario Rossi"
                 className="bg-slate-800 border-slate-700 text-white"
                 required
+                value={demoForm.nome}
+                onChange={(e) => setDemoForm(f => ({ ...f, nome: e.target.value }))}
               />
             </div>
             <div>
@@ -932,6 +1056,8 @@ export default function App() {
                 placeholder="mario@azienda.it"
                 className="bg-slate-800 border-slate-700 text-white"
                 required
+                value={demoForm.email}
+                onChange={(e) => setDemoForm(f => ({ ...f, email: e.target.value }))}
               />
             </div>
             <div>
@@ -939,11 +1065,17 @@ export default function App() {
               <Input
                 placeholder="Nome azienda"
                 className="bg-slate-800 border-slate-700 text-white"
+                value={demoForm.azienda}
+                onChange={(e) => setDemoForm(f => ({ ...f, azienda: e.target.value }))}
               />
             </div>
             <div>
               <label className="text-sm text-slate-400 mb-1 block">Tool di Interesse</label>
-              <select className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm">
+              <select
+                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm"
+                value={demoForm.prodotto}
+                onChange={(e) => setDemoForm(f => ({ ...f, prodotto: e.target.value as ProdottoLead | '' }))}
+              >
                 <option value="">Seleziona un tool...</option>
                 <option value="nexuspro">Nexus Pro (Agenzie)</option>
                 <option value="placeat">Placeat (Ristoranti)</option>
@@ -960,13 +1092,16 @@ export default function App() {
               <Textarea
                 placeholder="Descrivi le tue esigenze..."
                 className="bg-slate-800 border-slate-700 text-white min-h-[100px]"
+                value={demoForm.messaggio}
+                onChange={(e) => setDemoForm(f => ({ ...f, messaggio: e.target.value }))}
               />
             </div>
             <Button
               type="submit"
+              disabled={demoLoading}
               className="w-full bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white"
             >
-              Invia Richiesta
+              {demoLoading ? 'Invio in corso...' : 'Invia Richiesta'}
             </Button>
           </form>
         </DialogContent>

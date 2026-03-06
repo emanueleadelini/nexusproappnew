@@ -176,6 +176,16 @@ service cloud.firestore {
       allow create: if belongsToClient(clientId) || isAdmin();
     }
 
+    /**
+     * @description Rules for public leads from landing page (Prova Nexus Pro / Prova Placeat).
+     * @path /leads/{leadId}
+     * Anyone can create; only admins can read, update, delete.
+     */
+    match /leads/{leadId} {
+      allow create: if true;
+      allow read, update, delete: if isAdmin();
+    }
+
     match /clienti/{clientId}/materiali/{materialId} {
       allow get, list: if belongsToClient(clientId) || isAdmin();
       // Admin può creare liberamente; il cliente deve rispettare la validazione dei campi
