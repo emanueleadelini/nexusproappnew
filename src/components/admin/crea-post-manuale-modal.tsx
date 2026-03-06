@@ -117,6 +117,7 @@ export function CreaPostManualeModal({ isOpen, onClose, clienteId }: Props) {
         titolo: formData.titolo,
         testo: formData.testo,
         stato: 'da_approvare' as StatoPost,
+        cliente_id: clienteId,
         materiali_ids: materialiIds,
         materiale_id: materialiIds[0] || null, // Per retro-compatibilità
         piattaforme: formData.piattaforme,

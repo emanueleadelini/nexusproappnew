@@ -134,10 +134,7 @@ service cloud.firestore {
      * nel contesto delle collection group query.
      */
     match /{path=**}/post/{postId} {
-      allow list: if request.auth != null && (
-        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
-        request.auth.token.email == 'emanueleadelini@gmail.com'
-      );
+      allow list: if isAdmin();
     }
 
     match /clienti/{clientId}/post/{postId} {
