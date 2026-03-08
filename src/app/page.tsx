@@ -7,7 +7,7 @@ import {
   Lock, Mail, Play, FileText,
   Bell, RefreshCw, Calculator, MessageSquare,
   TrendingUp, Clock, Award, Star, ArrowUpRight,
-  Building2, UtensilsCrossed, Megaphone
+  Building2, UtensilsCrossed, Megaphone, GraduationCap
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -258,6 +258,29 @@ export default function App() {
       value: '€1.500',
       price: 'da €49/mese',
       cta: 'Richiedi Demo',
+      demo: 'Guarda Demo'
+    },
+    {
+      id: 'adnextformazione',
+      name: 'AD Next Formazione',
+      tagline: 'Per Centri di Formazione',
+      description: 'Piattaforma completa per centri formazione: corsi informatici, certificazioni linguistiche, percorsi universitari e formazione sulla sicurezza.',
+      icon: GraduationCap,
+      color: 'from-sky-500 to-blue-600',
+      badge: 'Certificazioni Ufficiali',
+      specs: [
+        { label: 'Aree', value: '4' },
+        { label: 'Percorsi', value: 'Multi' },
+        { label: 'Accesso', value: 'Online' }
+      ],
+      features: [
+        'Certificazioni informatiche e linguistiche',
+        'Percorsi universitari riconosciuti',
+        'Formazione sicurezza informatica e sul lavoro'
+      ],
+      value: '',
+      price: 'Prezzi su misura',
+      cta: 'Richiedi Info',
       demo: 'Guarda Demo'
     }
   ];
@@ -643,10 +666,10 @@ export default function App() {
               Suite Professionale
             </Badge>
             <h2 className="text-3xl lg:text-5xl font-bold text-white mb-4">
-              5 Tool per Studi Professionali
+              6 Tool per Professionisti e Formatori
             </h2>
             <p className="text-slate-400 max-w-2xl mx-auto">
-              Automazione completa per commercialisti, consulenti e studi professionali.
+              Automazione completa per commercialisti, consulenti, studi professionali e centri formazione.
               <span className="text-emerald-400"> Testati, pronti, risultati dal giorno 1.</span>
             </p>
           </div>
@@ -716,7 +739,7 @@ export default function App() {
               <CardContent className="p-6 flex flex-col sm:flex-row items-center gap-6">
                 <div className="text-left">
                   <div className="text-lg font-bold text-white mb-1">Bundle Completo</div>
-                  <div className="text-sm text-slate-400">Tutti i 5 tool a €199/mese invece di €245</div>
+                  <div className="text-sm text-slate-400">Tutti i 6 tool a €199/mese invece di €294</div>
                 </div>
                 <Button
                   onClick={() => setContactOpen(true)}
@@ -1084,6 +1107,7 @@ export default function App() {
                 <option value="fatturamatch">FatturaMatch</option>
                 <option value="fiscoauto">FiscoAuto</option>
                 <option value="studioflow">StudioFlow</option>
+                <option value="adnextformazione">AD Next Formazione</option>
                 <option value="bundle">Bundle Completo</option>
               </select>
             </div>

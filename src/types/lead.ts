@@ -2,7 +2,7 @@ import { Timestamp } from 'firebase/firestore';
 
 export type StatoLead = 'nuovo' | 'contattato' | 'convertito';
 export type TipoLead = 'prova' | 'demo';
-export type ProdottoLead = 'nexuspro' | 'placeat' | 'fatturaparse' | 'normaguard' | 'fatturamatch' | 'fiscoauto' | 'studioflow' | 'bundle' | 'altro';
+export type ProdottoLead = 'nexuspro' | 'placeat' | 'fatturaparse' | 'normaguard' | 'fatturamatch' | 'fiscoauto' | 'studioflow' | 'adnextformazione' | 'bundle' | 'altro';
 
 export interface Lead {
   id: string;
@@ -37,6 +37,7 @@ export const PRODOTTO_LEAD_LABELS: Record<ProdottoLead, string> = {
   fatturamatch: 'FatturaMatch',
   fiscoauto: 'FiscoAuto',
   studioflow: 'StudioFlow',
+  adnextformazione: 'AD Next Formazione',
   bundle: 'Bundle Completo',
   altro: 'Altro',
 };
