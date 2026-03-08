@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { query, collection, orderBy, addDoc, serverTimestamp, doc, updateDoc, getDocs, where } from 'firebase/firestore';
-import { MessageSquare, Send, CheckCircle2, User, Clock, ChevronRight, History } from 'lucide-react';
+import { MessageSquare, Send, CheckCircle2, Clock, ChevronRight, History } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
