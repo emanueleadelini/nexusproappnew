@@ -942,12 +942,12 @@ export default function App() {
 
           <div className="pt-8 border-t border-slate-800 flex flex-col md:flex-row items-center justify-between gap-4">
             <p className="text-slate-500 text-sm">
-              © 2024 AD Next Lab. Tutti i diritti riservati.
+              © 2026 AD Next Lab. Tutti i diritti riservati.
             </p>
             <div className="flex items-center gap-4 text-sm text-slate-500">
-              <a href="#" className="hover:text-white">Privacy Policy</a>
-              <a href="#" className="hover:text-white">Termini di Servizio</a>
-              <a href="#" className="hover:text-white">Cookie Policy</a>
+              <a href="/privacy-policy" className="hover:text-white">Privacy Policy</a>
+              <a href="/termini-di-servizio" className="hover:text-white">Termini di Servizio</a>
+              <a href="/cookie-policy" className="hover:text-white">Cookie Policy</a>
             </div>
           </div>
         </div>
