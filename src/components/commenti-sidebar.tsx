@@ -91,8 +91,8 @@ export function CommentiSidebar({ clienteId, postId, isOpen, onClose }: Props) {
 
       setTesto('');
       setTipo('commento');
-    } catch (e) {
-      console.error(e);
+    } catch {
+      // silently handled
     } finally {
       setLoading(false);
     }

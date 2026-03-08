@@ -6,11 +6,24 @@ service firebase.storage {
       return request.auth != null;
     }
 
-    // Asset dei clienti — solo utenti autenticati
-    // I controlli di ruolo più granulari vengono gestiti lato app
+    function isAdmin() {
+      return isSignedIn() && (
+        firestore.exists(/databases/(default)/documents/admins/$(request.auth.uid)) ||
+        request.auth.token.email == 'emanueleadelini@gmail.com' ||
+        firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.ruolo in ['super_admin', 'admin_agenzia']
+      );
+    }
+
+    function belongsToClient(clienteId) {
+      return isSignedIn() &&
+        firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.cliente_id == clienteId;
+    }
+
+    // Asset dei clienti — solo l'utente proprietario o un admin può leggere/scrivere
     match /clienti/{clienteId}/{allPaths=**} {
-      allow read: if isSignedIn();
+      allow read: if isSignedIn() && (belongsToClient(clienteId) || isAdmin());
       allow write: if isSignedIn()
+        && (belongsToClient(clienteId) || isAdmin())
         && request.resource.size < 50 * 1024 * 1024  // max 50MB
         && request.resource.contentType.matches('image/.*|application/pdf|video/.*|application/.*');
     }

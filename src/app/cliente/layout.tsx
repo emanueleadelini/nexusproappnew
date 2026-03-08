@@ -40,8 +40,8 @@ export default function ClienteLayout({ children }: { children: React.ReactNode 
         } else {
           router.push('/login');
         }
-      } catch (e) {
-        console.error("Errore verifica ruolo:", e);
+      } catch {
+        // silently handled
       }
     };
     checkRole();

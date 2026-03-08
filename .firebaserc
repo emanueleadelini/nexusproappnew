@@ -1,5 +1,15 @@
 {
   "projects": {
     "default": "ad-next-lab-pro"
-  }
+  },
+  "targets": {
+    "ad-next-lab-pro": {
+      "storage": {
+        "default": [
+          "ad-next-lab-pro.firebasestorage.app"
+        ]
+      }
+    }
+  },
+  "etags": {}
 }

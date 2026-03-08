@@ -90,7 +90,7 @@ export default function AdminGlobalPostPage() {
                         {STATO_POST_LABELS[post.stato]}
                       </Badge>
                       <span className="text-[10px] text-slate-400 font-bold uppercase flex items-center gap-1">
-                        <Share2 className="w-3 h-3" /> {PIATTAFORMA_LABELS[post.piattaforma] || post.piattaforma}
+                        <Share2 className="w-3 h-3" /> {post.piattaforma ? (PIATTAFORMA_LABELS[post.piattaforma] || post.piattaforma) : ''}
                       </span>
                     </div>
                     <h4 className="text-slate-900 font-bold group-hover:text-indigo-600 transition-colors">{post.titolo}</h4>

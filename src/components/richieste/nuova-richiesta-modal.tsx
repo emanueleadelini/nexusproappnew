@@ -95,8 +95,7 @@ export function NuovaRichiestaModal({ isOpen, onClose, clienteId }: Props) {
       setMessaggio('');
       setAllegati([]);
       onClose();
-    } catch (e) {
-      console.error(e);
+    } catch {
       toast({ variant: 'destructive', title: 'Errore', description: 'Impossibile inviare la richiesta.' });
     } finally {
       setLoading(false);

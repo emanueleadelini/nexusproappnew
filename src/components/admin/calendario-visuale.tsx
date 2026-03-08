@@ -33,7 +33,7 @@ import {
   endOfWeek
 } from 'date-fns';
 import { it } from 'date-fns/locale';
-import { Post, STATO_POST_COLORS, STATO_POST_LABELS, PIATTAFORMA_LABELS } from '@/types/post';
+import { Post, StatoPost, STATO_POST_COLORS, STATO_POST_LABELS, PIATTAFORMA_LABELS } from '@/types/post';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight, GripVertical, Calendar as CalendarIcon, Clock, Plus } from 'lucide-react';
@@ -79,7 +79,7 @@ function DraggablePostCard({ post, disabled = false }: { post: Post; disabled?: 
       {!disabled && <GripVertical className="w-3 h-3 opacity-30 group-hover:opacity-100" />}
       <span className="truncate font-bold uppercase flex-1">{post.titolo}</span>
       <Badge variant="outline" className="text-[7px] py-0 px-1 border-current/20 opacity-70">
-        {PIATTAFORMA_LABELS[post.piattaforma] ? PIATTAFORMA_LABELS[post.piattaforma].charAt(0) : 'P'}
+        {post.piattaforma ? (PIATTAFORMA_LABELS[post.piattaforma]?.charAt(0) ?? 'P') : 'P'}
       </Badge>
     </div>
   );
@@ -214,8 +214,8 @@ export function CalendarioVisuale({ clienteId, posts, onAddPost, readOnly }: Pro
            <div className="flex gap-3 mr-4">
              {['bozza', 'da_approvare', 'approvato', 'pubblicato'].map(s => (
                <div key={s} className="flex items-center gap-1.5">
-                 <div className={`h-2 w-2 rounded-full ${STATO_POST_COLORS[s as any]?.bg?.replace('bg-', 'bg-') || 'bg-gray-300'}`}></div>
-                 <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">{STATO_POST_LABELS[s as any]}</span>
+                 <div className={`h-2 w-2 rounded-full ${STATO_POST_COLORS[s as StatoPost]?.bg || 'bg-gray-300'}`}></div>
+                 <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">{STATO_POST_LABELS[s as StatoPost]}</span>
                </div>
              ))}
            </div>

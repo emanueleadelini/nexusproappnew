@@ -142,6 +142,12 @@ service cloud.firestore {
       allow create: if isAdmin();
       allow update: if (resource != null) && (isAdmin() || (belongsToClient(clientId) && request.resource.data.clientId == resource.data.clientId));
       allow delete: if isAdmin();
+
+      match /commenti/{commentoId} {
+        allow read, create: if belongsToClient(clientId) || isAdmin();
+        allow update: if isAdmin();
+        allow delete: if isAdmin();
+      }
     }
 
     /**

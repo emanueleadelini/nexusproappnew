@@ -30,8 +30,8 @@ export function usePermessi() {
           // Usa i permessi dal documento o quelli di default
           setPermessi(data.permessi || PERMESSI_DEFAULT[userRole] || []);
         }
-      } catch (error) {
-        console.error("Errore fetch permessi:", error);
+      } catch {
+        // silently handled
       } finally {
         setLoading(false);
       }

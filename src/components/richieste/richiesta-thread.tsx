@@ -105,8 +105,8 @@ export function RichiestaThread({ richiesta, clienteId, ruoloUtente, onClose }: 
 
       setTesto('');
       setAllegati([]);
-    } catch (e) {
-      console.error(e);
+    } catch {
+      // silently handled
     } finally {
       setLoading(false);
     }

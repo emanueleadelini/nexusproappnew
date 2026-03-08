@@ -72,7 +72,7 @@ export function FeedInstagramPreview({
               </span>
               <div className="flex gap-1 ml-1 border-l border-slate-200 pl-2">
                 {selectedPlatforms.map(p => (
-                  <Badge key={p} variant="ghost" className="p-0 h-auto text-[10px] text-indigo-600 font-black uppercase tracking-tight">
+                  <Badge key={p} className="p-0 h-auto text-[10px] text-indigo-600 font-black uppercase tracking-tight bg-transparent border-none hover:bg-transparent">
                     {PIATTAFORMA_LABELS[p]?.charAt(0)}
                   </Badge>
                 ))}
