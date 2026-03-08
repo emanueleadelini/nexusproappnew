@@ -136,6 +136,29 @@ export default function App() {
       cta: 'Prova Placeat',
       demo: 'Guarda Demo',
       href: '/placeat'
+    },
+    {
+      id: 'adnextformazione',
+      name: 'AD Next Formazione',
+      tagline: 'Per Centri di Formazione',
+      description: 'Piattaforma completa per centri di formazione: corsi informatici e linguistici, certificazioni professionali, percorsi universitari e formazione sulla sicurezza. Prezzi unici su misura per ogni centro.',
+      icon: GraduationCap,
+      color: 'from-sky-500 to-blue-600',
+      bgGlow: 'bg-sky-500/20',
+      stats: [
+        { value: '50+', label: 'Corsi' },
+        { value: '4', label: 'Aree' },
+        { value: 'Online', label: 'Accesso' }
+      ],
+      features: [
+        'Certificazioni informatiche e linguistiche',
+        'Percorsi universitari riconosciuti',
+        'Corsi sulla sicurezza informatica e sul lavoro',
+        'Prezzi unici e personalizzati per ogni centro'
+      ],
+      cta: 'Scopri i Corsi',
+      demo: 'Guarda Demo',
+      href: '/adnextformazione'
     }
   ];
 
@@ -258,29 +281,6 @@ export default function App() {
       value: '€1.500',
       price: 'da €49/mese',
       cta: 'Richiedi Demo',
-      demo: 'Guarda Demo'
-    },
-    {
-      id: 'adnextformazione',
-      name: 'AD Next Formazione',
-      tagline: 'Per Centri di Formazione',
-      description: 'Piattaforma completa per centri formazione: corsi informatici, certificazioni linguistiche, percorsi universitari e formazione sulla sicurezza.',
-      icon: GraduationCap,
-      color: 'from-sky-500 to-blue-600',
-      badge: 'Certificazioni Ufficiali',
-      specs: [
-        { label: 'Aree', value: '4' },
-        { label: 'Percorsi', value: 'Multi' },
-        { label: 'Accesso', value: 'Online' }
-      ],
-      features: [
-        'Certificazioni informatiche e linguistiche',
-        'Percorsi universitari riconosciuti',
-        'Formazione sicurezza informatica e sul lavoro'
-      ],
-      value: '',
-      price: 'Prezzi su misura',
-      cta: 'Richiedi Info',
       demo: 'Guarda Demo'
     }
   ];
@@ -595,8 +595,8 @@ export default function App() {
           </div>
 
           <div className="grid lg:grid-cols-2 gap-8">
-            {products.map((product) => (
-              <Card key={product.id} className="group bg-slate-900/50 border-slate-800 hover:border-slate-700 transition-all duration-500 overflow-hidden">
+            {products.map((product, idx) => (
+              <Card key={product.id} className={`group bg-slate-900/50 border-slate-800 hover:border-slate-700 transition-all duration-500 overflow-hidden${idx === products.length - 1 && products.length % 2 !== 0 ? ' lg:col-span-2' : ''}`}>
                 <CardContent className="p-0">
                   <div className="grid md:grid-cols-2">
                     {/* Left - Visual */}
@@ -666,10 +666,10 @@ export default function App() {
               Suite Professionale
             </Badge>
             <h2 className="text-3xl lg:text-5xl font-bold text-white mb-4">
-              6 Tool per Professionisti e Formatori
+              5 Tool per Studi Professionali
             </h2>
             <p className="text-slate-400 max-w-2xl mx-auto">
-              Automazione completa per commercialisti, consulenti, studi professionali e centri formazione.
+              Automazione completa per commercialisti, consulenti e studi professionali.
               <span className="text-emerald-400"> Testati, pronti, risultati dal giorno 1.</span>
             </p>
           </div>
@@ -739,7 +739,7 @@ export default function App() {
               <CardContent className="p-6 flex flex-col sm:flex-row items-center gap-6">
                 <div className="text-left">
                   <div className="text-lg font-bold text-white mb-1">Bundle Completo</div>
-                  <div className="text-sm text-slate-400">Tutti i 6 tool a €199/mese invece di €294</div>
+                  <div className="text-sm text-slate-400">Tutti i 5 tool a €199/mese invece di €245</div>
                 </div>
                 <Button
                   onClick={() => setContactOpen(true)}
