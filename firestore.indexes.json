@@ -41,6 +41,40 @@
           "order": "ASCENDING"
         }
       ]
+    },
+    {
+      "collectionGroup": "post",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        {
+          "fieldPath": "creato_il",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "richieste",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        {
+          "fieldPath": "aggiornato_il",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "richieste",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        {
+          "fieldPath": "stato",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "aggiornato_il",
+          "order": "DESCENDING"
+        }
+      ]
     }
   ],
   "fieldOverrides": []
