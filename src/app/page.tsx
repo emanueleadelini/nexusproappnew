@@ -170,7 +170,7 @@ export default function App() {
       description: 'Estrazione dati da fatture elettroniche XML (FatturaPA) e PDF. Zero data entry, 100% accuratezza su XML.',
       icon: FileText,
       color: 'from-blue-500 to-cyan-500',
-      badge: 'ROI in 2 settimane',
+      badge: 'Attivo 🟢',
       specs: [
         { label: 'XML', value: '17 Campi' },
         { label: 'Accuracy', value: '100%' },
@@ -194,7 +194,7 @@ export default function App() {
       description: 'Monitoraggio automatico normativa fiscale e professionale. Gazzetta Ufficiale, Agenzia delle Entrate, CNDCEC.',
       icon: Bell,
       color: 'from-amber-500 to-orange-500',
-      badge: 'Risparmio 5h/settimana',
+      badge: 'In Addestramento 🧠',
       specs: [
         { label: 'Fonti', value: '3' },
         { label: 'Classificazione', value: 'AI' },
@@ -207,7 +207,7 @@ export default function App() {
         'Bollettino su Google Sheets'
       ],
       value: '€1.000',
-      price: 'da €49/mese',
+      price: 'In arrivo 🚀',
       cta: 'Richiedi Demo',
       demo: 'Guarda Demo'
     },
@@ -218,7 +218,7 @@ export default function App() {
       description: 'Riconciliazione automatica fatture emesse vs ricevute. Importa CSV, trova discrepanze, genera report.',
       icon: RefreshCw,
       color: 'from-pink-500 to-rose-500',
-      badge: 'Da 30min a 3sec',
+      badge: 'Attivo 🟢',
       specs: [
         { label: 'Matched', value: '247' },
         { label: 'Warning', value: '3' },
@@ -242,7 +242,7 @@ export default function App() {
       description: 'Automazione dichiarazioni fiscali e liquidazioni IVA. Calcola IVA dovuta, ritenute, genera bozze F24.',
       icon: Calculator,
       color: 'from-indigo-500 to-blue-600',
-      badge: 'Da 4h a 3sec',
+      badge: 'In Addestramento 🧠',
       specs: [
         { label: 'IVA', value: '4 Aliquote' },
         { label: 'F24', value: 'Auto' },
@@ -255,7 +255,7 @@ export default function App() {
         'Input da CSV o Google Sheets'
       ],
       value: '€2.000',
-      price: 'da €49/mese',
+      price: 'In arrivo 🚀',
       cta: 'Richiedi Demo',
       demo: 'Guarda Demo'
     },
@@ -266,7 +266,7 @@ export default function App() {
       description: 'CRM automatizzato per studi professionali. Promemoria scadenze, follow-up clienti, raccolta documenti.',
       icon: MessageSquare,
       color: 'from-emerald-500 to-green-600',
-      badge: 'Zero scadenze perse',
+      badge: 'In Addestramento 🧠',
       specs: [
         { label: 'Scadenze', value: '2026' },
         { label: 'Promemoria', value: 'Auto' },
@@ -279,7 +279,7 @@ export default function App() {
         'Bozze Gmail con labels'
       ],
       value: '€1.500',
-      price: 'da €49/mese',
+      price: 'In arrivo 🚀',
       cta: 'Richiedi Demo',
       demo: 'Guarda Demo'
     }
