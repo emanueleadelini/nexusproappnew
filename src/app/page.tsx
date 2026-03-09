@@ -445,7 +445,7 @@ export default function App() {
               </h1>
 
               <p className="text-lg sm:text-xl text-slate-400 max-w-xl mx-auto lg:mx-0 mb-8 leading-relaxed">
-                Dimentica i software generici. In AD Next Lab uniamo <strong>strumenti AI proprietari</strong>, consulenza strategica e <span className="text-emerald-400">formazione a costo zero</span> per trasformare la tua PMI in una macchina autonoma.
+                Dimentica i software generici. In AD Next Lab uniamo <strong>strumenti AI</strong>, consulenza strategica e <span className="text-emerald-400">formazione</span> per trasformare la tua PMI in una macchina innovativa.
               </p>
 
               <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 mb-12">
