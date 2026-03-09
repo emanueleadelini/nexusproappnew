@@ -140,7 +140,7 @@ service cloud.firestore {
     match /clienti/{clientId}/post/{postId} {
       allow get, list: if belongsToClient(clientId) || isAdmin();
       allow create: if isAdmin();
-      allow update: if (resource != null) && (isAdmin() || (belongsToClient(clientId) && request.resource.data.clientId == resource.data.clientId));
+      allow update: if (resource != null) && (isAdmin() || (belongsToClient(clientId) && (!('clientId' in request.resource.data) || request.resource.data.clientId == resource.data.clientId)));
       allow delete: if isAdmin();
 
       match /commenti/{commentoId} {
@@ -197,7 +197,7 @@ service cloud.firestore {
         request.resource.data.clientId == clientId &&
         request.resource.data.uploadedByUserId == request.auth.uid
       );
-      allow update: if (resource != null) && (isAdmin() || (belongsToClient(clientId) && request.resource.data.clientId == resource.data.clientId));
+      allow update: if (resource != null) && (isAdmin() || (belongsToClient(clientId) && (!('clientId' in request.resource.data) || request.resource.data.clientId == resource.data.clientId)));
       allow delete: if (resource != null) && (isAdmin() || (belongsToClient(clientId) && resource.data.uploadedByUserId == request.auth.uid));
     }
   }

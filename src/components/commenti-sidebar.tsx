@@ -58,9 +58,9 @@ export function CommentiSidebar({ clienteId, postId, isOpen, onClose }: Props) {
 
       await addDoc(collection(db, 'clienti', clienteId, 'post', postId, 'commenti'), commentoData);
 
-      // LOGICA NOTIFICHE V5.3: Determina destinatari
+      // LOGICA NOTIFICHE V5.4: Determina destinatari
       if (ruolo === 'cliente_finale') {
-        const adminsSnap = await getDocs(query(collection(db, 'users'), where('ruolo', '==', 'super_admin')));
+        const adminsSnap = await getDocs(query(collection(db, 'users'), where('ruolo', 'in', ['super_admin', 'admin_agenzia'])));
         for (const adminDoc of adminsSnap.docs) {
           await addDoc(collection(db, 'users', adminDoc.id, 'notifiche'), {
             tipo: 'commento_nuovo',
