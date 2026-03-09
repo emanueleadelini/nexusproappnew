@@ -922,13 +922,8 @@ export default function App() {
                 </div>
               </div>
               <p className="text-slate-400 text-sm max-w-sm mb-4">
-                Software specializzati per agenzie, ristoranti e studi professionali.
-                Testati, pronti, risultati dal giorno 1.
+                Dimentica i software generici. In AD Next Lab uniamo strumenti AI, consulenza strategica e formazione per trasformare la tua PMI in una macchina innovativa.
               </p>
-              <div className="flex items-center gap-2 text-sm text-slate-500">
-                <Building2 className="w-4 h-4" />
-                <span>P.IVA: IT12345678901</span>
-              </div>
             </div>
 
             <div>
