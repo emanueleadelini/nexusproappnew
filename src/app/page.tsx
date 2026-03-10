@@ -726,6 +726,16 @@ export default function App() {
                       >
                         {tool.cta}
                       </Button>
+                      {tool.id === 'fatturaparse' && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="border-slate-700 text-slate-300 hover:bg-slate-800"
+                          onClick={() => window.open('https://ad-next-suite-2026.web.app/', '_blank')}
+                        >
+                          Prova subito
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </CardContent>
